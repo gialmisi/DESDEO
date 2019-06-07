@@ -2,7 +2,7 @@ import pytest
 
 from desdeo.method.NIMBUS import NIMBUS
 from desdeo.optimization.OptimizationMethod import SciPyDE
-from desdeo.problem.Problem import MOProblem
+from desdeo.problem.Problem import MOProblem, Variable, PreGeneratedProblem
 from examples.NarulaWeistroffer import RiverPollution
 
 
@@ -21,6 +21,17 @@ moproblem_params = {
     "name": "test problem",
     "points": None}
 
+variables = [
+    Variable([-5.0, 5.0], 0.0, "test_var_1"),
+    Variable([-14.2, -2.3], -12.22, "test_var_2"),
+    Variable([4.2, 99.99], 34.1, "test_var_3")]
+
+variable_params = {
+    "bounds": [-2.5, 6.2],
+    "starting_point": -0.001,
+    "name": "test_var"}
+
+test_file_path = "/home/kilo/workspace/DESDEO/tests/test_data.dat"
 
 class moproblem_specialized(MOProblem):
     """Documentation for moproblem_specialized
@@ -43,3 +54,35 @@ def moproblem_no_objectives_names():
     params = moproblem_params
     params["objectives"] = None
     return moproblem_specialized(params)
+
+
+@pytest.fixture
+def moproblem_bare():
+    return moproblem_specialized({"nobj": 0})
+
+
+@pytest.fixture
+def moproblem_with_vars():
+    res = moproblem_specialized(moproblem_params)
+    res.add_variables(variables)
+    return res
+
+
+@pytest.fixture
+def variable():
+    return Variable(**variable_params)
+
+
+@pytest.fixture
+def pregeneratedproblem_file():
+    return PreGeneratedProblem(
+        filename=test_file_path)
+
+
+@pytest.fixture
+def pregeneratedproblem_param():
+    points = []
+    with open(test_file_path) as handle:
+        for line in handle:
+            points.append(list(map(float, map(str.strip, line.split(',')))))
+    return PreGeneratedProblem(points=points)
