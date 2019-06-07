@@ -3,6 +3,8 @@ import pytest
 from desdeo.method.NIMBUS import NIMBUS
 from desdeo.optimization.OptimizationMethod import SciPyDE
 from desdeo.problem.Problem import MOProblem, Variable, PreGeneratedProblem
+from desdeo.problem.porcelain import Objective
+
 from examples.NarulaWeistroffer import RiverPollution
 
 
@@ -32,6 +34,7 @@ variable_params = {
     "name": "test_var"}
 
 test_file_path = "/home/kilo/workspace/DESDEO/tests/test_data.dat"
+
 
 class moproblem_specialized(MOProblem):
     """Documentation for moproblem_specialized
@@ -86,3 +89,30 @@ def pregeneratedproblem_param():
         for line in handle:
             points.append(list(map(float, map(str.strip, line.split(',')))))
     return PreGeneratedProblem(points=points)
+
+
+@pytest.fixture
+def min_objective():
+    @Objective("min_objective", maximized=False, ideal=None, nadir=None)
+    def objective(x, y):
+        return x - y
+
+    return objective
+
+@pytest.fixture
+def max_objective():
+    @Objective("max_objective", maximized=True, ideal=None, nadir=None)
+    def objective(x, y, z, n):
+        return x + y + z + n
+
+    return objective
+
+@pytest.fixture
+def def_objective():
+    ideal = [1, 2, 3]
+    nadir = [5, 6, 7]
+    @Objective("def_objective", maximized=False, ideal=ideal, nadir=nadir)
+    def objective(x, y, z):
+        return x * y / z
+
+    return objective
