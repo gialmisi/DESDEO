@@ -141,8 +141,52 @@ def simple_forest_problem() -> Problem:
             constraints.append(constraint_ik)
 
     # Objectives
-    # TODO
     objectives = []
 
+    ## NPV sum
+    npv_sum_expr = " + ".join([f"X_{i+1} * NPV_{i+1}" for i in range(number_of_stands)])
+    npv_objective = Objective(
+        name="NPV",
+        symbol="NPV",
+        func=npv_sum_expr,
+        is_convex=True,
+        is_linear=True,
+        is_twice_differentiable=True,
+        maximize=True,
+        objective_type=ObjectiveTypeEnum.analytical,
+        unit="Million euros",
+    )
+    objectives.append(npv_objective)
 
-simple_forest_problem()
+    ## DWV
+    dwv_sum_expr = " + ".join([f"X_{i+1} * DWV_{i+1}" for i in range(number_of_stands)])
+    dwv_objective = Objective(
+        name="DWV",
+        symbol="DWV",
+        func=dwv_sum_expr,
+        is_convex=True,
+        is_linear=True,
+        is_twice_differentiable=True,
+        maximize=True,
+        objective_type=ObjectiveTypeEnum.analytical,
+        unit="Metric tons",
+    )
+
+    objectives.append(dwv_objective)
+
+    # Construct and return problem
+    return Problem(
+        name="Simple forest problem",
+        description=(
+            f"Simple forest problem with {number_of_stands} stands, "
+            f"{number_of_regimes} regimes, over a time horizon of {number_of_years}"
+        ),
+        constants=constants,
+        variables=variables,
+        constraints=constraints,
+        objectives=objectives,
+    )
+
+
+problem = simple_forest_problem()
+print(problem)
