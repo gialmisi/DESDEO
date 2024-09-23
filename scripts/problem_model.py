@@ -189,4 +189,3 @@ def simple_forest_problem() -> Problem:
 
 
 problem = simple_forest_problem()
-print(problem)
