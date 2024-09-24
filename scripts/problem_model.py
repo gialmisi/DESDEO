@@ -1,3 +1,6 @@
+import numpy as np
+
+
 from desdeo.problem import (
     Problem,
     TensorConstant,
@@ -21,11 +24,11 @@ def simple_forest_problem() -> Problem:
     # E.g., NPVs[1][1, 2] is the NPV value for stand 1, second year (zero indexing) and third regime.
 
     NPVs = {
-        1: [[250, 300, 420, 0], [330, 280, 410, 0], [280, 290, 390, 0]],
-        2: [[312, 405, 478, 0], [287, 331, 462, 0], [344, 298, 411, 0]],
-        3: [[276, 418, 395, 0], [392, 284, 487, 0], [315, 367, 442, 0]],
-        4: [[329, 401, 356, 0], [245, 372, 498, 0], [408, 293, 475, 0]],
-        5: [[351, 289, 437, 0], [304, 426, 389, 0], [267, 338, 452, 0]],
+        1: [[250, 300, 420, 1], [330, 280, 410, 1], [280, 290, 390, 1]],
+        2: [[312, 405, 478, 1], [287, 331, 462, 1], [344, 298, 411, 1]],
+        3: [[276, 418, 395, 1], [392, 284, 487, 1], [315, 367, 442, 1]],
+        4: [[329, 401, 356, 1], [245, 372, 498, 1], [408, 293, 475, 1]],
+        5: [[351, 289, 437, 1], [304, 426, 389, 1], [267, 338, 452, 1]],
     }
 
     # Deadwood volume matrices for each stand
@@ -44,21 +47,12 @@ def simple_forest_problem() -> Problem:
     constants = []
     for j in range(number_of_years):
         constant_j = TensorConstant(
-            name=f"Select row {j+1} of a square matrix",
+            name=f"Select row {j+1} of a matrix",
             symbol=f"row_{j+1}",
             shape=[1, number_of_years],
             values=[[1 if jj == j else 0 for jj in range(number_of_years)]],
         )
         constants.append(constant_j)
-
-    for k in range(number_of_regimes):
-        constant_k = TensorConstant(
-            name=f"Select column {k+1} of a square matrix",
-            symbol=f"col_{k+1}",
-            shape=[number_of_regimes, 1],
-            values=[[1] if kk == k else [0] for kk in range(number_of_regimes)],
-        )
-        constants.append(constant_k)
 
     for i in range(number_of_stands):
         constant_npv_i = TensorConstant(
@@ -88,8 +82,7 @@ def simple_forest_problem() -> Problem:
 
     variables = []
 
-    lower_bounds = [[0 for _ in range(number_of_regimes)] for _ in range(number_of_years)]
-    upper_bounds = [[0 for _ in range(number_of_regimes)] for _ in range(number_of_years)]
+    initial_values = np.full((number_of_years, number_of_regimes), [1, 0, 0, 0]).tolist()
 
     for i in range(number_of_stands):
         var_i = TensorVariable(
@@ -97,9 +90,9 @@ def simple_forest_problem() -> Problem:
             symbol=f"X_{i+1}",
             variable_type=VariableTypeEnum.binary,
             shape=[number_of_years, number_of_regimes],
-            lowerbounds=lower_bounds,
-            upperbounds=upper_bounds,
-            initial_values=None,
+            lowerbounds=0,
+            upperbounds=1,
+            initial_values=initial_values,
         )
 
         variables.append(var_i)
@@ -114,7 +107,7 @@ def simple_forest_problem() -> Problem:
             expr_ij = f"Sum(row_{j+1} @ X_{i+1}) - 1"  # minus 1 because must equal zero
 
             constraint_ij = Constraint(
-                name=f"Row {j+1} of stand {i+1} sum to one.",
+                name=f"Row {j+1} of stand {i+1} must sum to one.",
                 symbol=f"row_constraint_{i}{j}",
                 func=expr_ij,
                 cons_type=ConstraintTypeEnum.EQ,
@@ -124,21 +117,6 @@ def simple_forest_problem() -> Problem:
             )
 
             constraints.append(constraint_ij)
-
-        for k in range(number_of_regimes):
-            expr_ik = f"Sum(X_{i+1} @ col_{k+1}) - 1"  # minus 1 because must equal zero
-
-            constraint_ik = Constraint(
-                name=f"Column {k+1} of stand {i+1} sum to one.",
-                symbol=f"column_constraint_{i}{k}",
-                func=expr_ik,
-                cons_type=ConstraintTypeEnum.EQ,
-                is_linear=True,
-                is_convex=True,
-                is_twice_differentiable=True,
-            )
-
-            constraints.append(constraint_ik)
 
     # Objectives
     objectives = []
@@ -189,4 +167,3 @@ def simple_forest_problem() -> Problem:
 
 
 problem = simple_forest_problem()
-print(problem)
