@@ -239,7 +239,8 @@ class PyomoEvaluator:
             elif isinstance(con, TensorConstant):
                 # handle TensorConstants, like vectors
                 # create the needed range sets
-                index_sets = [pyomo.RangeSet(1, dim_size) for dim_size in con.shape]
+                # TODO: check colum vectors properly!!!
+                index_sets = [pyomo.RangeSet(1, dim_size) if dim_size != 1 else 1 for dim_size in con.shape]
 
                 # TODO: check domain properly
                 # for now, constants are always assumed to be real (which is quite safe to do...)
