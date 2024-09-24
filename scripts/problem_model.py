@@ -47,7 +47,7 @@ def simple_forest_problem() -> Problem:
             name=f"Select row {j+1} of a square matrix",
             symbol=f"row_{j+1}",
             shape=[1, number_of_years],
-            values=[1 if jj == j else 0 for jj in range(number_of_years)],
+            values=[[1 if jj == j else 0 for jj in range(number_of_years)]],
         )
         constants.append(constant_j)
 
@@ -55,7 +55,7 @@ def simple_forest_problem() -> Problem:
         constant_k = TensorConstant(
             name=f"Select column {k+1} of a square matrix",
             symbol=f"col_{k+1}",
-            shape=[number_of_regimes],
+            shape=[number_of_regimes, 1],
             values=[[1] if kk == k else [0] for kk in range(number_of_regimes)],
         )
         constants.append(constant_k)
@@ -144,7 +144,7 @@ def simple_forest_problem() -> Problem:
     objectives = []
 
     ## NPV sum
-    npv_sum_expr = " + ".join([f"X_{i+1} * NPV_{i+1}" for i in range(number_of_stands)])
+    npv_sum_expr = "Sum(" + " + ".join([f"X_{i+1} * NPV_{i+1}" for i in range(number_of_stands)]) + ")"
     npv_objective = Objective(
         name="NPV",
         symbol="NPV",
@@ -159,7 +159,7 @@ def simple_forest_problem() -> Problem:
     objectives.append(npv_objective)
 
     ## DWV
-    dwv_sum_expr = " + ".join([f"X_{i+1} * DWV_{i+1}" for i in range(number_of_stands)])
+    dwv_sum_expr = "Sum(" + " + ".join([f"X_{i+1} * DWV_{i+1}" for i in range(number_of_stands)]) + ")"
     dwv_objective = Objective(
         name="DWV",
         symbol="DWV",
