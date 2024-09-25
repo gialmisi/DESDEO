@@ -1,4 +1,5 @@
 """Tests the infix parser for parsing mathematical expressions in infix format."""
+
 import numpy as np
 import numpy.testing as npt
 import polars as pl
@@ -461,6 +462,38 @@ def test_scientific_notation_evaluation():
     for infix_expression, expected in tests:
         result = evaluate_expression_helper(infix_expression, data)
         npt.assert_almost_equal(result, expected, decimal=5, err_msg=f"Failed for expression: {infix_expression}")
+
+
+@pytest.mark.infix_parser
+def test_bracket_access():
+    """Test accessing tensors."""
+
+    # "T[1]",
+    # "T[1,2]",
+    # "T[1,2,3]",
+    # "A[1] + B[2,3]",
+    # "Max(X[1], Y[2,3], Z[4,5,6])",
+    # "(x_1 - c_2) ** 2 + x_2 ** 2 - 25"
+    parser = InfixExpressionParser()
+
+    # Test cases: Each tuple contains the infix expression and the expected result
+    tests = [
+        ("T[1]", ["At", "T", 1]),
+        ("T[1,2]", ["At", "T", 1, 2]),
+        ("T[1,2,3]", ["At", "T", 1, 2, 3]),
+        ("A[1] + B[2,3]", ["Add", ["At", "A", 1], ["At", "B", 2, 3]]),
+        # "Max(X[1], Y[2,3], Z[4,5,6])",
+        # "(x_1 - c_2) ** 2 + x_2 ** 2 - 25"
+    ]
+
+    for infix_expression, json_expression in tests:
+        json_result = parser.parse(infix_expression)
+
+    """
+    for infix_expression, expected in tests:
+        result = evaluate_expression_helper(infix_expression, data)
+        npt.assert_almost_equal(result, expected, decimal=5, err_msg=f"Failed for expression: {infix_expression}")
+    """
 
 
 @pytest.mark.slow

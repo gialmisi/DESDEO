@@ -98,6 +98,8 @@ class InfixExpressionParser:
         # Scope limiters
         lparen = Suppress("(")
         rparen = Suppress(")")
+        lbracket = Suppress("[")
+        rbracket = Suppress("]")
 
         # Define keywords (Note that binary operators must be defined manually)
         symbols_variadic = set(InfixExpressionParser.VARIADIC_OPERATORS)
@@ -132,9 +134,14 @@ class InfixExpressionParser:
 
         operands = variable | scientific | integer
 
-        # Forward declarations of variadric and unary function calls
+        # Forward declarations of variadic, unary, and bracket function calls
         variadic_call = Forward()
         unary_call = Forward()
+        bracket_access = Forward()
+
+        # Define bracket access. Brackets following a variable may contain only integer values.
+        index_list = Group(DelimitedList(integer))
+        bracket_access <<= Group(variable + lbracket + index_list + rbracket)
 
         # The parsed expressions are assumed to follow a standard infix syntax. The operands
         # of the infix syntax can be either the literal 'operands' defined above (these are singletons),
@@ -144,7 +151,7 @@ class InfixExpressionParser:
         # Note that the order of the operators in the second argument (the list) of infixNotation matters!
         # The operation with the highest precedence is listed first.
         infix_expn = infix_notation(
-            operands | variadic_call | unary_call,
+            bracket_access | operands | variadic_call | unary_call,
             [
                 (expop, 2, OpAssoc.LEFT),
                 (signop, 1, OpAssoc.RIGHT),
@@ -200,6 +207,13 @@ class InfixExpressionParser:
         # Directly return the input if it is an integer or a float
         if self._is_number_or_variable(parsed):
             return parsed
+
+        # Handle bracket access
+        # Check that anything following variable is only integer.
+        if isinstance(parsed, list) and len(parsed) == 2 and isinstance(parsed[1], list):
+            # variable = parsed[0]
+            # indices = parsed[1]
+            return ["At", parsed[0]] + parsed[1]
 
         # Flatten binary operations like 1 + 2 + 3 into ["Add", 1, 2, 3]
         # Last check is to make sure that in cases like ["Max", ["x", "y", ...]] the 'y' is not confused to
