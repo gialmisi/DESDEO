@@ -1,15 +1,14 @@
 import numpy as np
 
-
 from desdeo.problem import (
+    Constraint,
+    ConstraintTypeEnum,
+    Objective,
+    ObjectiveTypeEnum,
     Problem,
     TensorConstant,
     TensorVariable,
-    Objective,
-    ObjectiveTypeEnum,
     VariableTypeEnum,
-    Constraint,
-    ConstraintTypeEnum,
 )
 
 

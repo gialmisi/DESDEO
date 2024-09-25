@@ -147,3 +147,5 @@ experiment/
 # testmondata
 .testmondata*
 debug.py
+
+Vaaler_DATA_50.csv
