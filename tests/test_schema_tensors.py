@@ -291,3 +291,42 @@ def test_get_values_list_single():
     values = xs.get_values()
 
     assert values == np.full([2, 2, 2], 42).tolist()
+
+
+def test_getitem_tensor_constant():
+    """Test the __getitem__ method for TensorConstant."""
+    # Test 1D
+    x_name = "Acid"
+    x_symbol = "A"
+    x_values = [1, 2, 3, 4, 5]
+    x_shape = [5]
+    x = TensorConstant(name=x_name, symbol=x_symbol, shape=x_shape, values=x_values)
+
+    constant_1 = x[1]
+    constant_3 = x[3]
+    constant_5 = x[5]
+
+    assert constant_1.value == x_values[1 - 1]
+    assert constant_1.name == f"{x_name} at position [{1}]"
+    assert constant_1.symbol == f"{x_symbol}_{1}"
+
+    assert constant_3.value == x_values[3 - 1]
+    assert constant_3.name == f"{x_name} at position [{3}]"
+    assert constant_3.symbol == f"{x_symbol}_{3}"
+
+    assert constant_5.value == x_values[5 - 1]
+    assert constant_5.name == f"{x_name} at position [{5}]"
+    assert constant_5.symbol == f"{x_symbol}_{5}"
+
+    # Test 2D
+    y_name = "Tension"
+    y_symbol = "Y"
+    y_values = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+    y_shape = [3, 4]
+    y = TensorConstant(name=y_name, symbol=y_symbol, shape=y_shape, values=y_values)
+
+    constant_2_3 = y[2, 3]
+
+    assert constant_2_3.value == y_values[2 - 1][3 - 1]
+    assert constant_2_3.name == f"{y_name} at position {[2, 3]}"
+    assert constant_2_3.symbol == f"{y_symbol}_2_3"

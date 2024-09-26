@@ -309,6 +309,37 @@ class TensorConstant(BaseModel):
 
         return values
 
+    def __getitem__(self, indices: int | tuple[int]) -> Constant:
+        """Implements random access for TensorConstant.
+
+        Note:
+            Indexing is assumed to start at 1.
+
+        Args:
+            indices (int | Tuple[int]): a single integer or tuple of integers.
+
+        Returns:
+            Constant: A new instance of Constant that has been setup with
+                information found at the specified indices in the TensorConstant.
+        """
+        if isinstance(indices, tuple):
+            # multi-dimensional indexing
+            name = f"{self.name} at position {[*indices]}"
+            symbol = f"{self.symbol}_{"_".join(map(str, indices))}"
+
+            value = self.get_values()
+
+            for idx in indices:
+                value = value[idx - 1]
+
+        else:
+            # single indexing
+            name = f"{self.name} at position [{indices}]"
+            symbol = f"{self.symbol}_{indices}"
+            value = self.get_values()[indices - 1]
+
+        return Constant(name=name, symbol=symbol, value=value)
+
 
 class Variable(BaseModel):
     """Model for a variable."""
