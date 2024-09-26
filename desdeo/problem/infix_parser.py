@@ -130,17 +130,17 @@ class InfixExpressionParser:
         # Complete regex pattern with exclusions and identifier pattern
         exclude = f"{'|'.join([*symbols_variadic, *symbols_unary])}"
         pattern = r"(?!\b(" + exclude + r")\b)(\b[a-zA-Z_][a-zA-Z0-9_]*\b)"
-        variable = Regex(pattern)
-
-        operands = variable | scientific | integer
+        variable = Regex(pattern)("variable")
 
         # Forward declarations of variadic, unary, and bracket function calls
         variadic_call = Forward()
         unary_call = Forward()
         bracket_access = Forward()
 
+        operands = variable | scientific | integer
+
         # Define bracket access. Brackets following a variable may contain only integer values.
-        index_list = Group(DelimitedList(integer))
+        index_list = Group(DelimitedList(integer))("bracket_indices")
         bracket_access <<= Group(variable + lbracket + index_list + rbracket)
 
         # The parsed expressions are assumed to follow a standard infix syntax. The operands
@@ -158,12 +158,14 @@ class InfixExpressionParser:
                 (multop, 2, OpAssoc.LEFT),
                 (plusop, 2, OpAssoc.LEFT),
             ],
-        )
+        )("binary_operator")
 
         # These are recursive definitions of the forward declarations of the two type of function calls.
         # In essence, the recursion continues until a singleton operand is encountered.
-        variadic_call <<= Group(variadic_func_names + lparen + Group(DelimitedList(infix_expn)) + rparen)
-        unary_call <<= Group(unary_func_names + lparen + Group(infix_expn) + rparen)
+        variadic_call <<= Group(variadic_func_names + lparen + Group(DelimitedList(infix_expn)) + rparen)(
+            "variadic_call"
+        )
+        unary_call <<= Group(unary_func_names + lparen + Group(infix_expn) + rparen)("unary_call")
 
         self.expn = infix_expn
 
@@ -209,11 +211,11 @@ class InfixExpressionParser:
             return parsed
 
         # Handle bracket access
-        # Check that anything following variable is only integer.
-        if isinstance(parsed, list) and len(parsed) == 2 and isinstance(parsed[1], list):
-            # variable = parsed[0]
-            # indices = parsed[1]
-            return ["At", parsed[0]] + parsed[1]
+        # Assume that anything following variable in a bracket list is only integer.
+        if "bracket_indices" in parsed:
+            variable = parsed["variable"]
+            indices = parsed["bracket_indices"]
+            return ["At", variable, *indices]
 
         # Flatten binary operations like 1 + 2 + 3 into ["Add", 1, 2, 3]
         # Last check is to make sure that in cases like ["Max", ["x", "y", ...]] the 'y' is not confused to
@@ -260,24 +262,6 @@ class InfixExpressionParser:
                     return [[current_operator, *operands, *self._to_math_json(parsed[i + 1 :])]]
 
             return [[current_operator, *operands]]
-
-            """
-            # Process the rest of the expression
-            for i in range(start_index, len(parsed), 2):
-                op = parsed[i]  # Operator
-                next_operand = self._to_math_json(parsed[i + 1])  # Next operand
-
-                if op == "-":  # If subtraction, negate and add
-                    operands.append(["Negate", next_operand])
-                elif op == "+":  # If addition, just add
-                    operands.append(next_operand)
-                else:  # For other operators, use the mapping
-                    current_operator = self.operator_mapping[op]
-                    operands.append(next_operand)
-
-            # Return the operation with operands correctly merged into a single operation
-            return [current_operator] + operands
-            """
 
         # Handle unary operations and functions
         if isinstance(parsed[0], str) and parsed[0] in self.reserved_symbols:
