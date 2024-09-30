@@ -1,6 +1,13 @@
+"""Tests related to tensor constants and variables."""
+
 import numpy as np
 
-from desdeo.problem import TensorConstant, TensorVariable, simple_knapsack_vectors
+from desdeo.problem import (
+    TensorConstant,
+    TensorVariable,
+    VariableTypeEnum,
+    simple_knapsack_vectors,
+)
 
 
 def test_tensor_variable_init():
@@ -330,3 +337,114 @@ def test_getitem_tensor_constant():
     assert constant_2_3.value == y_values[2 - 1][3 - 1]
     assert constant_2_3.name == f"{y_name} at position {[2, 3]}"
     assert constant_2_3.symbol == f"{y_symbol}_2_3"
+
+
+def test_getitem_tensor_variable():
+    """Test the __getitem__ method for TensorVariable."""
+    # Test 1D
+    x_name = "Potato"
+    x_symbol = "P"
+    x_shape = [3]
+    x_type = VariableTypeEnum.integer
+    x_initial_values = [2, 4, 6]
+    x_lowerbounds = [0, 0, 1]
+    x_upperbounds = [10, 10, 20]
+
+    x = TensorVariable(
+        name=x_name,
+        symbol=x_symbol,
+        shape=x_shape,
+        variable_type=x_type,
+        initial_values=x_initial_values,
+        lowerbounds=x_lowerbounds,
+        upperbounds=x_upperbounds,
+    )
+
+    x_1 = x[1]
+    x_2 = x[2]
+    x_3 = x[3]
+
+    assert x_1.name == f"{x_name} at position {[1]}"
+    assert x_1.symbol == f"{x_symbol}_{1}"
+    assert x_1.variable_type == x_type
+    assert x_1.initial_value == x_initial_values[1 - 1]
+    assert x_1.lowerbound == x_lowerbounds[1 - 1]
+    assert x_1.upperbound == x_upperbounds[1 - 1]
+
+    assert x_2.name == f"{x_name} at position {[2]}"
+    assert x_2.symbol == f"{x_symbol}_{2}"
+    assert x_2.variable_type == x_type
+    assert x_2.initial_value == x_initial_values[2 - 1]
+    assert x_2.lowerbound == x_lowerbounds[2 - 1]
+    assert x_2.upperbound == x_upperbounds[2 - 1]
+
+    assert x_3.name == f"{x_name} at position {[3]}"
+    assert x_3.symbol == f"{x_symbol}_{3}"
+    assert x_3.variable_type == x_type
+    assert x_3.initial_value == x_initial_values[3 - 1]
+    assert x_3.lowerbound == x_lowerbounds[3 - 1]
+    assert x_3.upperbound == x_upperbounds[3 - 1]
+
+    # test 2D
+    y_name = "Carrot"
+    y_symbol = "C"
+    y_shape = [2, 3]
+    y_type = VariableTypeEnum.integer
+    y_initial_values = [[0, -1, 1], [9, 8, 7]]
+    y_lowerbounds = [[-10, -20, -30], [1, 2, 3]]
+    y_upperbounds = [[10, 20, 30], [11, 22, 33]]
+
+    y = TensorVariable(
+        name=y_name,
+        symbol=y_symbol,
+        shape=y_shape,
+        variable_type=y_type,
+        initial_values=y_initial_values,
+        lowerbounds=y_lowerbounds,
+        upperbounds=y_upperbounds,
+    )
+
+    y_2_1 = y[2, 1]
+
+    assert y_2_1.name == f"{y_name} at position {[2, 1]}"
+    assert y_2_1.symbol == f"{y_symbol}_2_1"
+    assert y_2_1.variable_type == y_type
+    assert y_2_1.initial_value == y_initial_values[2 - 1][1 - 1]
+    assert y_2_1.lowerbound == y_lowerbounds[2 - 1][1 - 1]
+    assert y_2_1.upperbound == y_upperbounds[2 - 1][1 - 1]
+
+    # Test when None values
+    z_name = "None"
+    z_symbol = "Z"
+    z_shape = [2, 2]
+    z_type = VariableTypeEnum.integer
+    z_initial_values = None
+    z_lowerbounds = [[None, None], [1, 2]]
+    z_upperbounds = [[10, None], [None, 20]]
+
+    z = TensorVariable(
+        name=z_name,
+        symbol=z_symbol,
+        shape=z_shape,
+        variable_type=z_type,
+        initial_values=z_initial_values,
+        lowerbounds=z_lowerbounds,
+        upperbounds=z_upperbounds,
+    )
+
+    z_1_1 = z[1, 1]
+    z_2_2 = z[2, 2]
+
+    assert z_1_1.name == f"{z_name} at position {[1, 1]}"
+    assert z_1_1.symbol == f"{z_symbol}_1_1"
+    assert z_1_1.variable_type == z_type
+    assert z_1_1.initial_value is None
+    assert z_1_1.lowerbound == z_lowerbounds[1 - 1][1 - 1]
+    assert z_1_1.upperbound == z_upperbounds[1 - 1][1 - 1]
+
+    assert z_2_2.name == f"{z_name} at position {[2, 2]}"
+    assert z_2_2.symbol == f"{z_symbol}_2_2"
+    assert z_2_2.variable_type == z_type
+    assert z_2_2.initial_value is None
+    assert z_2_2.lowerbound == z_lowerbounds[2 - 1][2 - 1]
+    assert z_2_2.upperbound == z_upperbounds[2 - 1][2 - 1]
