@@ -42,16 +42,7 @@ def simple_forest_problem() -> Problem:
     }
 
     # Constants
-    # Helper constants to select rows and columns of matrices
     constants = []
-    for j in range(number_of_years):
-        constant_j = TensorConstant(
-            name=f"Select row {j+1} of a matrix",
-            symbol=f"row_{j+1}",
-            shape=[1, number_of_years],
-            values=[[1 if jj == j else 0 for jj in range(number_of_years)]],
-        )
-        constants.append(constant_j)
 
     for i in range(number_of_stands):
         constant_npv_i = TensorConstant(
@@ -103,12 +94,11 @@ def simple_forest_problem() -> Problem:
 
     for i in range(number_of_stands):
         for j in range(number_of_years):
-            expr_ij = f"Sum(row_{j+1} @ X_{i+1}) - 1"  # minus 1 because must equal zero
-
             constraint_ij = Constraint(
                 name=f"Row {j+1} of stand {i+1} must sum to one.",
                 symbol=f"row_constraint_{i}{j}",
-                func=expr_ij,
+                # minus 1 because constraint must equal 0
+                func=" + ".join(f"X_{i+1}[{j+1}, {r+1}]" for r in range(number_of_regimes)) + " - 1",
                 cons_type=ConstraintTypeEnum.EQ,
                 is_linear=True,
                 is_convex=True,
