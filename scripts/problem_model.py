@@ -1,4 +1,7 @@
+"""Contains forest problem models."""
+
 import numpy as np
+import polars as pl
 
 from desdeo.problem import (
     Constraint,
@@ -155,4 +158,107 @@ def simple_forest_problem() -> Problem:
     )
 
 
-problem = simple_forest_problem()
+def forest_problem_vaaler(file_name: str, output_name: str, load_only: bool = True) -> Problem:
+    """Construct the forest problem for data stored in a CSV file."""
+
+    if load_only:
+        # load problem and return it
+        pass
+
+    # load data
+    df = pl.read_csv("./data/Vaaler_DATA_50.csv", separator=",", has_header=True)
+
+    # Sort the dataframe for efficient access
+    df_sorted = df.sort(["id", "year", "branch"])
+
+    unique_stands = df["id"].unique().to_list()[:10]
+    n_stands = len(unique_stands)
+    unique_regimes = df["branch"].unique().to_list()[:10]
+    n_regimes = len(unique_regimes)
+    years = df["year"].unique().to_list()[:5]
+    n_years = len(years)
+
+    NPVs = {}
+    DWVs = {}
+
+    for stand_id in unique_stands:
+        print(f"Processing stand {stand_id}")
+        stand_data = df_sorted.filter(pl.col("id") == stand_id)
+
+        # Convert to numpy for faster indexing
+        stand_array = stand_data.select(["year", "branch", "NPV", "Harvested_V"]).to_numpy()
+
+        npv_data = np.full((len(years), len(unique_regimes)), np.nan)
+        dwv_data = np.full((len(years), len(unique_regimes)), np.nan)
+
+        for i, year in enumerate(years):
+            for j, regime in enumerate(unique_regimes):
+                match = stand_array[(stand_array[:, 0] == year) & (stand_array[:, 1] == regime)]
+                if match.size > 0:
+                    npv_data[i, j] = match[0, 2]  # NPV
+                    dwv_data[i, j] = match[0, 3]  # Harvested_V
+
+        NPVs[stand_id] = npv_data.tolist()
+        DWVs[stand_id] = dwv_data.tolist()
+
+    # Constants
+    constants = []
+
+    for stand_id in unique_stands:
+        constant_npv_i = TensorConstant(
+            name=f"NPV for stand id={stand_id}",
+            symbol=f"NPV_{stand_id}",
+            shape=[n_years, n_regimes],
+            values=NPVs[stand_id],
+        )
+
+        constants.append(constant_npv_i)
+
+        constant_dwv_i = TensorConstant(
+            name=f"DWV for stand id={stand_id}",
+            symbol=f"DWV_{stand_id}",
+            shape=[n_years, n_regimes],
+            values=DWVs[stand_id],
+        )
+
+        constants.append(constant_dwv_i)
+
+    variables = []
+
+    for stand_id in unique_stands:
+        var_i = TensorVariable(
+            name=f"Stand id={stand_id}",
+            symbol=f"X_{id}",
+            variable_type=VariableTypeEnum.binary,
+            shape=[n_years, n_regimes],
+            lowerbounds=0,
+            upperbounds=1,
+            initial_values=0,
+        )
+
+        variables.append(var_i)
+
+    # Constraints
+    # For each stand, one regime, and only one, must be selected for each year.
+
+    constraints = []
+
+    for stand_id in unique_stands:
+        for year, j in enumerate(years):
+            constraint_ij = Constraint(
+                name=f"Year {year} of stand id={stand_id} sum to one.",
+                symbol=f"row_sum_{stand_id}_{year}",
+                # minus 1 because constraint must equal 0
+                func=" + ".join(f"X_{stand_id}[{j+1}, {r+1}]" for r in range(n_regimes)) + " - 1",
+                cons_type=ConstraintTypeEnum.EQ,
+                is_linear=True,
+                is_convex=True,
+                is_twice_differentiable=True,
+            )
+
+            constraints.append(constraint_ij)
+
+    # if a regime has no value for an objective, it can never be active for the stand and year
+
+
+forest_problem_vaaler("file_name", "output_name")
