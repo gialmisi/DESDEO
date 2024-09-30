@@ -14,6 +14,7 @@ The problem definition is a JSON file that contains the following information:
 from collections import Counter
 from collections.abc import Iterable
 from enum import Enum
+from itertools import product
 from typing import Annotated, Any, Literal, TypeAliasType
 
 import numpy as np
@@ -309,6 +310,18 @@ class TensorConstant(BaseModel):
 
         return values
 
+    def to_constants(self) -> list[Constant]:
+        """Flatten the tensor into a list of Constants.
+
+        Returns:
+            list[Constant]: a list of Constants.
+        """
+        constants = []
+        for indices in list(product(*[range(1, dim + 1) for dim in self.shape])):
+            constants.append(self[*indices])
+
+        return constants
+
     def __getitem__(self, indices: int | tuple[int]) -> Constant:
         """Implements random access for TensorConstant.
 
@@ -487,6 +500,18 @@ class TensorVariable(BaseModel):
             return np.full(self.shape, values).tolist()
 
         return values
+
+    def to_variables(self) -> list[Variable]:
+        """Flatten the tensor into a list of Variables.
+
+        Returns:
+            list[Constant]: a list of Variables.
+        """
+        variables = []
+        for indices in list(product(*[range(1, dim + 1) for dim in self.shape])):
+            variables.append(self[*indices])
+
+        return variables
 
     def __getitem__(self, indices: int | tuple[int]) -> Variable:
         """Implements random access for TensorVariable.
