@@ -1,5 +1,7 @@
 """Contains forest problem models."""
 
+from pathlib import Path
+
 import numpy as np
 import polars as pl
 
@@ -158,38 +160,37 @@ def simple_forest_problem() -> Problem:
     )
 
 
-def forest_problem_vaaler(file_name: str, output_name: str, load_only: bool = True) -> Problem:
+def forest_problem_vaaler(
+    input_file_name: str = "./data/Vaaler_DATA_50.csv", output_name: str = "./data/out.json"
+) -> Problem:
     """Construct the forest problem for data stored in a CSV file."""
 
-    if load_only:
-        # load problem and return it
-        pass
-
     # load data
-    df = pl.read_csv("./data/Vaaler_DATA_50.csv", separator=",", has_header=True)
+    df = pl.read_csv(input_file_name, separator=",", has_header=True)
 
     # Sort the dataframe for efficient access
     df_sorted = df.sort(["id", "year", "branch"])
 
-    unique_stands = df["id"].unique().to_list()[:10]
+    unique_stands = df["id"].unique().to_list()
     n_stands = len(unique_stands)
-    unique_regimes = df["branch"].unique().to_list()[:10]
+    unique_regimes = df["branch"].unique().to_list()
     n_regimes = len(unique_regimes)
-    years = df["year"].unique().to_list()[:5]
+    years = df["year"].unique().to_list()
     n_years = len(years)
 
     NPVs = {}
     DWVs = {}
 
-    for stand_id in unique_stands:
-        print(f"Processing stand {stand_id}")
+    for i_, stand_id in enumerate(unique_stands):
+        print(f"Processing stand {i_+1}/{n_stands+1}")
         stand_data = df_sorted.filter(pl.col("id") == stand_id)
 
         # Convert to numpy for faster indexing
         stand_array = stand_data.select(["year", "branch", "NPV", "Harvested_V"]).to_numpy()
 
-        npv_data = np.full((len(years), len(unique_regimes)), np.nan)
-        dwv_data = np.full((len(years), len(unique_regimes)), np.nan)
+        # missing values will be set to -1
+        npv_data = np.full((len(years), len(unique_regimes)), -1)
+        dwv_data = np.full((len(years), len(unique_regimes)), -1)
 
         for i, year in enumerate(years):
             for j, regime in enumerate(unique_regimes):
@@ -228,7 +229,7 @@ def forest_problem_vaaler(file_name: str, output_name: str, load_only: bool = Tr
     for stand_id in unique_stands:
         var_i = TensorVariable(
             name=f"Stand id={stand_id}",
-            symbol=f"X_{id}",
+            symbol=f"X_{stand_id}",
             variable_type=VariableTypeEnum.binary,
             shape=[n_years, n_regimes],
             lowerbounds=0,
@@ -243,8 +244,9 @@ def forest_problem_vaaler(file_name: str, output_name: str, load_only: bool = Tr
 
     constraints = []
 
-    for stand_id in unique_stands:
-        for year, j in enumerate(years):
+    for i, stand_id in enumerate(unique_stands):
+        print(f"Processing stand {i+1}/{n_stands+1}")
+        for j, year in enumerate(years):
             constraint_ij = Constraint(
                 name=f"Year {year} of stand id={stand_id} sum to one.",
                 symbol=f"row_sum_{stand_id}_{year}",
@@ -258,7 +260,79 @@ def forest_problem_vaaler(file_name: str, output_name: str, load_only: bool = Tr
 
             constraints.append(constraint_ij)
 
-    # if a regime has no value for an objective, it can never be active for the stand and year
+            # if a regime has no value for an objective, it can never be active for the stand and year
+            # check NPV
+            #
+            # maybe needed later, but missing values are just set to be -1 because maximization
+            """
+            for k, regime in enumerate(unique_regimes):
+                if NPVs[stand_id][j][k] is None:
+                    # print(f"Found note for stand id={stand_id}, year={year} and regime={regime}")
+                    constraint_null = Constraint(
+                        name="Null value",
+                        symbol=f"null_{stand_id}_{year}_{regime}",
+                        func=f"X_{stand_id}{[j+1, k+1]}",  # must equal zero
+                        cons_type=ConstraintTypeEnum.EQ,
+                        is_linear=True,
+                        is_convex=True,
+                        is_twice_differentiable=True,
+                    )
+
+                    constraints.append(constraint_null)
+            """
+    # Objectives
+    objectives = []
+
+    ## NPV sum
+    npv_sum_expr = "Sum(" + " + ".join([f"X_{stand_id} * NPV_{stand_id}" for stand_id in unique_stands]) + ")"
+    npv_objective = Objective(
+        name="NPV",
+        symbol="NPV",
+        func=npv_sum_expr,
+        is_convex=True,
+        is_linear=True,
+        is_twice_differentiable=True,
+        maximize=True,
+        objective_type=ObjectiveTypeEnum.analytical,
+        unit="Million euros",
+    )
+    objectives.append(npv_objective)
+
+    ## DWV
+    dwv_sum_expr = "Sum(" + " + ".join([f"X_{stand_id} * DWV_{stand_id}" for stand_id in unique_stands]) + ")"
+    dwv_objective = Objective(
+        name="DWV",
+        symbol="DWV",
+        func=dwv_sum_expr,
+        is_convex=True,
+        is_linear=True,
+        is_twice_differentiable=True,
+        maximize=True,
+        objective_type=ObjectiveTypeEnum.analytical,
+        unit="Metric tons",
+    )
+
+    objectives.append(dwv_objective)
+
+    # Construct and return problem
+    problem = Problem(
+        name="Simple forest problem",
+        description=(
+            f"Simple forest problem with {n_stands} stands, " f"{n_regimes} regimes, over a time horizon of {n_years}"
+        ),
+        constants=constants,
+        variables=variables,
+        constraints=constraints,
+        objectives=objectives,
+    )
+
+    # save to file for quicker access
+    json_data = problem.model_dump_json()
+
+    with Path(output_name).open("w") as f:
+        f.write(json_data)
+
+    return problem
 
 
-forest_problem_vaaler("file_name", "output_name")
+forest_problem_vaaler()
