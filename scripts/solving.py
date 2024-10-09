@@ -1,6 +1,8 @@
 from pathlib import Path
 from desdeo.tools import PyomoBonminSolver, BonminOptions, PyomoCBCSolver, add_objective_as_scalarization
-from desdeo.problem import Problem
+from desdeo.problem import Problem, PolarsEvaluator
+
+import numpy as np
 
 
 # load problem
@@ -9,6 +11,12 @@ with Path("./data/Vaaler_NPV_and_DWV.json").open("r") as f:
 
 problem = Problem.model_validate_json(json_data)
 
+dummy_xs = {variable.symbol: [np.ones(variable.shape), 0 * np.ones(variable.shape)] for variable in problem.variables}
+
+evaluator = PolarsEvaluator(problem)
+
+print()
+"""
 scalarized_problem, target = add_objective_as_scalarization(problem, symbol="f1", objective_symbol="DWV")
 
 sol_options = BonminOptions(tol=1e-6)
@@ -18,3 +26,4 @@ solver = PyomoCBCSolver(scalarized_problem)
 result = solver.solve(target)
 
 print()
+"""
