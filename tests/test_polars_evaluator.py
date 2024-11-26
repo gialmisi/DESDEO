@@ -2,8 +2,20 @@
 
 import numpy.testing as npt
 import polars as pl
+import pytest
 
-from desdeo.problem import PolarsEvaluator, river_pollution_problem, simple_test_problem, simple_knapsack_vectors
+from desdeo.problem import (
+    Objective,
+    ObjectiveTypeEnum,
+    PolarsEvaluator,
+    Problem,
+    TensorVariable,
+    Variable,
+    VariableTypeEnum,
+    river_pollution_problem,
+    simple_knapsack_vectors,
+    simple_test_problem,
+)
 from desdeo.problem.evaluator import find_closest_points
 
 
@@ -23,20 +35,20 @@ def test_generic_with_river():
 
     objective_values = eval_res[obj_symbols].to_dict(as_series=False)
 
-    # f_1 = "-4.07 - 2.27 * x_1"
-    # f_2 = "-2.60 - 0.03 * x_1 - 0.02 * x_2 - 0.01 / (1.39 - x_1**2) - 0.30 / (1.39 - x_2**2)"
+    # f_1 = "4.07 + 2.27 * x_1"
+    # f_2 = "2.60 + 0.03 * x_1 + 0.02 * x_2 + 0.01 / (1.39 - x_1**2) + 0.30 / (1.39 - x_2**2)"
     # f_3 = "-8.21 + 0.71 / (1.09 - x_1**2)"
     # f_4 = "-0.96 + 0.96 / (1.09 - x_2**2)"
     # f_5 = "Max(Abs(x_1 - 0.65), Abs(x_2 - 0.65))"
 
     truth_values = df.select(
-        (-4.07 - 2.27 * pl.col("x_1")).alias("f_1"),
+        (4.07 + 2.27 * pl.col("x_1")).alias("f_1"),
         (
-            -2.60
-            - 0.03 * pl.col("x_1")
-            - 0.02 * pl.col("x_2")
-            - 0.01 / (1.39 - pl.col("x_1") ** 2)
-            - 0.30 / (1.39 - pl.col("x_2") ** 2)
+            2.60
+            + 0.03 * pl.col("x_1")
+            + 0.02 * pl.col("x_2")
+            + 0.01 / (1.39 - pl.col("x_1") ** 2)
+            + 0.30 / (1.39 - pl.col("x_2") ** 2)
         ).alias("f_2"),
         (8.21 - 0.71 / (1.09 - pl.col("x_1") ** 2)).alias("f_3"),
         (0.96 - 0.96 / (1.09 - pl.col("x_2") ** 2)).alias("f_4"),
@@ -131,6 +143,7 @@ def test_find_closest_points():
     )
 
 
+@pytest.mark.polars
 def test_knapsack_problem():
     """Test the Polars evaluator with a problem with tensors."""
     problem = simple_knapsack_vectors()
@@ -144,3 +157,89 @@ def test_knapsack_problem():
     npt.assert_allclose(result["f_1"].to_numpy(), [0, 22])
     npt.assert_allclose(result["f_2"].to_numpy(), [0, 16])
     npt.assert_allclose(result["g_1"].to_numpy(), [-5, 9])
+
+
+@pytest.mark.polars
+def test_evaluate_w_flattened():
+    """Test that the evaluator works when called with flattened vars."""
+    var = Variable(
+        name="x", symbol="x", lowerbound=0, upperbound=10, initial_value=5.2, variable_type=VariableTypeEnum.real
+    )
+
+    tensor_var_1 = TensorVariable(
+        name="X",
+        symbol="X",
+        shape=[3],
+        variable_type=VariableTypeEnum.real,
+        lowerbounds=-1.1,
+        upperbounds=3.4,
+        initial_values=0.2,
+    )
+
+    tensor_var_2 = TensorVariable(
+        name="Y",
+        symbol="Y",
+        shape=[2, 2],
+        variable_type=VariableTypeEnum.integer,
+        lowerbounds=-5,
+        upperbounds=3,
+        initial_values=2,
+    )
+
+    variables = [var, tensor_var_1, tensor_var_2]
+
+    objective_1 = Objective(
+        name="f_1",
+        symbol="f_1",
+        func="X[1] + X[2] + X[3] - x",
+        maximize=False,
+        objective_type=ObjectiveTypeEnum.analytical,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
+    )
+
+    objective_2 = Objective(
+        name="f_2",
+        symbol="f_2",
+        func="Y[1, 1] + Y[1, 2] + Y[2, 1] + Y[2, 2] - x",
+        maximize=False,
+        objective_type=ObjectiveTypeEnum.analytical,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
+    )
+
+    objectives = [objective_1, objective_2]
+
+    problem = Problem(name="Test Problem", description="Test problem", variables=variables, objectives=objectives)
+
+    evaluator = PolarsEvaluator(problem)
+
+    xs = {
+        "x": [2, 3],
+        "X": [[-0.9, 0.1, 1.2], [0.1, 1.1, 0.7]],
+        "Y": [[[-4.1, -3.9], [-3.1, -2.9]], [[-2.2, -1.9], [1.1, 2.2]]],
+    }
+
+    flat_xs = {
+        "x": [2, 3],
+        "X_1": [-0.9, 0.1],
+        "X_2": [0.1, 1.1],
+        "X_3": [1.2, 0.7],
+        "Y_1_1": [-4.1, -2.2],
+        "Y_1_2": [-3.9, -1.9],
+        "Y_2_1": [-3.1, 1.1],
+        "Y_2_2": [-2.9, 2.2],
+    }
+
+    res_flat = evaluator.evaluate_flat(flat_xs)
+    res_tensor = evaluator.evaluate(xs)
+
+    # should have the same results
+    npt.assert_allclose(res_flat["f_1"].to_numpy(), res_tensor["f_1"].to_numpy())
+    npt.assert_allclose(res_flat["f_2"].to_numpy(), res_tensor["f_2"].to_numpy())
+
+    # check correct objective function values
+    npt.assert_allclose(res_flat["f_1"].to_numpy(), [-1.6, -1.1])
+    npt.assert_allclose(res_flat["f_2"].to_numpy(), [-16, -3.8])

@@ -1,14 +1,22 @@
 """Defines a Polars-based evaluator."""
 
 from enum import Enum
+from itertools import product
 
 import numpy as np
 import polars as pl
 
 from desdeo.problem.json_parser import MathParser, replace_str
-from desdeo.problem.schema import Constant, ObjectiveTypeEnum, Problem, TensorConstant
+from desdeo.problem.schema import (
+    Constant,
+    ObjectiveTypeEnum,
+    Problem,
+    TensorConstant,
+    TensorVariable,
+)
 
 SUPPORTED_EVALUATOR_MODES = ["variables", "discrete"]
+SUPPORTED_VAR_DIMENSIONS = ["scalar", "vector"]
 
 
 class PolarsEvaluatorModesEnum(str, Enum):
@@ -22,10 +30,52 @@ class PolarsEvaluatorModesEnum(str, Enum):
     vector and objective vector pairs and those should be evaluated. In this
     mode, the evaluator does not expect any decision variables as arguments when
     evaluating."""
+    mixed = "mixed"
+    """Indicates that the problem has analytical and simulator and/or surrogate
+    based objectives, constraints and extra functions. In this mode, the evaluator
+    only handles the analytical functions and assumes there are no data based
+    objectives. The evaluator should expect decision variables vectors and evaluate
+    the problem with them."""
 
 
 class PolarsEvaluatorError(Exception):
     """Error raised when exceptions are encountered in an PolarsEvaluator."""
+
+
+class VariableDimensionEnum(str, Enum):
+    """An enumerator for the possible dimensions of the variables of a problem."""
+
+    scalar = "scalar"
+    """All variables are scalar valued."""
+    vector = "vector"
+    """Highest dimensional variable is a vector."""
+    tensor = "tensor"
+    """Some variable has more dimensions."""
+
+
+def variable_dimension_enumerate(problem: Problem) -> VariableDimensionEnum:
+    """Return a VariableDimensionEnum based on the problems variables' dimensions.
+
+    This is needed as different evaluators and solvers can handle different dimensional variables.
+
+    If there are no TensorVariables in the problem, will return scalar.
+    If there are, at the highest, one dimensional TensorVariables, will return vector.
+    Else, there is at least a TensorVariable with a higher dimension, will return tensor.
+
+    Args:
+        problem (Problem): The problem being solved or evaluated.
+
+    Returns:
+        VariableDimensionEnum: The enumeration of the problems variable dimensions.
+    """
+    enum = VariableDimensionEnum.scalar
+    for var in problem.variables:
+        if isinstance(var, TensorVariable):
+            if len(var.shape) == 1 or len(var.shape) == 2 and not (var.shape[0] > 1 and var.shape[1] > 1):  # noqa: PLR2004
+                enum = VariableDimensionEnum.vector
+            else:
+                return VariableDimensionEnum.tensor
+    return enum
 
 
 class PolarsEvaluator:
@@ -83,10 +133,16 @@ class PolarsEvaluator:
 
         self.evaluator_mode = evaluator_mode
 
+        self.problem = problem
         # Gather any constants of the problem definition.
         self.problem_constants = problem.constants
         # Gather the objective functions
-        self.problem_objectives = problem.objectives
+        if evaluator_mode == PolarsEvaluatorModesEnum.mixed:
+            self.problem_objectives = list(
+                filter(lambda x: x.objective_type == ObjectiveTypeEnum.analytical, problem.objectives)
+            )
+        else:
+            self.problem_objectives = problem.objectives
         # Gather any constraints
         self.problem_constraints = problem.constraints
         # Gather any extra functions
@@ -118,6 +174,7 @@ class PolarsEvaluator:
         # Note, when calling an evaluate method, it is assumed the problem has been fully parsed.
         if self.evaluator_mode == PolarsEvaluatorModesEnum.variables:
             self.evaluate = self._polars_evaluate
+            self.evaluate_flat = self._polars_evaluate_flat
         elif self.evaluator_mode == PolarsEvaluatorModesEnum.discrete:
             self.evaluate = self._from_discrete_data
         else:
@@ -233,17 +290,21 @@ class PolarsEvaluator:
         ]
 
         # parse constraints, if any
+        # if a constraint is simulator or surrogate based (expression is None), set the "parsed" expression as None
         if parsed_cons_funcs is not None:
             self.constraint_expressions = [
-                (symbol, self.parser.parse(expression)) for symbol, expression in parsed_cons_funcs.items()
+                (symbol, self.parser.parse(expression)) if expression is not None else (symbol, None)
+                for symbol, expression in parsed_cons_funcs.items()
             ]
         else:
             self.constraint_expressions = None
 
         # parse extra functions, if any
+        # if an extra function is simulator or surrogate based (expression is None), set the "parsed" expression as None
         if parsed_extra_funcs is not None:
             self.extra_expressions = [
-                (symbol, self.parser.parse(expression)) for symbol, expression in parsed_extra_funcs.items()
+                (symbol, self.parser.parse(expression)) if expression is not None else (symbol, None)
+                for symbol, expression in parsed_extra_funcs.items()
             ]
         else:
             self.extra_expressions = None
@@ -299,9 +360,13 @@ class PolarsEvaluator:
                 )
 
         # Evaluate any extra functions and put the results in the aggregate dataframe.
+        # If an extra function is simulator or surrogate based (expression None), skip it here
         if self.extra_expressions is not None:
-            extra_columns = agg_df.select(*[expr.alias(symbol) for symbol, expr in self.extra_expressions])
-            agg_df = agg_df.hstack(extra_columns)
+            for symbol, expr in self.extra_expressions:
+                if expr is not None:
+                    # expression given
+                    extra_column = agg_df.select(expr.alias(symbol))
+                    agg_df = agg_df.hstack(extra_column)
 
         # Evaluate the objective functions and put the results in the aggregate dataframe.
         # obj_columns = agg_df.select(*[expr.alias(symbol) for symbol, expr in self.objective_expressions])
@@ -312,8 +377,9 @@ class PolarsEvaluator:
                 # expression given
                 obj_col = agg_df.select(expr.alias(symbol))
                 agg_df = agg_df.hstack(obj_col)
-            else:
-                # expr is None, therefore we must get the objective function's value somehow else, usually from data
+            elif self.evaluator_mode != PolarsEvaluatorModesEnum.mixed:
+                # expr is None and there are no no simulator or surrogate based objectives,
+                # therefore we must get the objective function's value somehow else, usually from data
                 obj_col = find_closest_points(agg_df, self.discrete_df, self.problem_variable_symbols, symbol)
                 agg_df = agg_df.hstack(obj_col)
 
@@ -329,9 +395,13 @@ class PolarsEvaluator:
         agg_df = agg_df.hstack(min_obj_columns)
 
         # Evaluate any constraints and put the results in the aggregate dataframe
+        # If a constraint is simulator or surrogate based (expression None), skip it here
         if self.constraint_expressions is not None:
-            cons_columns = agg_df.select(*[expr.alias(symbol) for symbol, expr in self.constraint_expressions])
-            agg_df = agg_df.hstack(cons_columns)
+            for symbol, expr in self.constraint_expressions:
+                if expr is not None:
+                    # expression given
+                    cons_columns = agg_df.select(expr.alias(symbol))
+                    agg_df = agg_df.hstack(cons_columns)
 
         # Evaluate any scalarization functions and put the result in the aggregate dataframe
         if self.scalarization_expressions is not None:
@@ -340,6 +410,58 @@ class PolarsEvaluator:
 
         # return the dataframe and let the solver figure it out
         return agg_df
+
+    def _polars_evaluate_flat(
+        self,
+        xs: dict[str, list[float | int | bool]],
+    ) -> pl.DataFrame:
+        """Evaluate the problem with flattened variables.
+
+        Args:
+            xs (dict[str, list[float  |  int  |  bool]]): a dict with flattened variables.
+                E.g., if the original problem has a tensor variable 'X' with shape (2,2),
+                then the dictionary is expected to have entries names 'X_1_1', 'X_1_2',
+                'X_2_1', and 'X_2_2'. The dictionary is rebuilt and passed to
+                `self._evaluate`.
+
+        Note:
+            Each flattened variable is assumed to contain the same number of samples.
+                This means that if the entry 'X_1_1' of `xs` is, for example
+                `[1,2,3]`, this means that 'X_1_1' and all the other flattened
+                variables have three samples. This means also that the original
+                problem will be evaluated with a tensor variable with shape (2,2)
+                and three samples,
+                e.g., 'X=[[[1, 1], [1,1]], [[2, 2], [2, 2]], [[3, 3], [3, 3]]]'.
+
+        Returns:
+            pl.DataFrame: a dataframe with the original problem's evaluated functions.
+        """
+        # Assume all variables have the same number of samples
+        n_samples = len(next(iter(xs.values())))
+
+        fat_xs = {}
+
+        # iterate over the variables of the problem
+        for var in self.problem.variables:
+            if isinstance(var, TensorVariable):
+                # construct the indices
+                index_ranges = [range(upper) for upper in var.shape]
+                indices = product(*index_ranges)
+
+                # create list to be filled
+                tmp = np.ones((n_samples, *var.shape)) * np.nan
+
+                for index in indices:
+                    tmp[:, *(index)] = xs[f"{var.symbol}_{"_".join(str(x+1) for x in index)}"]
+
+                fat_xs[var.symbol] = tmp.tolist()
+
+            else:
+                # else, proceed normally
+                fat_xs[var.symbol] = xs[var.symbol]
+
+        # return result of regular evaluate
+        return self.evaluate(fat_xs)
 
     def _from_discrete_data(self) -> pl.DataFrame:
         """Evaluates the problem based on its discrete representation only.

@@ -1,4 +1,5 @@
 """Tests for testing the PyomoEvaluator."""
+
 import numpy.testing as npt
 import pyomo.environ as pyomo
 import pytest
@@ -7,7 +8,6 @@ from desdeo.problem import (
     ExtraFunction,
     ScalarizationFunction,
     binh_and_korn,
-    simple_test_problem,
 )
 from desdeo.problem.pyomo_evaluator import PyomoEvaluator
 
@@ -25,8 +25,9 @@ def binh_and_korn_w_extra():
     return problem.model_copy(update={"extra_funcs": [extra_1, extra_2], "scalarization_funcs": [scal_1, scal_2]})
 
 
+@pytest.mark.pyomo
 def test_w_binh_and_korn(binh_and_korn_w_extra):
-    """Tests the initialization of the evalutor with the Binh and Korn problem."""
+    """Tests the initialization of the evaluator with the Binh and Korn problem."""
     problem = binh_and_korn_w_extra
     evaluator = PyomoEvaluator(problem)
 
@@ -63,16 +64,17 @@ def test_w_binh_and_korn(binh_and_korn_w_extra):
     assert getattr(evaluator.model, "f_1_objective").active  # noqa: B009
 
 
+@pytest.mark.pyomo
 def test_get_values_w_binh_and_korn(binh_and_korn_w_extra):
     """Test that the problem evaluates correctly."""
     problem = binh_and_korn_w_extra
     evaluator = PyomoEvaluator(problem)
 
-    input_1 = {"x_1": 2, "x_2": 8}
+    input_1 = {"x_1": [2], "x_2": [8]}
 
     evaluator.evaluate(input_1)
 
-    res_dict = evaluator.get_values()
+    res_dict = evaluator.evaluate(input_1)
 
     assert res_dict["x_1"] == 2
     assert res_dict["x_2"] == 8

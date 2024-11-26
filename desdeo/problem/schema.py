@@ -15,6 +15,7 @@ from collections import Counter
 from collections.abc import Iterable
 from enum import Enum
 from itertools import product
+from pathlib import Path
 from typing import Annotated, Any, Literal, TypeAliasType
 
 import numpy as np
@@ -29,6 +30,7 @@ from pydantic import (
     WrapValidator,
     field_validator,
     model_validator,
+    root_validator,
 )
 from pydantic_core import PydanticCustomError
 
@@ -241,6 +243,14 @@ class ObjectiveTypeEnum(str, Enum):
     objective is present in a `Problem`, then there is a
     `DiscreteRepresentation` available with values representing the objective
     function."""
+    simulator = "simulator"
+    """A simulator based objective function. It is assumed that a Path (str)
+    to a simulator file that connects a simulator to DESDEO is present in
+    the `Objective` and also in the list of simulators in the `Problem`."""
+    surrogate = "surrogate"
+    """A surrogate based objective function. It is assumed that a Path (str)
+    to a surrogate saved on the disk is present in the `Objective` and also in
+    the list of simulators in the `Problem`."""
 
 
 class Constant(BaseModel):
@@ -512,7 +522,7 @@ class TensorVariable(BaseModel):
         """Flatten the tensor into a list of Variables.
 
         Returns:
-            list[Constant]: a list of Variables.
+            list[Variable]: a list of Variables.
         """
         variables = []
         for indices in list(product(*[range(1, dim + 1) for dim in self.shape])):
@@ -588,17 +598,43 @@ class ExtraFunction(BaseModel):
     """ Symbol to represent the function. This will be used in the rest of the
     problem definition.  It may also be used in UIs and visualizations. Example:
     'avg'."""
-    func: list = Field(
+    func: list | None = Field(
         description=(
             "The string representing the function. This is a JSON object that can be parsed into a function."
             "Must be a valid MathJSON object."
             " The symbols in the function must match symbols defined for objective/variable/constant."
+            "Can be 'None' if either 'simulator_path' or 'surrogates' is not 'None'. "
+            "If 'None', either 'simulator_path' or 'surrogates' must not be 'None'."
         ),
+        default=None,
     )
     """ The string representing the function. This is a JSON object that can be
     parsed into a function.  Must be a valid MathJSON object.  The symbols in
     the function must match symbols defined for objective/variable/constant.
-    """
+    Can be 'None' if either 'simulator_path' or 'surrogates' is not 'None'.
+    If 'None', either 'simulator_path' or 'surrogates' must not be 'None'."""
+    simulator_path: Path | None = Field(
+        description=(
+            "Path to a python file with the connection to simulators. Must be a valid Path."
+            "Can be 'None' for 'analytical', 'data_based' or 'surrogate' functions."
+            "If 'None', either 'func' or 'surrogates' must not be 'None'."
+        ),
+        default=None,
+    )
+    """Path to a python file with the connection to simulators. Must be a valid Path.
+    Can be 'None' for 'analytical', 'data_based' or 'surrogate' functions.
+    If 'None', either 'func' or 'surrogates' must not be 'None'."""
+    surrogates: list[Path] | None = Field(
+        description=(
+            "A list of paths to models saved on disk. Can be 'None' for 'analytical', 'data_based "
+            "or 'simulator' functions. If 'None', either 'func' or 'simulator_path' must "
+            "not be 'None'."
+        ),
+        default=None,
+    )
+    """A list of paths to models saved on disk. Can be 'None' for 'analytical', 'data_based
+    or 'simulator' functions. If 'None', either 'func' or 'simulator_path' must
+    not be 'None'."""
     is_linear: bool = Field(
         description="Whether the function expression is linear or not. Defaults to `False`.", default=False
     )
@@ -676,6 +712,36 @@ class ScalarizationFunction(BaseModel):
     )
 
 
+class Simulator(BaseModel):
+    """Model for simulator data."""
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str = Field(
+        description=("Descriptive name of the simulator. This can be used in UI and visualizations."),
+    )
+    """Descriptive name of the simulator. This can be used in UI and visualizations."""
+    symbol: str = Field(
+        description=(
+            "Symbol to represent the simulator. This will be used in the rest of the problem definition."
+            " It may also be used in UIs and visualizations."
+        ),
+    )
+    file: Path = Field(
+        description=("Path to a python file with the connection to simulators."),
+    )
+    """Path to a python file with the connection to simulators."""
+    parameter_options: dict | None = Field(
+        description=(
+            "Parameters to the simulator that are not decision variables, but affect the results."
+            "Format is similar to decision variables. Can be 'None'."
+        ),
+        default=None,
+    )
+    """Parameters to the simulator that are not decision variables, but affect the results.
+    Format is similar to decision variables. Can be 'None'."""
+
+
 class Objective(BaseModel):
     """Model for an objective function."""
 
@@ -709,13 +775,39 @@ class Objective(BaseModel):
         description=(
             "The objective function. This is a JSON object that can be parsed into a function."
             "Must be a valid MathJSON object. The symbols in the function must match the symbols defined for "
-            "variable/constant/extra function. Can be 'None' for 'data_based' objective functions."
+            "variable/constant/extra function. Can be 'None' for 'data_based', 'simulator' or "
+            "'surrogate' objective functions. If 'None', either 'simulator_path' or 'surrogates' must "
+            "not be 'None'."
         ),
+        default=None,
     )
-    """ The objective function. This is a JSON object that can be parsed into a
-    function.  Must be a valid MathJSON object. The symbols in the function must
-    match the symbols defined for variable/constant/extra function. Can be
-    'None' for 'data_based' objective functions."""
+    """ The objective function. This is a JSON object that can be parsed into a function.
+    Must be a valid MathJSON object. The symbols in the function must match the symbols defined for
+    variable/constant/extra function. Can be 'None' for 'data_based', 'simulator' or
+    'surrogate' objective functions. If 'None', either 'simulator_path' or 'surrogates' must
+    not be 'None'."""
+    simulator_path: Path | None = Field(
+        description=(
+            "Path to a python file with the connection to simulators. Must be a valid Path."
+            "Can be 'None' for 'analytical', 'data_based' or 'surrogate' objective functions."
+            "If 'None', either 'func' or 'surrogates' must not be 'None'."
+        ),
+        default=None,
+    )
+    """Path to a python file with the connection to simulators. Must be a valid Path.
+    Can be 'None' for 'analytical', 'data_based' or 'surrogate' objective functions.
+    If 'None', either 'func' or 'surrogates' must not be 'None'."""
+    surrogates: list[Path] | None = Field(
+        description=(
+            "A list of paths to models saved on disk. Can be 'None' for 'analytical', 'data_based "
+            "or 'simulator' objective functions. If 'None', either 'func' or 'simulator_path' must "
+            "not be 'None'."
+        ),
+        default=None,
+    )
+    """A list of paths to models saved on disk. Can be 'None' for 'analytical', 'data_based
+    or 'simulator' objective functions. If 'None', either 'func' or 'simulator_path' must
+    not be 'None'."""
     maximize: bool = Field(
         description="Whether the objective function is to be maximized or minimized.",
         default=False,
@@ -797,17 +889,41 @@ class Constraint(BaseModel):
     constraint's expression, and on the right hand side a zero value is assume.
     The comparison between the left hand side and right hand side is either and
     quality comparison ('=') or lesser than equal comparison ('<=')."""
-    func: list = Field(
+    func: list | None = Field(
         description=(
             "Function of the constraint. This is a JSON object that can be parsed into a function."
             "Must be a valid MathJSON object."
             " The symbols in the function must match objective/variable/constant symbols."
+            "Can be 'None' if either 'simulator_path' or 'surrogates' is not 'None'. "
+            "If 'None', either 'simulator_path' or 'surrogates' must not be 'None'."
         ),
+        default=None,
     )
     """ Function of the constraint. This is a JSON object that can be parsed
     into a function.  Must be a valid MathJSON object.  The symbols in the
-    function must match objective/variable/constant symbols."""
-
+    function must match objective/variable/constant symbols.
+    Can be 'None' if either 'simulator_path' or 'surrogates' is not 'None'.
+    If 'None', either 'simulator_path' or 'surrogates' must not be 'None'."""
+    simulator_path: Path | None = Field(
+        description=(
+            "Path to a python file with the connection to simulators. Must be a valid Path."
+            "Can be 'None' for if either 'func' or 'surrogates' is not 'None'."
+            "If 'None', either 'func' or 'surrogates' must not be 'None'."
+        ),
+        default=None,
+    )
+    """Path to a python file with the connection to simulators. Must be a valid Path.
+    Can be 'None' for if either 'func' or 'surrogates' is not 'None'.
+    If 'None', either 'func' or 'surrogates' must not be 'None'."""
+    surrogates: list[Path] | None = Field(
+        description=(
+            "A list of paths to models saved on disk. Can be 'None' for if either 'func' or 'simulator_path' "
+            "is not 'None'. If 'None', either 'func' or 'simulator_path' must not be 'None'."
+        ),
+        default=None,
+    )
+    """A list of paths to models saved on disk. Can be 'None' for if either 'func' or 'simulator_path'
+    is not 'None'. If 'None', either 'func' or 'simulator_path' must not be 'None'."""
     is_linear: bool = Field(
         description="Whether the constraint is linear or not. Defaults to True, e.g., a linear constraint is assumed.",
         default=True,
@@ -871,8 +987,8 @@ class DiscreteRepresentation(BaseModel):
     objective functions."""
     non_dominated: bool = Field(
         description=(
-            "Indicates whether the representation consists of non-dominated points or not.",
-            "If False, some method can employ non-dominated sorting, which might slow an interactive method down.",
+            "Indicates whether the representation consists of non-dominated points or not."
+            "If False, some method can employ non-dominated sorting, which might slow an interactive method down."
         ),
         default=False,
     )
@@ -981,6 +1097,38 @@ class Problem(BaseModel):
 
         return self.model_copy(update={"scalarization_funcs": [*self.scalarization_funcs, new_scal]})
 
+    def update_ideal_and_nadir(
+        self,
+        new_ideal: dict[str, VariableType | None] | None = None,
+        new_nadir: dict[str, VariableType | None] | None = None,
+    ) -> "Problem":
+        """Update the ideal and nadir values of the problem.
+
+        Args:
+            new_ideal (dict[str, VariableType  |  None] | None): _description_
+            new_nadir (dict[str, VariableType  |  None] | None): _description_
+        """
+        updated_objectives = []
+        for objective in self.objectives:
+            new_objective = objective.copy(
+                update={
+                    **(
+                        {"ideal": new_ideal[objective.symbol]}
+                        if new_ideal is not None and objective.symbol in new_ideal
+                        else {}
+                    ),
+                    **(
+                        {"nadir": new_nadir[objective.symbol]}
+                        if new_nadir is not None and objective.symbol in new_nadir
+                        else {}
+                    ),
+                }
+            )
+
+            updated_objectives.append(new_objective)
+
+        return self.copy(update={"objectives": updated_objectives})
+
     def add_constraints(self, new_constraints: list[Constraint]) -> "Problem":
         """Adds new constraints to the problem model.
 
@@ -1065,6 +1213,20 @@ class Problem(BaseModel):
         # proceed to add the new variables, assumed existing variables are defined
         return self.model_copy(update={"variables": [*self.variables, *new_variables]})
 
+    def get_flattened_variables(self) -> list[Variable]:
+        """Return a list of the (flattened) variables of the problem.
+
+        Returns a list of the variables defined for the problem so that any TensorVariables are flattened.
+
+        Returns:
+            list[Variable]: list of (flattened) variables.
+        """
+        return [
+            item
+            for var in self.variables
+            for item in (var.to_variables() if isinstance(var, TensorVariable) else [var])
+        ]
+
     def get_constraint(self, symbol: str) -> Constraint | None:
         """Return a copy of a `Constant` with the given symbol.
 
@@ -1103,11 +1265,12 @@ class Problem(BaseModel):
         # variable not found
         return None
 
-    def get_objective(self, symbol: str) -> Objective | None:
+    def get_objective(self, symbol: str, *, copy: bool = True) -> Objective | None:
         """Return a copy of an `Objective` with the given symbol.
 
         Args:
             symbol (str): the symbol of the objective.
+            copy (bool): if True, return a copy of the objective, otherwise, return a reference. Defaults to True.
 
         Returns:
             Objective | None: the copy of the objective with the given symbol, or `None` if the objective is not found.
@@ -1115,7 +1278,12 @@ class Problem(BaseModel):
         for objective in self.objectives:
             if objective.symbol == symbol:
                 # objective found
-                return objective.model_copy()
+                if copy:
+                    # return a copy of the objective
+                    return objective.model_copy()
+
+                # return a reference instead
+                return objective
 
         # objective not found
         return None
@@ -1195,13 +1363,18 @@ class Problem(BaseModel):
         """Check if all the functions expressions in the problem are convex.
 
         Note:
-            This method just checks all the functions expressions present in the problem
+            If the field "is_convex" is explicitly set, then the provided value is returned.
+
+            Otherwise, this method just checks all the functions expressions present in the problem
             and return true if all of them are convex. For complicated problems, this might
             result in an incorrect results. User discretion is advised.
 
         Returns:
             bool: whether the problem is convex or not.
         """
+        if self.is_convex_ is not None:
+            return self.is_convex_
+
         is_convex_values = (
             [obj.is_convex for obj in self.objectives]
             + ([con.is_convex for con in self.constraints] if self.constraints is not None else [])
@@ -1216,13 +1389,18 @@ class Problem(BaseModel):
         """Check if all the functions expressions in the problem are linear.
 
         Note:
-            This method just checks all the functions expressions present in the problem
+            If the field "is_linear" is explicitly set, then the provided value is returned.
+
+            Otherwise, this method just checks all the functions expressions present in the problem
             and return true if all of them are linear. For complicated problems, this might
             result in an incorrect results. User discretion is advised.
 
         Returns:
             bool: whether the problem is linear or not.
         """
+        if self.is_linear_ is not None:
+            return self.is_linear_
+
         is_linear_values = (
             [obj.is_linear for obj in self.objectives]
             + ([con.is_linear for con in self.constraints] if self.constraints is not None else [])
@@ -1237,13 +1415,18 @@ class Problem(BaseModel):
         """Check if all the functions expressions in the problem are twice differentiable.
 
         Note:
-            This method just checks all the functions expressions present in the problem
+            If the field "is_twice_differentiable" is explicitly set, then the provided value is returned.
+
+            Otherwise, this method just checks all the functions expressions present in the problem
             and return true if all of them are twice differentiable. For complicated problems, this might
             result in an incorrect results. User discretion is advised.
 
         Returns:
             bool: whether the problem is twice differentiable or not.
         """
+        if self.is_twice_differentiable_ is not None:
+            return self.is_twice_differentiable_
+
         is_diff_values = (
             [obj.is_twice_differentiable for obj in self.objectives]
             + ([con.is_twice_differentiable for con in self.constraints] if self.constraints is not None else [])
@@ -1335,25 +1518,43 @@ class Problem(BaseModel):
             }
         )
 
+    @root_validator(pre=True)
+    def set_is_twice_differentiable(cls, values):
+        """If "is_twice_differentiable" is explicitly provided to the model, we set it to that value."""
+        if "is_twice_differentiable" in values and values["is_twice_differentiable"] is not None:
+            values["is_twice_differentiable_"] = values["is_twice_differentiable"]
+
+        return values
+
+    @root_validator(pre=True)
+    def set_is_liear(cls, values):
+        """If "is_linear" is explicitly provided to the model, we set it to that value."""
+        if "is_linear" in values and values["is_linear"] is not None:
+            values["is_linear_"] = values["is_linear"]
+
+        return values
+
+    @root_validator(pre=True)
+    def set_is_convex(cls, values):
+        """If "is_convex" is explicitly provided to the model, we set it to that value."""
+        if "is_convex" in values and values["is_convex"] is not None:
+            values["is_convex_"] = values["is_convex"]
+
+        return values
+
     name: str = Field(
         description="Name of the problem.",
     )
     """Name of the problem."""
-    description: str = Field(
-        description="Description of the problem.",
-    )
+    description: str = Field(description="Description of the problem.")
     """Description of the problem."""
     constants: list[Constant | TensorConstant] | None = Field(
         description="Optional list of the constants present in the problem.", default=None
     )
     """List of the constants present in the problem. Defaults to `None`."""
-    variables: list[Variable | TensorVariable] = Field(
-        description="List of variables present in the problem.",
-    )
+    variables: list[Variable | TensorVariable] = Field(description="List of variables present in the problem.")
     """List of variables present in the problem."""
-    objectives: list[Objective] = Field(
-        description="List of the objectives present in the problem.",
-    )
+    objectives: list[Objective] = Field(description="List of the objectives present in the problem.")
     """List of the objectives present in the problem."""
     constraints: list[Constraint] | None = Field(
         description="Optional list of constraints present in the problem.",
@@ -1394,6 +1595,54 @@ class Problem(BaseModel):
     to a subset of objectives, " "constraints, extra functions, and
     scalarization functions that have the same scenario key defined to them."
     "If None, then the problem is assumed to not contain scenarios."""
+    simulators: list[Simulator] | None = Field(
+        description=(
+            "Optional. The simulators used by the problem. Required when there are one or more "
+            "Objectives defined by simulators. The corresponding values of the 'simulator' objective "
+            "function will be fetched from these simulators with the given variable values."
+        ),
+        default=None,
+    )
+    """Optional. The simulators used by the problem. Required when there are one or more
+    Objectives defined by simulators. The corresponding values of the 'simulator' objective
+    function will be fetched from these simulators with the given variable values.
+    Defaults to `None`."""
+    is_convex_: bool | None = Field(
+        description=(
+            "Optional. Used to manually indicate if the problem, as a whole, can be considered to be convex. "
+            "If set to `None`, this property will be automatically inferred from the "
+            "respective properties of other attributes."
+        ),
+        default=None,
+        alias="is_convex",
+    )
+    """Optional. Used to manually indicate if the problem, as a whole, can be considered to be convex. "
+    "If set to `None`, this property will be automatically inferred from the "
+    "respective properties of other attributes."""
+    is_linear_: bool | None = Field(
+        description=(
+            "Optional. Used to manually indicate if the problem, as a whole, can be considered to be linear. "
+            "If set to `None`, this property will be automatically inferred from the "
+            "respective properties of other attributes."
+        ),
+        default=None,
+        alias="is_linear",
+    )
+    """Optional. Used to manually indicate if the problem, as a whole, can be considered to be linear. "
+    "If set to `None`, this property will be automatically inferred from the "
+    "respective properties of other attributes."""
+    is_twice_differentiable_: bool | None = Field(
+        description=(
+            "Optional. Used to manually indicate if the problem, as a whole, can be considered to be twice "
+            "differentiable. If set to `None`, this property will be automatically inferred from the "
+            "respective properties of other attributes."
+        ),
+        default=None,
+        alias="is_twice_differentiable",
+    )
+    """Optional. Used to manually indicate if the problem, as a whole, can be considered to be twice "
+    "differentiable. If set to `None`, this property will be automatically inferred from the "
+    "respective properties of other attributes."""
 
 
 if __name__ == "__main__":

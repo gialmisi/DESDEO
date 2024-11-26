@@ -101,6 +101,7 @@ def extra_functions_problem():
     )
 
 
+@pytest.mark.json
 def test_basic():
     """A basic test to test the parsing of Polish notation to polars expressions."""
     math_parser = MathParser()
@@ -121,6 +122,7 @@ def test_basic():
     assert objectives["Objective 1"][1] == 675
 
 
+@pytest.mark.json
 def test_negate():
     """Tests negation."""
     math_parser = MathParser()
@@ -152,6 +154,7 @@ def test_negate():
     print()
 
 
+@pytest.mark.json
 def test_binh_and_korn():
     """Basic test of the Binh and Korn problem.
 
@@ -212,6 +215,7 @@ def test_binh_and_korn():
     npt.assert_array_almost_equal(result["g_2"], truth["g_2_t"])
 
 
+@pytest.mark.json
 @pytest.mark.polars
 def test_binh_and_korn_w_evaluator():
     """Basic test of the Binh and Korn problem with the Polars evaluator.
@@ -249,6 +253,7 @@ def test_binh_and_korn_w_evaluator():
     assert original_problem == problem
 
 
+@pytest.mark.json
 @pytest.mark.polars
 def test_extra_functions_problem_w_evaluator(extra_functions_problem):
     """Test the PolarsEvaluator with polars that it handles extra functions correctly."""
@@ -292,6 +297,7 @@ def test_extra_functions_problem_w_evaluator(extra_functions_problem):
     npt.assert_almost_equal(result["scal_1"], truth["scal_1"])
 
 
+@pytest.mark.json
 def test_problem_unique_symbols():
     """Test that having non-unique symbols in a Problem model raises an error."""
     var_1 = Variable(
@@ -477,6 +483,7 @@ def test_problem_unique_symbols():
     assert "x_2" in str(e.value)
 
 
+@pytest.mark.json
 def test_problem_default_scalarization_names():
     """Test that default scalarization function symbols in a Problem model are assigned correctly."""
     var_1 = Variable(
@@ -585,6 +592,7 @@ def test_problem_default_scalarization_names():
     assert new_problem.scalarization_funcs[0].symbol == "scal_1"
 
 
+@pytest.mark.json
 @pytest.mark.pyomo
 def test_parse_pyomo_basic_arithmetics():
     """Test the JSON parser for correctly parsing MathJSON into pyomo expressions."""
@@ -638,6 +646,7 @@ def test_parse_pyomo_basic_arithmetics():
         )
 
 
+@pytest.mark.json
 @pytest.mark.pyomo
 def test_parse_pyomo_exponentation_and_logarithms():
     """Test the JSON parser for correctly parsing MathJSON into pyomo expressions, with exponentation and logarithms."""
@@ -717,6 +726,7 @@ def test_parse_pyomo_exponentation_and_logarithms():
         )
 
 
+@pytest.mark.json
 @pytest.mark.pyomo
 def test_parse_pyomo_trigonometrics():
     """Test the JSON parser for correctly parsing MathJSON into pyomo expressions, with trigonometric operators."""
@@ -796,6 +806,7 @@ def test_parse_pyomo_trigonometrics():
         )
 
 
+@pytest.mark.json
 @pytest.mark.pyomo
 def test_parse_pyomo_rounding():
     """Test the JSON parser for correctly parsing MathJSON into pyomo expressions, with rounding operators."""
@@ -872,6 +883,7 @@ def test_parse_pyomo_rounding():
         )
 
 
+@pytest.mark.json
 @pytest.mark.pyomo
 def test_parse_pyomo_max():
     """Test the JSON parser for correctly parsing MathJSON into pyomo expressions, with the max operator."""
@@ -958,6 +970,7 @@ def test_parse_pyomo_max():
         )
 
 
+@pytest.mark.json
 @pytest.mark.pyomo
 def test_pyomo_basic_matrix_arithmetics():
     """Check that matrix arithmetics are parsed correctly from MathJSON format to Pyomo expression."""
@@ -1039,12 +1052,19 @@ def test_pyomo_basic_matrix_arithmetics():
         ("c*X", c * np.array(X_values)),
         ("Y*c", c * np.array(Y_values)),
         ("c*Y", c * np.array(Y_values)),
+        ("X**2", np.array(X_values) ** 2),  # power
+        ("X**c", np.array(X_values) ** c),
+        ("Xmat**3", np.array(Xmat_values) ** 3),
+        ("(Xmat@Ymat)**2", (np.array(Xmat_values) @ np.array(Ymat_values)) ** 2),
         ("x*X", x * np.array(X_values)),  # product by or with scalar
         ("X*x", x * np.array(X_values)),
         ("x*Y", x * np.array(Y_values)),
         ("Y*x", x * np.array(Y_values)),
         ("X*Y", np.array(X_values) * np.array(Y_values)),  # element-wise multiplication
         ("Y*X", np.array(Y_values) * np.array(X_values)),
+        ("Y/X", np.array(Y_values) / np.array(X_values)),  # division
+        ("Ymat/Xmat", np.array(Ymat_values) / np.array(Xmat_values)),
+        ("Xmat/Ymat", np.array(Xmat_values) / np.array(Ymat_values)),
         ("Xmat*Ymat", np.array(Xmat_values) * np.array(Ymat_values)),
         ("Ymat*Xmat*4", np.array(Ymat_values) * np.array(Xmat_values) * 4),
         ("Ymat*Xmat*4*Ymat", np.array(Ymat_values) * np.array(Xmat_values) * 4 * np.array(Ymat_values)),
@@ -1075,6 +1095,8 @@ def test_pyomo_basic_matrix_arithmetics():
             np.sum(Vmat_values)
             * (np.array(Zmat_values) @ (np.array(Xmat_values) + 3 * np.array(Ymat_values)) @ -np.array(Xmat_values)),
         ),  # advanced expressions
+        ("Ln(X)", np.log(np.array(X_values))),  # Ln
+        ("Ln(Xmat)", np.log(np.array(Xmat_values))),  # Ln
     ]
 
     pyomo_parser = MathParser(to_format="pyomo")
@@ -1101,6 +1123,125 @@ def test_pyomo_basic_matrix_arithmetics():
         )
 
 
+@pytest.mark.json
+@pytest.mark.pyomo
+def test_pyomo_unary_functions_with_tensors():
+    """Check that unary functions and advanced expressions are parsed correctly for tensors."""
+    pyomo_model = pyomo.ConcreteModel()
+
+    # 1D Vector
+    X_dims = (5,)
+    X_values = [1, 2, 3, 4, 5]
+
+    # 2D Matrix
+    xmat_dims = (3, 3)
+    Xmat_values = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+
+    x = 2.8
+    c = 0.5
+
+    # Variables for vectors and matrices
+    pyomo_model.X = pyomo.Var(
+        pyomo.RangeSet(1, X_dims[0]), domain=pyomo.Reals, initialize=PyomoEvaluator._init_rule(X_values)
+    )
+    pyomo_model.Xmat = pyomo.Var(
+        pyomo.RangeSet(1, xmat_dims[0]),
+        pyomo.RangeSet(1, xmat_dims[1]),
+        domain=pyomo.Reals,
+        initialize=PyomoEvaluator._init_rule(Xmat_values),
+    )
+    pyomo_model.x = pyomo.Var(domain=pyomo.Reals, initialize=x)
+    pyomo_model.c = pyomo.Param(domain=pyomo.Reals, default=c)
+
+    tests = [
+        # Unary operations on vectors
+        ("Ln(X)", np.log(np.array(X_values))),  # Natural logarithm
+        ("Exp(X)", np.exp(np.array(X_values))),  # Exponentiation
+        ("Sqrt(X)", np.sqrt(np.array(X_values))),  # Square root
+        ("Cos(X)", np.cos(np.array(X_values))),  # Cosine
+        ("Sin(X)", np.sin(np.array(X_values))),  # Sine
+        ("Tan(X)", np.tan(np.array(X_values))),  # Tangent
+        ("Abs(X)", np.abs(np.array(X_values))),  # Absolute value
+        ("Ceil(X)", np.ceil(np.array(X_values))),  # Ceiling function
+        ("Floor(X)", np.floor(np.array(X_values))),  # Floor function
+        ("Lb(X)", np.log2(np.array(X_values))),  # Base 2 logarithm
+        ("Lg(X)", np.log10(np.array(X_values))),  # Base 10 logarithm
+        ("Arccos(0.5)", np.arccos(0.5)),  # Arc cosine
+        ("Arcsin(0.5)", np.arcsin(0.5)),  # Arc sine
+        ("Arctan(0.5)", np.arctan(0.5)),  # Arc tangent
+        # Unary operations on matrices
+        ("Ln(Xmat)", np.log(np.array(Xmat_values))),  # Natural logarithm
+        ("Exp(Xmat)", np.exp(np.array(Xmat_values))),  # Exponentiation
+        ("Sqrt(Xmat)", np.sqrt(np.array(Xmat_values))),  # Square root
+        ("Cos(Xmat)", np.cos(np.array(Xmat_values))),  # Cosine
+        ("Sin(Xmat)", np.sin(np.array(Xmat_values))),  # Sine
+        ("Tan(Xmat)", np.tan(np.array(Xmat_values))),  # Tangent
+        ("Abs(Xmat)", np.abs(np.array(Xmat_values))),  # Absolute value
+        ("Ceil(Xmat)", np.ceil(np.array(Xmat_values))),  # Ceiling function
+        ("Floor(Xmat)", np.floor(np.array(Xmat_values))),  # Floor function
+        ("Lb(Xmat)", np.log2(np.array(Xmat_values))),  # Base 2 logarithm
+        ("Lg(Xmat)", np.log10(np.array(Xmat_values))),  # Base 10 logarithm
+        ("Arccos(0.5*Xmat/9)", np.arccos(0.5 * np.array(Xmat_values) / 9)),  # Arc cosine of a matrix
+        ("Arcsin(Xmat/9)", np.arcsin(np.array(Xmat_values) / 9)),  # Arc sine of a matrix
+        ("Arctan(Xmat)", np.arctan(np.array(Xmat_values))),  # Arc tangent of a matrix
+        # Combined operations and advanced expressions
+        ("Exp(X) * Cos(X)", np.exp(np.array(X_values)) * np.cos(np.array(X_values))),  # Combined vector operations
+        (
+            "Sqrt(Xmat) + Exp(Xmat)",
+            np.sqrt(np.array(Xmat_values)) + np.exp(np.array(Xmat_values)),
+        ),  # Combined matrix operations
+        (
+            "Sin(Xmat) * Ln(Xmat)",
+            np.sin(np.array(Xmat_values)) * np.log(np.array(Xmat_values)),
+        ),  # Combination of trigonometric and logarithmic functions
+        (
+            "Cos(x) * (Xmat + 2*Xmat) * Sin(x)",
+            np.cos(x) * (np.array(Xmat_values) + 2 * np.array(Xmat_values)) * np.sin(x),
+        ),  # Scalar-matrix combination with trigonometric functions
+        (
+            "Exp(Xmat) + Ln(Xmat) * Sqrt(Xmat)",
+            np.exp(np.array(Xmat_values)) + np.log(np.array(Xmat_values)) * np.sqrt(np.array(Xmat_values)),
+        ),  # Combination of matrix and vector operations
+        (
+            "Cos(x) * (Ln(Xmat) + 2*Abs(Xmat)) - Sqrt(Xmat) * Sin(c) + Tan(x)",
+            np.cos(x) * (np.log(np.array(Xmat_values)) + 2 * np.abs(np.array(Xmat_values)))
+            - np.sqrt(np.array(Xmat_values)) * np.sin(c)
+            + np.tan(x),
+        ),  # More complex expression combining logarithm, absolute, square root, trigonometric functions
+        (
+            "Arccos(Sin(Xmat)) + Arcsin(Cos(Xmat)) - Arctan(Tan(Xmat))",
+            np.arccos(np.sin(np.array(Xmat_values)))
+            + np.arcsin(np.cos(np.array(Xmat_values)))
+            - np.arctan(np.tan(np.array(Xmat_values))),
+        ),  # Combination of inverse and direct trigonometric functions
+        (
+            "Exp(Ln(Sqrt(Abs(Xmat))))",
+            np.exp(np.log(np.sqrt(np.abs(np.array(Xmat_values))))),
+        ),  # Nested functions combining logarithm, square root, absolute, and exponentiation
+    ]
+
+    pyomo_parser = MathParser(to_format="pyomo")
+    infix_parser = InfixExpressionParser()
+
+    for str_expr, result in tests:
+        json_expr = infix_parser.parse(str_expr)
+        pyomo_expr = pyomo_parser.parse(json_expr, pyomo_model)
+
+        npt.assert_array_almost_equal(
+            [pyomo.value(pyomo_expr[i]) for i in pyomo_expr.index_set()]
+            if hasattr(pyomo_expr, "index_set") and pyomo_expr.index_set().dimen == 1
+            else [
+                [pyomo.value(pyomo_expr[i, j]) for j in pyomo_expr.index_set().set_tuple[1]]
+                for i in pyomo_expr.index_set().set_tuple[0]
+            ]
+            if hasattr(pyomo_expr, "index_set") and pyomo_expr.index_set().dimen == 2
+            else pyomo.value(pyomo_expr),
+            result,
+            err_msg=f"Test failed for {str_expr=}, with {str(pyomo_expr) if isinstance(pyomo_expr, pyomo.Expression) else pyomo_expr}",
+        )
+
+
+@pytest.mark.json
 @pytest.mark.pyomo
 def test_pyomo_tensor_bracket_access():
     """Test that the "At" operator is parsed correctly in the for pyomo."""
@@ -1233,6 +1374,7 @@ def test_pyomo_tensor_bracket_access():
         )
 
 
+@pytest.mark.json
 @pytest.mark.sympy
 def test_parse_sympy_basic_arithmetics():
     """Check that the JSON parser correctly parses MathJSON to sympy expressions."""
@@ -1285,6 +1427,7 @@ def test_parse_sympy_basic_arithmetics():
         )
 
 
+@pytest.mark.json
 @pytest.mark.gurobipy
 def test_parse_gurobipy_basic_arithmetics():
     """Test the JSON parser for correctly parsing MathJSON into gurobipy expressions."""
@@ -1349,6 +1492,7 @@ def test_parse_gurobipy_basic_arithmetics():
         )
 
 
+@pytest.mark.json
 @pytest.mark.sympy
 def test_parse_sympy_exponentation_and_logarithms():
     """Test the JSON parser for correctly parsing MathJSON into sympy expressions, with exponentation and logarithms."""
@@ -1422,6 +1566,7 @@ def test_parse_sympy_exponentation_and_logarithms():
         )
 
 
+@pytest.mark.json
 @pytest.mark.sympy
 def test_parse_sympy_trigonometrics():
     """Test the JSON parser for correctly parsing MathJSON into sympy expressions, with trigonometric operators."""
@@ -1495,6 +1640,7 @@ def test_parse_sympy_trigonometrics():
         )
 
 
+@pytest.mark.json
 @pytest.mark.sympy
 def test_parse_sympy_rounding():
     """Test the JSON parser for correctly parsing MathJSON into sympy expressions, with rounding operators."""
@@ -1565,6 +1711,7 @@ def test_parse_sympy_rounding():
         )
 
 
+@pytest.mark.json
 @pytest.mark.sympy
 def test_parse_sympy_max():
     """Test the JSON parser for correctly parsing MathJSON into sympy expressions, with the max operator."""
@@ -1645,6 +1792,7 @@ def test_parse_sympy_max():
         )
 
 
+@pytest.mark.json
 @pytest.mark.polars
 def test_polars_random_access():
     """Test the polars math evaluator with tensor variables and constants, and operations."""
@@ -1687,6 +1835,7 @@ def test_polars_random_access():
         npt.assert_almost_equal(polars_result, result, err_msg=f"Test failed for expression {infix_expr}")
 
 
+@pytest.mark.json
 @pytest.mark.polars
 def test_polars_matrix_arithmetics():
     """Test the Polars math evaluator with matrix operations and arithmetics."""
@@ -1721,6 +1870,9 @@ def test_polars_matrix_arithmetics():
         ("X @ Y - 3", [np.matmul(X[i], Y[i]) - 3 for i in range(2)]),
         ("X * 5", [X[i] * 5 for i in range(2)]),
         ("5 * X", [5 * X[i] for i in range(2)]),
+        ("X**2", [X[i] ** 2 for i in range(2)]),
+        ("(X @ Y)**3", [np.matmul(X[i], Y[i]) ** 3 for i in range(2)]),
+        ("Ln(X @ Y)", [np.log(np.matmul(X[i], Y[i])) for i in range(2)]),
         ("Xmat * Ymat", [Xmat[i] * Ymat[i] for i in range(2)]),
         ("Ymat * Xmat * 4", [Ymat[i] * Xmat[i] * 4 for i in range(2)]),
         ("Xmat @ Ymat", [Xmat[i] @ Ymat[i] for i in range(2)]),

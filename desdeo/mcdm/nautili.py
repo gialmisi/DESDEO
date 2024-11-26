@@ -8,17 +8,16 @@ from desdeo.mcdm.nautilus_navigator import (
     calculate_navigation_point,
 )
 from desdeo.problem import (
+    Constraint,
+    ConstraintTypeEnum,
     Problem,
     get_nadir_dict,
-    numpy_array_to_objective_dict,
-    objective_dict_to_numpy_array,
 )
-from desdeo.tools.generics import BaseSolver, SolverResults
+from desdeo.tools.generics import BaseSolver, SolverResults, SolverOptions
 from desdeo.tools.scalarization import (
     add_asf_generic_nondiff,
+    add_asf_generic_diff,
     add_epsilon_constraints,
-    add_lte_constraints,
-    add_scalarization_function,
 )
 from desdeo.tools.utils import guess_best_solver
 
@@ -47,7 +46,9 @@ class NautiliError(Exception):
 
 
 def solve_reachable_bounds(
-    problem: Problem, navigation_point: dict[str, float], solver: BaseSolver | None = None
+    problem: Problem,
+    navigation_point: dict[str, float],
+    solver: BaseSolver | None = None
 ) -> tuple[dict[str, float], dict[str, float]]:
     """Computes the current reachable (upper and lower) bounds of the solutions in the objective space.
 
@@ -84,6 +85,7 @@ def solve_reachable_bounds(
     lower_bounds = {}
     upper_bounds = {}
     for objective in problem.objectives:
+        # Lower bounds
         eps_problem, target, _ = add_epsilon_constraints(
             problem,
             "target",
@@ -130,6 +132,7 @@ def solve_reachable_solution(
     group_improvement_direction: dict[str, float],
     previous_nav_point: dict[str, float],
     solver: BaseSolver | None = None,
+    solver_options: SolverOptions | None = None,
 ) -> SolverResults:
     """Calculates the reachable solution on the Pareto optimal front.
 
@@ -147,7 +150,9 @@ def solve_reachable_solution(
             is always better than the previous navigation point.
         solver (BaseSolver | None, optional): solver based on BaseSolver used to solve the problem.
             If None, then a solver is utilized bases on the problem's properties. Defaults to None.
-
+        solver_options (SolverOptions | None, optional): optional options passed
+            to the `solver`. Ignored if `solver` is `None`.
+            Defaults to None.
     Returns:
         SolverResults: the results of the projection.
     """
@@ -157,21 +162,37 @@ def solve_reachable_solution(
     # create and add scalarization function
     # previous_nav_point = objective_dict_to_numpy_array(problem, previous_nav_point).tolist()
     # weights = objective_dict_to_numpy_array(problem, group_improvement_direction).tolist()
-    problem_w_asf, target = add_asf_generic_nondiff(
-        problem,
-        symbol="asf",
-        reference_point=previous_nav_point,
-        weights=group_improvement_direction,
-        reference_point_aug=previous_nav_point
-    )
+    if problem.is_twice_differentiable:
+        problem_w_asf, target = add_asf_generic_diff(
+            problem,
+            symbol="asf",
+            reference_point=previous_nav_point,
+            weights=group_improvement_direction,
+            reference_point_aug=previous_nav_point,
+        )
+    else:
+        problem_w_asf, target = add_asf_generic_nondiff(
+            problem,
+            symbol="asf",
+            reference_point=previous_nav_point,
+            weights=group_improvement_direction,
+            reference_point_aug=previous_nav_point,
+        )
 
     # Note: We do not solve the global problem. Instead, we solve this constrained problem:
-    const_exprs = [
-        f"{obj.symbol}_min - {previous_nav_point[obj.symbol] * (-1 if obj.maximize else 1)}"
-        for obj in problem.objectives
-    ]
-    problem_w_asf = add_lte_constraints(
-        problem_w_asf, const_exprs, [f"const_{i}" for i in range(1, len(const_exprs) + 1)]
+    problem_w_asf = problem_w_asf.add_constraints(
+        [
+            Constraint(
+                name=f"_const_{i+1}",
+                symbol=f"_const_{i+1}",
+                func=f"{obj.symbol}_min - {previous_nav_point[obj.symbol] * (-1 if obj.maximize else 1)}",
+                cons_type=ConstraintTypeEnum.LTE,
+                is_linear=obj.is_linear,
+                is_convex=obj.is_convex,
+                is_twice_differentiable=obj.is_twice_differentiable,
+            )
+            for i, obj in enumerate(problem_w_asf.objectives)
+        ]
     )
 
     # solve the problem
@@ -229,7 +250,6 @@ def nautili_step(  # NOQA: PLR0913
     new_nav_point = calculate_navigation_point(problem, nav_point, reachable_solution, steps_remaining)
 
     # update_bounds
-
     lower_bounds, upper_bounds = solve_reachable_bounds(problem, new_nav_point, solver=solver)
 
     distance = calculate_distance_to_front(problem, new_nav_point, reachable_solution)
@@ -252,7 +272,7 @@ def nautili_all_steps(
     reference_points: dict[str, dict[str, float]],
     previous_responses: list[NAUTILI_Response],
     solver: BaseSolver | None = None,
-):
+) -> [NAUTILI_Response]:
     responses = []
     nav_point = previous_responses[-1].navigation_point
     step_number = previous_responses[-1].step_number + 1

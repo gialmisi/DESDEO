@@ -27,11 +27,13 @@ sympy = "^1.0"
 pyparsing = "^3.0"
 # Optimization
 nevergrad = "^1.0"
-pyomo = "^6.0"
+bayesian-optimization = "^1.0" # They recently released v2 which breaks compatibility with nevergrad 
+pyomo = "^6.8"
 # Miscellaneous
 jupyter = "^1.0"
 jupyterlab = "^4.0"
 # API packages
+asyncpg = { version = "^0.29.0", optional = true }
 gunicorn = { version = "^23.0.0", optional = true }
 fastapi = { version = "^0.106.0", optional = true }
 uvicorn = { extras = ["standard"], version = "^0.25.0", optional = true }
@@ -44,13 +46,13 @@ python-jose = { extras = ["cryptography"], version = "^3.3.0", optional = true }
 bcrypt = { version = "^4.1.2", optional = true }
 mkdocs-include-markdown-plugin = { extras = ["cache"], version = "^6.0.5" }
 gurobipy = "^11.0.1"                                                             #96
-asyncpg = { version = "0.29.0", optional = true }
 
 [tool.poetry.extras]
 standard = ["polars"]
 legacy = ["polars-lts-cpu"]
 viz = ["seaborn", "plotly"] # We could make viz packages optional in the future.
 api = [
+    "asyncpg",
     "fastapi",
     "uvicorn",
     "sqlalchemy",
@@ -59,8 +61,7 @@ api = [
     "sqlalchemy-utils",
     "python-multipart",
     "python-jose",
-    "bcrypt",
-    "asyncpg"
+    "bcrypt"
 ] # We could make API packages optional in the future.
 server = ["gunicorn"]
 
@@ -74,12 +75,22 @@ djlint = "^1.34.1"
 pyparsing = { extras = ["diagrams"], version = "^3.1.1" }
 isort = "^5.0"
 mypy = "^1.0"
+<<<<<<< HEAD
 mkdocstrings = { extras = ["python"], version = "^0.24.1" }
+=======
+mkdocstrings-python = "^1.0"
+>>>>>>> 64eb35c043aba04d2395db63c8c9bce008f2f18d
 mkdocs-material = "^9.5.12"
 pytest-xdist = "^3.5.0"
 pytest-testmon = "^2.1.1"
 snakeviz = "^2.2.0"
 pytest-asyncio = "^0.24.0"
+<<<<<<< HEAD
+=======
+griffe = "^1.4.1"
+mkdocs-jupyter = "^0.25.1"
+jupytext = "^1.16.4"
+>>>>>>> 64eb35c043aba04d2395db63c8c9bce008f2f18d
 
 
 [tool.ruff]
@@ -205,7 +216,17 @@ markers = [
     "patterns: tests related to the publisher-subscriber pattern",
     "forest_problem: tests related to the forest problem examples.",
     "group_scalarization: tests related to group scalarization functions and utilities.",
-    "polars: test related to the polars evaluator and math parser.",
+    "polars: tests related to the polars evaluator and math parser.",
+    "rpm: tests related to the reference point method.",
+    "scipy: tests that utilize any of the scipy optimizers.",
+    "proximal: tests related to the proximal evaluator.",
+    "api: tests related to the web API.",
+    "json: tests related to the Math JSON parser.",
+    "schema: tests related to the Problem schema.",
+    "utils: tests related to various utilities.",
+    "nogithub: tests that should not be run in GitHub actions.",
+    "simulator_support: tests related to simulator and surrogate support",
+
 ]
 pythonpath = "."
 

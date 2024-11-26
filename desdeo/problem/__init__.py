@@ -6,11 +6,10 @@ __all__ = [
     "Constraint",
     "ConstraintTypeEnum",
     "DiscreteRepresentation",
-    "EvaluatorModesEnum",
+    "Evaluator",
     "ExtraFunction",
     "forest_problem",
     "FormatEnum",
-    "GenericEvaluator",
     "GurobipyEvaluator",
     "dtlz2",
     "get_nadir_dict",
@@ -39,19 +38,31 @@ __all__ = [
     "simple_linear_test_problem",
     "simple_scenario_test_problem",
     "simple_test_problem",
+    "simulator_problem",
+    "spanish_sustainability_problem",
     "tensor_constant_from_dataframe",
+    "PolarsEvaluator",
+    "PolarsEvaluatorModesEnum",
     "ScalarizationFunction",
+    "Simulator",
     "TensorConstant",
     "TensorVariable",
     "Variable",
+    "VariableDimensionEnum",
     "VariableDomainTypeEnum",
     "VariableType",
     "VariableTypeEnum",
     "variable_dict_to_numpy_array",
+    "variable_dimension_enumerate",
     "zdt1",
 ]
 
-from .evaluator import PolarsEvaluatorModesEnum, PolarsEvaluator
+from .evaluator import (
+    PolarsEvaluator,
+    PolarsEvaluatorModesEnum,
+    VariableDimensionEnum,
+    variable_dimension_enumerate,
+)
 from .gurobipy_evaluator import GurobipyEvaluator
 from .infix_parser import InfixExpressionParser
 from .json_parser import FormatEnum, MathParser
@@ -66,6 +77,7 @@ from .schema import (
     ObjectiveTypeEnum,
     Problem,
     ScalarizationFunction,
+    Simulator,
     TensorConstant,
     TensorVariable,
     Variable,
@@ -73,6 +85,7 @@ from .schema import (
     VariableType,
     VariableTypeEnum,
 )
+from .simulator_evaluator import Evaluator
 from .sympy_evaluator import SympyEvaluator
 from .testproblems import (
     binh_and_korn,
@@ -93,6 +106,8 @@ from .testproblems import (
     simple_linear_test_problem,
     simple_scenario_test_problem,
     simple_test_problem,
+    simulator_problem,
+    spanish_sustainability_problem,
     zdt1,
 )
 from .utils import (
