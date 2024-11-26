@@ -149,3 +149,9 @@ experiment/
 debug.py
 
 Vaaler_DATA_50.csv
+# utopia
+reference_solutions.json
+
+
+# Scratch
+scratch/

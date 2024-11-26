@@ -4,6 +4,8 @@ Pre-defined problems for, e.g.,
 testing and illustration purposed are defined here.
 """
 
+from pathlib import Path
+
 import numpy as np
 import polars as pl
 
@@ -16,6 +18,7 @@ from desdeo.problem.schema import (
     Objective,
     ObjectiveTypeEnum,
     Problem,
+    Simulator,
     TensorConstant,
     TensorVariable,
     Variable,
@@ -101,20 +104,22 @@ def binh_and_korn(maximize: tuple[bool] = (False, False)) -> Problem:
         variables=[variable_1, variable_2],
         objectives=[objective_1, objective_2],
         constraints=[constraint_1, constraint_2],
+        is_twice_differentiable=True,
     )
 
 
-def river_pollution_problem(five_objective_variant: bool = True) -> Problem:
+def river_pollution_problem(*, five_objective_variant: bool = True) -> Problem:
     r"""Create a pydantic dataclass representation of the river pollution problem with either five or four variables.
 
-    The objective functions "DO city", "DO municipality", and
-    "BOD deviation" are to be minimized, while "ROI fishery" and "ROI city" are to be
+    The objective functions "DO city" ($f_1$), "DO municipality" ($f_2), and
+    "ROI fishery" ($f_3$) and "ROI city" ($f_4$) are to be
     maximized. If the four variant problem is used, the the "BOD deviation" objective
-    function is not present. The problem is defined as follows:
+    function ($f_5$) is not present, but if it is, it is to be minimized.
+    The problem is defined as follows:
 
     \begin{align*}
-    \min f_1(x) &= -4.07 - 2.27 x_1 \\
-    \min f_2(x) &= -2.60 - 0.03 x_1 - 0.02 x_2 - \frac{0.01}{1.39 - x_1^2} - \frac{0.30}{1.39 - x_2^2} \\
+    \max f_1(x) &= 4.07 + 2.27 x_1 \\
+    \max f_2(x) &= 2.60 + 0.03 x_1 + 0.02 x_2 + \frac{0.01}{1.39 - x_1^2} + \frac{0.30}{1.39 - x_2^2} \\
     \max f_3(x) &= 8.21 - \frac{0.71}{1.09 - x_1^2} \\
     \max f_4(x) &= 0.96 - \frac{0.96}{1.09 - x_2^2} \\
     \min f_5(x) &= \max(|x_1 - 0.65|, |x_2 - 0.65|) \\
@@ -150,8 +155,8 @@ def river_pollution_problem(five_objective_variant: bool = True) -> Problem:
         name="DO", symbol="x_2", variable_type="real", lowerbound=0.3, upperbound=1.0, initial_value=0.65
     )
 
-    f_1 = "-4.07 - 2.27 * x_1"
-    f_2 = "-2.60 - 0.03 * x_1 - 0.02 * x_2 - 0.01 / (1.39 - x_1**2) - 0.30 / (1.39 - x_2**2)"
+    f_1 = "4.07 + 2.27 * x_1"
+    f_2 = "2.60 + 0.03 * x_1 + 0.02 * x_2 + 0.01 / (1.39 - x_1**2) + 0.30 / (1.39 - x_2**2)"
     f_3 = "8.21 - 0.71 / (1.09 - x_1**2)"
     f_4 = "0.96 - 0.96 / (1.09 - x_2**2)"
     f_5 = "Max(Abs(x_1 - 0.65), Abs(x_2 - 0.65))"
@@ -160,9 +165,9 @@ def river_pollution_problem(five_objective_variant: bool = True) -> Problem:
         name="DO city",
         symbol="f_1",
         func=f_1,
-        maximize=False,
-        ideal=-6.34,
-        nadir=-4.75,
+        maximize=True,
+        ideal=6.34,
+        nadir=4.75,
         is_convex=True,
         is_linear=True,
         is_twice_differentiable=True,
@@ -171,9 +176,9 @@ def river_pollution_problem(five_objective_variant: bool = True) -> Problem:
         name="DO municipality",
         symbol="f_2",
         func=f_2,
-        maximize=False,
-        ideal=-3.44,
-        nadir=-2.85,
+        maximize=True,
+        ideal=3.44,
+        nadir=2.85,
         is_convex=False,
         is_linear=False,
         is_twice_differentiable=True,
@@ -220,9 +225,91 @@ def river_pollution_problem(five_objective_variant: bool = True) -> Problem:
 
     return Problem(
         name="The river pollution problem",
-        description="The river pollution problem to maximize return of investments and minimize pollution.",
+        description="The river pollution problem to maximize return of investments (ROI) and dissolved oxygen (DO).",
         variables=[variable_1, variable_2],
         objectives=objectives,
+    )
+
+
+def river_pollution_problem_discrete(*, five_objective_variant: bool = True) -> Problem:
+    """Create a pydantic dataclass representation of the river pollution problem with either five or four variables.
+
+    The objective functions "DO city" ($f_1$), "DO municipality" ($f_2), and
+    "ROI fishery" ($f_3$) and "ROI city" ($f_4$) are to be
+    maximized. If the four variant problem is used, the the "BOD deviation" objective
+    function ($f_5$) is not present, but if it is, it is to be minimized.
+    This version of the problem uses discrete representation of the variables and objectives and does not provide
+    the analytical functions for the objectives.
+
+    Args:
+        five_objective_variant (bool, optional): Whether to use to five
+            objective function variant of the problem or not. Defaults to True.
+
+    Returns:
+        Problem: the river pollution problem.
+
+    References:
+        Narula, Subhash C., and HRoland Weistroffer. "A flexible method for
+            nonlinear multicriteria decision-making problems." IEEE Transactions on
+            Systems, Man, and Cybernetics 19.4 (1989): 883-887.
+
+        Miettinen, Kaisa, and Marko M. Mäkelä. "Interactive method NIMBUS for
+            nondifferentiable multiobjective optimization problems." Multicriteria
+            Analysis: Proceedings of the XIth International Conference on MCDM, 1-6
+            August 1994, Coimbra, Portugal. Berlin, Heidelberg: Springer Berlin
+            Heidelberg, 1997.
+    """
+    filename = "datasets/river_poll_4_objs.csv"
+    trueVarNames = {"x_1": "BOD", "x_2": "DO"}
+    trueObjNames = {"f1": "DO city", "f2": "DO municipality", "f3": "ROI fishery", "f4": "ROI city"}
+    if five_objective_variant:
+        filename = "datasets/river_poll_5_objs.csv"
+        trueObjNames["f5"] = "BOD deviation"
+
+    path = Path(__file__).parent.parent.parent / filename
+    data = pl.read_csv(path, has_header=True)
+
+    variables = [
+        Variable(
+            name=trueVarNames[varName],
+            symbol=varName,
+            variable_type=VariableTypeEnum.real,
+            lowerbound=0.3,
+            upperbound=1.0,
+            initial_value=0.65,
+        )
+        for varName in trueVarNames
+    ]
+    maximize = {"f1": True, "f2": True, "f3": True, "f4": True, "f5": False}
+    ideal = {objName: (data[objName].max() if maximize[objName] else data[objName].min()) for objName in trueObjNames}
+    nadir = {objName: (data[objName].min() if maximize[objName] else data[objName].max()) for objName in trueObjNames}
+    units = {"f1": "mg/L", "f2": "mg/L", "f3": "%", "f4": "%", "f5": "mg/L"}
+
+    objectives = [
+        Objective(
+            name=trueObjNames[objName],
+            symbol=objName,
+            func=None,
+            unit=units[objName],
+            objective_type=ObjectiveTypeEnum.data_based,
+            maximize=maximize[objName],
+            ideal=ideal[objName],
+            nadir=nadir[objName],
+        )
+        for objName in trueObjNames
+    ]
+
+    discrete_def = DiscreteRepresentation(
+        variable_values=data[list(trueVarNames.keys())].to_dict(),
+        objective_values=data[list(trueObjNames.keys())].to_dict(),
+    )
+
+    return Problem(
+        name="The river pollution problem (Discrete)",
+        description="The river pollution problem to maximize return of investments (ROI) and dissolved oxygen (DO).",
+        variables=variables,
+        objectives=objectives,
+        discrete_representation=discrete_def,
     )
 
 
@@ -390,14 +477,44 @@ def momip_ti2() -> Problem:
     x_4 = Variable(name="x_4", symbol="x_4", variable_type=VariableTypeEnum.integer)
 
     f_1 = Objective(
-        name="f_1", symbol="f_1", func="x_1 + x_3", objective_type=ObjectiveTypeEnum.analytical, maximize=False
+        name="f_1",
+        symbol="f_1",
+        func="x_1 + x_3",
+        objective_type=ObjectiveTypeEnum.analytical,
+        maximize=False,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
     )
     f_2 = Objective(
-        name="f_2", symbol="f_2", func="x_2 + x_4", objective_type=ObjectiveTypeEnum.analytical, maximize=False
+        name="f_2",
+        symbol="f_2",
+        func="x_2 + x_4",
+        objective_type=ObjectiveTypeEnum.analytical,
+        maximize=False,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
     )
 
-    con_1 = Constraint(name="g_1", symbol="g_1", cons_type=ConstraintTypeEnum.LTE, func="x_1**2 + x_2**2 - 0.25")
-    con_2 = Constraint(name="g_2", symbol="g_2", cons_type=ConstraintTypeEnum.LTE, func="x_3**2 + x_4**2 - 1")
+    con_1 = Constraint(
+        name="g_1",
+        symbol="g_1",
+        cons_type=ConstraintTypeEnum.LTE,
+        func="x_1**2 + x_2**2 - 0.25",
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+    con_2 = Constraint(
+        name="g_2",
+        symbol="g_2",
+        cons_type=ConstraintTypeEnum.LTE,
+        func="x_3**2 + x_4**2 - 1",
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
 
     return Problem(
         name="MOMIP Test Instance 2",
@@ -450,6 +567,9 @@ def momip_ti7() -> Problem:
         ideal=-3,
         nadir=3,
         maximize=False,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
     )
     f_2 = Objective(
         name="f_2",
@@ -459,6 +579,9 @@ def momip_ti7() -> Problem:
         ideal=3,
         nadir=-3,
         maximize=True,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
     )
     f_3 = Objective(
         name="f_3",
@@ -468,10 +591,29 @@ def momip_ti7() -> Problem:
         ideal=-3,
         nadir=3,
         maximize=False,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
     )
 
-    con_1 = Constraint(name="g_1", symbol="g_1", cons_type=ConstraintTypeEnum.LTE, func="x_1**2 + x_2**2 + x_3**2 - 1")
-    con_2 = Constraint(name="g_2", symbol="g_2", cons_type=ConstraintTypeEnum.LTE, func="x_4**2 + x_5**2 + x_6**2 - 1")
+    con_1 = Constraint(
+        name="g_1",
+        symbol="g_1",
+        cons_type=ConstraintTypeEnum.LTE,
+        func="x_1**2 + x_2**2 + x_3**2 - 1",
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+    con_2 = Constraint(
+        name="g_2",
+        symbol="g_2",
+        cons_type=ConstraintTypeEnum.LTE,
+        func="x_4**2 + x_5**2 + x_6**2 - 1",
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
 
     return Problem(
         name="MOMIP Test Instance 7",
@@ -650,7 +792,7 @@ def dtlz2(n_variables: int, n_objectives: int) -> Problem:
                 func=f_m_expr,
                 maximize=False,
                 ideal=0,
-                nadir=2,  # Assuming the range of g and the trigonometric functions
+                nadir=1,  # Assuming the range of g and the trigonometric functions
                 is_convex=False,
                 is_linear=False,
                 is_twice_differentiable=True,
@@ -747,6 +889,9 @@ def nimbus_test_problem() -> Problem:
             objective_type=ObjectiveTypeEnum.analytical,
             ideal=9.0,
             nadir=1.0,
+            is_convex=False,
+            is_linear=False,
+            is_twice_differentiable=True,
         ),
         Objective(
             name="Objective 2",
@@ -756,6 +901,9 @@ def nimbus_test_problem() -> Problem:
             objective_type=ObjectiveTypeEnum.analytical,
             ideal=2.0,
             nadir=18.0,
+            is_convex=False,
+            is_linear=False,
+            is_twice_differentiable=True,
         ),
         Objective(
             name="Objective 3",
@@ -765,6 +913,9 @@ def nimbus_test_problem() -> Problem:
             objective_type=ObjectiveTypeEnum.analytical,
             ideal=-6.0,
             nadir=-2.0,
+            is_convex=True,
+            is_linear=True,
+            is_twice_differentiable=True,
         ),
         Objective(
             name="Objective 4",
@@ -774,6 +925,9 @@ def nimbus_test_problem() -> Problem:
             objective_type=ObjectiveTypeEnum.analytical,
             ideal=-2.0,
             nadir=2.0,
+            is_convex=True,
+            is_linear=True,
+            is_twice_differentiable=True,
         ),
         Objective(
             name="Objective 5",
@@ -783,6 +937,9 @@ def nimbus_test_problem() -> Problem:
             objective_type=ObjectiveTypeEnum.analytical,
             ideal=60.0,
             nadir=4860.0,
+            is_convex=False,
+            is_linear=False,
+            is_twice_differentiable=True,
         ),
         Objective(
             name="Objective 6",
@@ -792,6 +949,9 @@ def nimbus_test_problem() -> Problem:
             objective_type=ObjectiveTypeEnum.analytical,
             ideal=480.0,
             nadir=9280.0,
+            is_convex=False,
+            is_linear=False,
+            is_twice_differentiable=True,
         ),
     ]
 
@@ -1048,12 +1208,8 @@ def simple_scenario_test_problem():
         scenario_keys=["s_1", "s_2"],
     )
 
-def re21(
-    f: float = 10.0,
-    sigma: float = 10.0,
-    e: float = 2.0 * 1e5,
-    l: float = 200.0
-) -> Problem:
+
+def re21(f: float = 10.0, sigma: float = 10.0, e: float = 2.0 * 1e5, l: float = 200.0) -> Problem:
     r"""Defines the four bar truss design problem.
 
     The objective functions and constraints for the four bar truss design problem are defined as follows:
@@ -1097,32 +1253,32 @@ def re21(
         symbol="x_1",
         variable_type=VariableTypeEnum.real,
         lowerbound=a,
-        upperbound=3*a,
-        initial_value=2*a
+        upperbound=3 * a,
+        initial_value=2 * a,
     )
     x_2 = Variable(
         name="x_2",
         symbol="x_2",
         variable_type=VariableTypeEnum.real,
-        lowerbound=np.sqrt(2.0)*a,
-        upperbound=3*a,
-        initial_value=2*a
+        lowerbound=np.sqrt(2.0) * a,
+        upperbound=3 * a,
+        initial_value=2 * a,
     )
     x_3 = Variable(
         name="x_3",
         symbol="x_3",
         variable_type=VariableTypeEnum.real,
-        lowerbound=np.sqrt(2.0)*a,
-        upperbound=3*a,
-        initial_value=2*a
+        lowerbound=np.sqrt(2.0) * a,
+        upperbound=3 * a,
+        initial_value=2 * a,
     )
     x_4 = Variable(
         name="x_4",
         symbol="x_4",
         variable_type=VariableTypeEnum.real,
         lowerbound=a,
-        upperbound=3*a,
-        initial_value=2*a
+        upperbound=3 * a,
+        initial_value=2 * a,
     )
 
     f_1 = Objective(
@@ -1131,8 +1287,8 @@ def re21(
         func=f"{l} * ((2 * x_1) + {np.sqrt(2.0)} * x_2 + Sqrt(x_3) + x_4)",
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     f_2 = Objective(
         name="f_2",
@@ -1140,16 +1296,17 @@ def re21(
         func=f"({(f * l) / e} * ((2.0 / x_1) + (2.0 * {np.sqrt(2.0)} / x_2) - (2.0 * {np.sqrt(2.0)} / x_3) + (2.0 / x_4)))",
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
 
     return Problem(
         name="RE21",
         description="the four bar truss design problem",
         variables=[x_1, x_2, x_3, x_4],
-        objectives=[f_1, f_2]
+        objectives=[f_1, f_2],
     )
+
 
 def re22() -> Problem:
     r"""The reinforced concrete beam design problem.
@@ -1177,31 +1334,93 @@ def re22() -> Problem:
         Problem: an instance of the reinforced concrete beam design problem.
     """
     x_2 = Variable(
-        name="x_2",
-        symbol="x_2",
-        variable_type=VariableTypeEnum.real,
-        lowerbound=0,
-        upperbound=20,
-        initial_value=10
+        name="x_2", symbol="x_2", variable_type=VariableTypeEnum.real, lowerbound=0, upperbound=20, initial_value=10
     )
     x_3 = Variable(
-        name="x_3",
-        symbol="x_3",
-        variable_type=VariableTypeEnum.real,
-        lowerbound=0,
-        upperbound=40,
-        initial_value=20
+        name="x_3", symbol="x_3", variable_type=VariableTypeEnum.real, lowerbound=0, upperbound=40, initial_value=20
     )
 
     # x_1 pre-defined discrete values
-    feasible_values = np.array([0.20, 0.31, 0.40, 0.44, 0.60, 0.62, 0.79, 0.80, 0.88, 0.93,
-                            1.0, 1.20, 1.24, 1.32, 1.40, 1.55, 1.58, 1.60, 1.76, 1.80,
-                            1.86, 2.0, 2.17, 2.20, 2.37, 2.40, 2.48, 2.60, 2.64, 2.79,
-                            2.80, 3.0, 3.08, 3.10, 3.16, 3.41, 3.52, 3.60, 3.72, 3.95,
-                            3.96, 4.0, 4.03, 4.20, 4.34, 4.40, 4.65, 4.74, 4.80, 4.84,
-                            5.0, 5.28, 5.40, 5.53, 5.72, 6.0, 6.16, 6.32, 6.60, 7.11,
-                            7.20, 7.80, 7.90, 8.0, 8.40, 8.69, 9.0, 9.48, 10.27, 11.0,
-                            11.06, 11.85, 12.0, 13.0, 14.0, 15.0])
+    feasible_values = np.array(
+        [
+            0.20,
+            0.31,
+            0.40,
+            0.44,
+            0.60,
+            0.62,
+            0.79,
+            0.80,
+            0.88,
+            0.93,
+            1.0,
+            1.20,
+            1.24,
+            1.32,
+            1.40,
+            1.55,
+            1.58,
+            1.60,
+            1.76,
+            1.80,
+            1.86,
+            2.0,
+            2.17,
+            2.20,
+            2.37,
+            2.40,
+            2.48,
+            2.60,
+            2.64,
+            2.79,
+            2.80,
+            3.0,
+            3.08,
+            3.10,
+            3.16,
+            3.41,
+            3.52,
+            3.60,
+            3.72,
+            3.95,
+            3.96,
+            4.0,
+            4.03,
+            4.20,
+            4.34,
+            4.40,
+            4.65,
+            4.74,
+            4.80,
+            4.84,
+            5.0,
+            5.28,
+            5.40,
+            5.53,
+            5.72,
+            6.0,
+            6.16,
+            6.32,
+            6.60,
+            7.11,
+            7.20,
+            7.80,
+            7.90,
+            8.0,
+            8.40,
+            8.69,
+            9.0,
+            9.48,
+            10.27,
+            11.0,
+            11.06,
+            11.85,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+        ]
+    )
 
     variables = [x_2, x_3]
 
@@ -1209,11 +1428,7 @@ def re22() -> Problem:
     x_1_eprs = []
     for i in range(len(feasible_values)):
         x = Variable(
-            name=f"x_1_{i}",
-            symbol=f"x_1_{i}",
-            variable_type=VariableTypeEnum.binary,
-            lowerbound=0,
-            upperbound=1
+            name=f"x_1_{i}", symbol=f"x_1_{i}", variable_type=VariableTypeEnum.binary, lowerbound=0, upperbound=1
         )
         variables.append(x)
         expr = f"x_1_{i} * {feasible_values[i]}"
@@ -1224,11 +1439,7 @@ def re22() -> Problem:
     sum_expr = " + ".join(sum_expr) + " - 1"
 
     x_1_con = Constraint(
-        name="x_1_con",
-        symbol="x_1_con",
-        cons_type=ConstraintTypeEnum.EQ,
-        func=sum_expr,
-        is_linear=True
+        name="x_1_con", symbol="x_1_con", cons_type=ConstraintTypeEnum.EQ, func=sum_expr, is_linear=True
     )
 
     g_1 = Constraint(
@@ -1237,8 +1448,8 @@ def re22() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func=f"- (({x_1_eprs}) * x_3 - 7.735 * (({x_1_eprs})**2 / x_2) - 180)",
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     g_2 = Constraint(
         name="g_2",
@@ -1246,8 +1457,8 @@ def re22() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func="-(4 - x_3 / x_2)",
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
 
     f_1 = Objective(
@@ -1256,8 +1467,8 @@ def re22() -> Problem:
         func=f"29.4 * ({x_1_eprs}) + 0.6 * x_2 * x_3",
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     f_2 = Objective(
         name="f_2",
@@ -1265,16 +1476,17 @@ def re22() -> Problem:
         func=f"Max(({x_1_eprs}) * x_3 - 7.735 * (({x_1_eprs})**2 / x_2) - 180, 0) + Max(4 - x_3 / x_2, 0)",
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=False
+        is_convex=False,  # Not checked
+        is_twice_differentiable=False,
     )
     return Problem(
         name="re22",
         description="The reinforced concrete beam design problem",
         variables=variables,
         objectives=[f_1, f_2],
-        constraints=[g_1, g_2, x_1_con]
+        constraints=[g_1, g_2, x_1_con],
     )
+
 
 def re23() -> Problem:
     r"""The pressure vessel design problem.
@@ -1302,34 +1514,10 @@ def re23() -> Problem:
     Returns:
         Problem: an instance of the pressure vessel design problem.
     """
-    x_1 = Variable(
-        name="x_1",
-        symbol="x_1",
-        variable_type=VariableTypeEnum.integer,
-        lowerbound=1,
-        upperbound=100
-    )
-    x_2 = Variable(
-        name="x_2",
-        symbol="x_2",
-        variable_type=VariableTypeEnum.integer,
-        lowerbound=1,
-        upperbound=100
-    )
-    x_3 = Variable(
-        name="x_3",
-        symbol="x_3",
-        variable_type=VariableTypeEnum.real,
-        lowerbound=10,
-        upperbound=200
-    )
-    x_4 = Variable(
-        name="x_4",
-        symbol="x_4",
-        variable_type=VariableTypeEnum.real,
-        lowerbound=10,
-        upperbound=240
-    )
+    x_1 = Variable(name="x_1", symbol="x_1", variable_type=VariableTypeEnum.integer, lowerbound=1, upperbound=100)
+    x_2 = Variable(name="x_2", symbol="x_2", variable_type=VariableTypeEnum.integer, lowerbound=1, upperbound=100)
+    x_3 = Variable(name="x_3", symbol="x_3", variable_type=VariableTypeEnum.real, lowerbound=10, upperbound=200)
+    x_4 = Variable(name="x_4", symbol="x_4", variable_type=VariableTypeEnum.real, lowerbound=10, upperbound=240)
 
     # variables x_1 and x_2 are integer multiples of 0.0625
     x_1_exprs = "(0.0625 * x_1)"
@@ -1341,8 +1529,8 @@ def re23() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func=f"-({x_1_exprs} - 0.0193 * x_3)",
         is_linear=True,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     g_2 = Constraint(
         name="g_2",
@@ -1350,8 +1538,8 @@ def re23() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func=f"-({x_2_exprs} - 0.00954 * x_3)",
         is_linear=True,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     g_3 = Constraint(
         name="g_3",
@@ -1359,8 +1547,8 @@ def re23() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func=f"-({np.pi} * x_3**2 * x_4 + (4/3) * {np.pi} * x_3**3 - 1296000)",
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
 
     f_1 = Objective(
@@ -1369,8 +1557,8 @@ def re23() -> Problem:
         func=f"0.6224 * {x_1_exprs} * x_3 * x_4 + (1.7781 * {x_2_exprs} * x_3**2) + (3.1661 * {x_1_exprs}**2 * x_4) + (19.84 * {x_1_exprs}**2 * x_3)",
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     f_2 = Objective(
         name="f_2",
@@ -1378,16 +1566,17 @@ def re23() -> Problem:
         func=f"Max({x_1_exprs} - 0.0193 * x_3, 0) + Max({x_2_exprs} - 0.00954 * x_3, 0) + Max({np.pi} * x_3**2 * x_4 + (4/3) * {np.pi} * x_3**3 - 1296000, 0)",
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=False
+        is_convex=False,  # Not checked
+        is_twice_differentiable=False,
     )
     return Problem(
         name="re23",
         description="The pressure vessel design problem",
         variables=[x_1, x_2, x_3, x_4],
         objectives=[f_1, f_2],
-        constraints=[g_1, g_2, g_3]
+        constraints=[g_1, g_2, g_3],
     )
+
 
 def re24() -> Problem:
     r"""The hatch cover design problem.
@@ -1421,20 +1610,8 @@ def re24() -> Problem:
     Returns:
         Problem: an instance of the hatch cover design problem.
     """
-    x_1 = Variable(
-        name="x_1",
-        symbol="x_1",
-        variable_type=VariableTypeEnum.real,
-        lowerbound=0.5,
-        upperbound=4
-    )
-    x_2 = Variable(
-        name="x_2",
-        symbol="x_2",
-        variable_type=VariableTypeEnum.real,
-        lowerbound=4,
-        upperbound=50
-    )
+    x_1 = Variable(name="x_1", symbol="x_1", variable_type=VariableTypeEnum.real, lowerbound=0.5, upperbound=4)
+    x_2 = Variable(name="x_2", symbol="x_2", variable_type=VariableTypeEnum.real, lowerbound=4, upperbound=50)
 
     sigma_b = "(4500 / (x_1 * x_2))"
     sigma_k = "((700000 * x_1**2) / 100)"
@@ -1447,8 +1624,8 @@ def re24() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func=f"-(1 - {sigma_b} / 700)",
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     g_2 = Constraint(
         name="g_2",
@@ -1456,8 +1633,8 @@ def re24() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func=f"-(1 - {tau} / 450)",
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     g_3 = Constraint(
         name="g_3",
@@ -1465,8 +1642,8 @@ def re24() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func=f"-(1 - {delta} / 1.5)",
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     g_4 = Constraint(
         name="g_4",
@@ -1474,8 +1651,8 @@ def re24() -> Problem:
         cons_type=ConstraintTypeEnum.LTE,
         func=f"-(1 - {sigma_b} / {sigma_k})",
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
 
     f_1 = Objective(
@@ -1484,28 +1661,29 @@ def re24() -> Problem:
         func="x_1 + 120 * x_2",
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=True,
-        is_convex=False, # Not checked
-        is_twice_differentiable=True
+        is_convex=False,  # Not checked
+        is_twice_differentiable=True,
     )
     f_2 = Objective(
         name="f_2",
         symbol="f_2",
-        func=f"Max(1 - {sigma_b} / 700, 0) + Max(1 - {tau} / 450, 0) + Max(1 - {delta} / 1.5, 0) + Max(1 - {sigma_b} / {sigma_k}, 0)",
+        func=f"Max(-(1 - {sigma_b} / 700), 0) + Max(-(1 - {tau} / 450), 0) + Max(-(1 - {delta} / 1.5), 0) + Max(-(1 - {sigma_b} / {sigma_k}), 0)",
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=False,
-        is_convex=False, # Not checked
-        is_twice_differentiable=False
+        is_convex=False,  # Not checked
+        is_twice_differentiable=False,
     )
     return Problem(
         name="re24",
         description="The hatch cover design problem",
         variables=[x_1, x_2],
         objectives=[f_1, f_2],
-        constraints=[g_1, g_2, g_3, g_4]
+        constraints=[g_1, g_2, g_3, g_4],
     )
 
+
 def simple_knapsack_vectors():
-    """Define a simpl variant of the knapsack problem that utilizes vectors (TensorVaribale and TensorConstant)."""
+    """Define a simple variant of the knapsack problem that utilizes vectors (TensorVariable and TensorConstant)."""
     n_items = 4
     weight_values = [2, 3, 4, 5]
     profit_values = [3, 5, 6, 8]
@@ -1625,7 +1803,7 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
     # if compared, the stock values are calculated by substacting the value after 2025 period from
     # the value after the 2035 period (in other words, last value - first value)
     if comparing:
-        selected_df_w = df.filter(pl.col("holding") == holding).select([ "unit", "schedule", "stock_2025", "stock_2035"])
+        selected_df_w = df.filter(pl.col("holding") == holding).select(["unit", "schedule", "stock_2025", "stock_2035"])
         selected_df_w.group_by(["unit", "schedule"])
         rows_by_key = selected_df_w.rows_by_key(key=["unit", "schedule"])
         selected_df_key_w = df_key.select(["unit", "schedule", "treatment"])
@@ -1639,7 +1817,7 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
                 if (unique_units[i], j) in rows_by_key:
                     w_array[i][j] = rows_by_key[(unique_units[i], j)][0][1] - rows_by_key[(unique_units[i], j)][0][0]
     else:
-        selected_df_w = df.filter(pl.col("holding") == holding).select([ "unit", "schedule", "stock_2035"])
+        selected_df_w = df.filter(pl.col("holding") == holding).select(["unit", "schedule", "stock_2035"])
         selected_df_w.group_by(["unit", "schedule"])
         rows_by_key = selected_df_w.rows_by_key(key=["unit", "schedule"])
         selected_df_key_w = df_key.select(["unit", "schedule", "treatment"])
@@ -1653,7 +1831,9 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
                 if (unique_units[i], j) in rows_by_key:
                     w_array[i][j] = rows_by_key[(unique_units[i], j)][0]
 
-    selected_df_p = df.filter(pl.col("holding") == holding).select(["unit", "schedule", "harvest_value_period_2025", "harvest_value_period_2030", "harvest_value_period_2035"])
+    selected_df_p = df.filter(pl.col("holding") == holding).select(
+        ["unit", "schedule", "harvest_value_period_2025", "harvest_value_period_2030", "harvest_value_period_2035"]
+    )
     selected_df_p.group_by(["unit", "schedule"])
     rows_by_key = selected_df_p.rows_by_key(key=["unit", "schedule"])
     p_array = np.zeros((selected_df_p["unit"].n_unique(), selected_df_p["schedule"].n_unique()))
@@ -1674,22 +1854,22 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
         v = TensorConstant(
             name=f"V_{i+1}",
             symbol=f"V_{i+1}",
-            shape=[np.shape(v_array)[1]], # NOTE: vectors have to be of form [2] instead of [2,1] or [1,2]
-            values=v_array[i].tolist()
+            shape=[np.shape(v_array)[1]],  # NOTE: vectors have to be of form [2] instead of [2,1] or [1,2]
+            values=v_array[i].tolist(),
         )
         constants.append(v)
         w = TensorConstant(
             name=f"W_{i+1}",
             symbol=f"W_{i+1}",
-            shape=[np.shape(w_array)[1]], # NOTE: vectors have to be of form [2] instead of [2,1] or [1,2]
-            values=w_array[i].tolist()
+            shape=[np.shape(w_array)[1]],  # NOTE: vectors have to be of form [2] instead of [2,1] or [1,2]
+            values=w_array[i].tolist(),
         )
         constants.append(w)
         p = TensorConstant(
             name=f"P_{i+1}",
             symbol=f"P_{i+1}",
-            shape=[np.shape(p_array)[1]], # NOTE: vectors have to be of form [2] instead of [2,1] or [1,2]
-            values=p_array[i].tolist()
+            shape=[np.shape(p_array)[1]],  # NOTE: vectors have to be of form [2] instead of [2,1] or [1,2]
+            values=p_array[i].tolist(),
         )
 
         # Decision variable X
@@ -1698,10 +1878,10 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
             name=f"X_{i+1}",
             symbol=f"X_{i+1}",
             variable_type=VariableTypeEnum.binary,
-            shape=[np.shape(v_array)[1]], # NOTE: vectors have to be of form [2] instead of [2,1] or [1,2]
+            shape=[np.shape(v_array)[1]],  # NOTE: vectors have to be of form [2] instead of [2,1] or [1,2]
             lowerbounds=np.shape(v_array)[1] * [0],
             upperbounds=np.shape(v_array)[1] * [1],
-            initial_values=np.shape(v_array)[1] * [0]
+            initial_values=np.shape(v_array)[1] * [0],
         )
         variables.append(x)
 
@@ -1712,7 +1892,8 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
             cons_type=ConstraintTypeEnum.EQ,
             func=f"Sum(X_{i+1}) - 1",
             is_linear=True,
-            is_twice_differentiable=True
+            is_convex=False,  # not checked
+            is_twice_differentiable=True,
         )
         constraints.append(con)
 
@@ -1738,8 +1919,8 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
         maximize=True,
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=True,
-        is_convex=False, # not checked
-        is_twice_differentiable=True
+        is_convex=False,  # not checked
+        is_twice_differentiable=True,
     )
 
     f_2 = Objective(
@@ -1749,8 +1930,8 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
         maximize=True,
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=True,
-        is_convex=False, # not checked
-        is_twice_differentiable=True
+        is_convex=False,  # not checked
+        is_twice_differentiable=True,
     )
 
     f_3 = Objective(
@@ -1760,8 +1941,8 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
         maximize=True,
         objective_type=ObjectiveTypeEnum.analytical,
         is_linear=True,
-        is_convex=False, # not checked
-        is_twice_differentiable=True
+        is_convex=False,  # not checked
+        is_twice_differentiable=True,
     )
 
     return Problem(
@@ -1770,10 +1951,1070 @@ def forest_problem(simulation_results: str, treatment_key: str, holding: int = 1
         constants=constants,
         variables=variables,
         objectives=[f_1, f_2, f_3],
-        constraints=constraints
+        constraints=constraints,
     )
 
 
-if __name__ == "__main__":
-    problem = simple_scenario_test_problem()
-    print(problem.model_dump_json(indent=2))
+def spanish_sustainability_problem():
+    """Implements the Spanish sustainability problem."""
+    coefficients_dict = {
+        "social_linear": {
+            "x_1": -0.0108,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.185,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.00855,
+            "x_10": 0.0,
+            "x_11": 0.0,
+        },
+        "social_quadratic": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": 0.0,
+        },
+        "social_cubic": {
+            "x_1": 0.0,
+            "x_2": 9.79e-07,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": 0.0,
+        },
+        "social_log": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": 0.0,
+        },
+        "economical_linear": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.38,
+            "x_5": 0.0281,
+            "x_6": 0.0,
+            "x_7": 0.00826,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": 0.0,
+        },
+        "economical_quadratic": {
+            "x_1": -0.000316,
+            "x_2": 3.18e-05,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.000662,
+            "x_9": 0.0,
+            "x_10": 1.81e-05,
+            "x_11": 0.0,
+        },
+        "economical_cubic": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": 0.0,
+        },
+        "economical_log": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.121,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": -0.262,
+        },
+        "enviro_linear": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": -0.00122,
+            "x_11": 0.0,
+        },
+        "enviro_quadratic": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": 0.0,
+            "x_7": -0.000245,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": 1.2e-05,
+        },
+        "enviro_cubic": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": 0.0,
+            "x_6": -2.37e-06,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": 0.0,
+        },
+        "enviro_log": {
+            "x_1": 0.0,
+            "x_2": 0.0,
+            "x_3": 0.0,
+            "x_4": 0.0,
+            "x_5": -0.329,
+            "x_6": 0.0,
+            "x_7": 0.0,
+            "x_8": 0.0,
+            "x_9": 0.0,
+            "x_10": 0.0,
+            "x_11": 0.0,
+        },
+        "lower_bounds": {
+            "x_1": 1,
+            "x_2": 60,
+            "x_3": 1,
+            "x_4": 1,
+            "x_5": 1,
+            "x_6": 1,
+            "x_7": 1,
+            "x_8": 1,
+            "x_9": 40,
+            "x_10": 75,
+            "x_11": 80,
+        },
+        "upper_bounds": {
+            "x_1": 40,
+            "x_2": 90,
+            "x_3": 25,
+            "x_4": 3,
+            "x_5": 40,
+            "x_6": 15,
+            "x_7": 30,
+            "x_8": 25,
+            "x_9": 70,
+            "x_10": 105,
+            "x_11": 120,
+        },
+    }
+
+    social_cte_value = -0.46
+    economical_cte_value = 0.12
+    enviro_cte_value = 2.92
+
+    coefficients = (
+        pl.DataFrame(coefficients_dict)
+        .transpose(include_header=True, column_names=["coefficients"])
+        .unnest("coefficients")
+    )
+
+    variable_names = [f"x_{i}" for i in range(1, 12)]
+    n_variables = len(variable_names)
+
+    # Define constants
+    # For the social indicator
+    social_linear = TensorConstant(
+        name="Linear coefficients for the social indicator",
+        symbol="beta_social",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "social_linear").row(0)[1:]),
+    )
+
+    social_quadratic = TensorConstant(
+        name="Quadratic coefficients for the social indicator",
+        symbol="gamma_social",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "social_quadratic").row(0)[1:]),
+    )
+
+    social_cubic = TensorConstant(
+        name="Cubic coefficients for the social indicator",
+        symbol="delta_social",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "social_cubic").row(0)[1:]),
+    )
+
+    social_log = TensorConstant(
+        name="Logarithmic coefficients for the social indicator",
+        symbol="omega_social",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "social_log").row(0)[1:]),
+    )
+
+    social_c = Constant(
+        name="Constant coefficient for the social indicator", symbol="cte_social", value=social_cte_value
+    )
+
+    # For the economical indicator
+    economical_linear = TensorConstant(
+        name="Linear coefficients for the economical indicator",
+        symbol="beta_economical",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "economical_linear").row(0)[1:]),
+    )
+
+    economical_quadratic = TensorConstant(
+        name="Quadratic coefficients for the economical indicator",
+        symbol="gamma_economical",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "economical_quadratic").row(0)[1:]),
+    )
+
+    economical_cubic = TensorConstant(
+        name="Cubic coefficients for the economical indicator",
+        symbol="delta_economical",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "economical_cubic").row(0)[1:]),
+    )
+
+    economical_log = TensorConstant(
+        name="Logarithmic coefficients for the economical indicator",
+        symbol="omega_economical",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "economical_log").row(0)[1:]),
+    )
+
+    economical_c = Constant(
+        name="Constant coefficient for the economical indicator", symbol="cte_economical", value=economical_cte_value
+    )
+
+    # For the environmental indicator
+    enviro_linear = TensorConstant(
+        name="Linear coefficients for the environmental indicator",
+        symbol="beta_enviro",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "enviro_linear").row(0)[1:]),
+    )
+
+    enviro_quadratic = TensorConstant(
+        name="Quadratic coefficients for the environmental indicator",
+        symbol="gamma_enviro",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "enviro_quadratic").row(0)[1:]),
+    )
+
+    enviro_cubic = TensorConstant(
+        name="Cubic coefficients for the environmental indicator",
+        symbol="delta_enviro",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "enviro_cubic").row(0)[1:]),
+    )
+
+    enviro_log = TensorConstant(
+        name="Logarithmic coefficients for the environmental indicator",
+        symbol="omega_enviro",
+        shape=[n_variables],
+        values=list(coefficients.filter(pl.col("column") == "enviro_log").row(0)[1:]),
+    )
+
+    enviro_c = Constant(
+        name="Constant coefficient for the environmental indicator", symbol="cte_enviro", value=enviro_cte_value
+    )
+
+    constants = [
+        social_linear,
+        social_quadratic,
+        social_cubic,
+        social_log,
+        social_c,
+        economical_linear,
+        economical_quadratic,
+        economical_cubic,
+        economical_log,
+        economical_c,
+        enviro_linear,
+        enviro_quadratic,
+        enviro_cubic,
+        enviro_log,
+        enviro_c,
+    ]
+
+    # Define variables
+    x = TensorVariable(
+        name="Variables 'x_1' through 'x_11' defined as a vector.",
+        symbol="X",
+        variable_type=VariableTypeEnum.real,
+        shape=[n_variables],
+        lowerbounds=list(coefficients.filter(pl.col("column") == "lower_bounds").row(0)[1:]),
+        upperbounds=list(coefficients.filter(pl.col("column") == "upper_bounds").row(0)[1:]),
+        initial_values=1.0,
+    )
+
+    variables = [x]
+
+    # Define objective functions
+    # Social
+    f1_expr = "cte_social + X @ beta_social + (X**2) @ gamma_social + (X**3) @ delta_social + Ln(X) @ omega_social"
+
+    f1 = Objective(
+        name="Societal indicator",
+        symbol="f1",
+        func=f1_expr,
+        objective_type=ObjectiveTypeEnum.analytical,
+        ideal=1.17,
+        nadir=1.15,
+        maximize=True,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    # economical
+    f2_expr = (
+        "cte_economical + beta_economical @ X + gamma_economical @ (X**2) + delta_economical @ (X**3) "
+        "+ omega_economical @ Ln(X)"
+    )
+
+    f2 = Objective(
+        name="economical indicator",
+        symbol="f2",
+        func=f2_expr,
+        objective_type=ObjectiveTypeEnum.analytical,
+        ideal=1.98,
+        nadir=0.63,
+        maximize=True,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    # Environmental
+    f3_expr = "cte_enviro + beta_enviro @ X + gamma_enviro @ (X**2) + delta_enviro @ (X**3) " "+ omega_enviro @ Ln(X)"
+
+    f3 = Objective(
+        name="Environmental indicator",
+        symbol="f3",
+        func=f3_expr,
+        objective_type=ObjectiveTypeEnum.analytical,
+        ideal=2.93,
+        nadir=1.52,
+        maximize=True,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    objectives = [f1, f2, f3]
+
+    # Define constraints
+
+    con_1_expr = "(18844.09 * X[3] + 31749.1) - X[9]**3"
+    con_1 = Constraint(
+        name="Independent X[3], dependent X[9]. Less than part.",
+        symbol="con_1",
+        func=con_1_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_2_expr = "X[9]**3 - (25429.65 * X[3] + 114818.5)"
+    con_2 = Constraint(
+        name="Independent X[3], dependent X[9]. More than part.",
+        symbol="con_2",
+        func=con_2_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_3_expr = "(0.0696724 * X[3] + 0.4026487) - X[4]"
+    con_3 = Constraint(
+        name="Independent X[3], dependent X[4]. Less than part.",
+        symbol="con_3",
+        func=con_3_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
+    )
+
+    con_4_expr = "X[4] - (0.1042275 * X[3] + 0.8385217)"
+    con_4 = Constraint(
+        name="Independent X[3], dependent X[4]. More than part.",
+        symbol="con_4",
+        func=con_4_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
+    )
+
+    con_5_expr = "(2.90e-06 * X[9]**3 + 0.2561155) - X[4]"
+    con_5 = Constraint(
+        name="Independent X[9]^3, dependent X[4]. Less than part.",
+        symbol="con_5",
+        func=con_5_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_6_expr = "X[4] - (4.07e-06 * X[9]**3 + 0.6763224)"
+    con_6 = Constraint(
+        name="Independent X[9]^3, dependent X[4]. More than part.",
+        symbol="con_6",
+        func=con_6_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_7_expr = "(-0.0121761 * X[6] + 4.272166) - Ln(X[9])"
+    con_7 = Constraint(
+        name="Independent X[6], dependent Ln(X[9]). Less than part.",
+        symbol="con_7",
+        func=con_7_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_8_expr = "Ln(X[9]) - (-0.0078968 * X[6] + 4.387051)"
+    con_8 = Constraint(
+        name="Independent X[6], dependent Ln(X[9]). More than part.",
+        symbol="con_8",
+        func=con_8_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_9_expr = "(-0.6514348 * Ln(X[1]) + 5.368645) - Ln(X[9])"
+    con_9 = Constraint(
+        name="Independent Ln(X[1]), dependent Ln(X[9]). Less than part.",
+        symbol="con_9",
+        func=con_9_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_10_expr = "Ln(X[9]) - (-0.3965489 * Ln(X[1]) + 6.174052)"
+    con_10 = Constraint(
+        name="Independent Ln(X[1]), dependent Ln(X[9]). More than part.",
+        symbol="con_10",
+        func=con_10_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_11_expr = "(-1.660054 * Ln(X[1]) + 3.524567) - Ln(X[4])"
+    con_11 = Constraint(
+        name="Independent Ln(X[1]), dependent Ln(X[4]). Less than part.",
+        symbol="con_11",
+        func=con_11_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_12_expr = "Ln(X[4]) - (-1.045873 * Ln(X[1]) + 5.4653)"
+    con_12 = Constraint(
+        name="Independent Ln(X[1]), dependent Ln(X[4]). More than part.",
+        symbol="con_12",
+        func=con_12_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_13_expr = "(54.36616 * X[1] - 1525.248) - X[6]**2"
+    con_13 = Constraint(
+        name="Independent X[1], dependent X[6]^2. Less than part.",
+        symbol="con_13",
+        func=con_13_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_14_expr = "X[6]**2 - (90.89275 * X[1] - 581.0572)"
+    con_14 = Constraint(
+        name="Independent X[1], dependent X[6]^2. More than part.",
+        symbol="con_14",
+        func=con_14_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_15_expr = "(0.5171291 * X[1]**3 + 4384.214) - X[7]**3"
+    con_15 = Constraint(
+        name="Independent X[1]^3, dependent X[7]^3. Less than part.",
+        symbol="con_15",
+        func=con_15_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_16_expr = "X[7]**3 - (0.7551735 * X[1]**3 + 13106.71)"
+    con_16 = Constraint(
+        name="Independent X[1]^3, dependent X[7]^3. More than part.",
+        symbol="con_16",
+        func=con_16_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_17_expr = "(-9.537996 * Ln(X[3]) + 36.99891) - X[7]"
+    con_17 = Constraint(
+        name="Independent Ln(X[3]), dependent X[7]. Less than part.",
+        symbol="con_17",
+        func=con_17_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_18_expr = "X[7] - (-5.908175 * Ln(X[3]) + 44.97534)"
+    con_18 = Constraint(
+        name="Independent Ln(X[3]), dependent X[7]. More than part.",
+        symbol="con_18",
+        func=con_18_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_19_expr = "(-1.233805 * Ln(X[9]) + 6.303354) - Ln(X[7])"
+    con_19 = Constraint(
+        name="Independent Ln(X[9]), dependent Ln(X[7]). Less than part.",
+        symbol="con_19",
+        func=con_19_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_20_expr = "Ln(X[7]) - (-0.7622909 * Ln(X[9]) + 8.251018)"
+    con_20 = Constraint(
+        name="Independent Ln(X[9]), dependent Ln(X[7]). More than part.",
+        symbol="con_20",
+        func=con_20_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_21_expr = "(0.0701477 * X[10] + 4.270586) - X[8]"
+    con_21 = Constraint(
+        name="Independent X[10], dependent X[8]. Less than part.",
+        symbol="con_21",
+        func=con_21_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
+    )
+
+    con_22_expr = "X[8] - (0.1216334 * X[10] + 6.975359)"
+    con_22 = Constraint(
+        name="Independent X[10], dependent X[8]. More than part.",
+        symbol="con_22",
+        func=con_22_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=True,
+        is_convex=True,
+        is_twice_differentiable=True,
+    )
+
+    con_23_expr = "(-11.7387 * Ln(X[4]) + 25.75422) - X[7]"
+    con_23 = Constraint(
+        name="Independent Ln(X[4]), dependent X[7]. Less than part.",
+        symbol="con_23",
+        func=con_23_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_24_expr = "X[7] - (-6.886529 * Ln(X[4]) + 28.89969)"
+    con_24 = Constraint(
+        name="Independent Ln(X[4]), dependent X[7]. More than part.",
+        symbol="con_24",
+        func=con_24_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_25_expr = "(-1217.427 * Ln(X[4]) + 773.2538) - X[6]**2"
+    con_25 = Constraint(
+        name="Independent Ln(X[4]), dependent X[6]^2. Less than part.",
+        symbol="con_25",
+        func=con_25_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_26_expr = "X[6]**2 - (-677.1691 * Ln(X[4]) + 1123.481)"
+    con_26 = Constraint(
+        name="Independent Ln(X[4]), dependent X[6]^2. More than part.",
+        symbol="con_26",
+        func=con_26_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_27_expr = "(-0.0793273 * X[1] + 3.300731) - Ln(X[3])"
+    con_27 = Constraint(
+        name="Independent X[1], dependent Ln(X[3]). Less than part.",
+        symbol="con_27",
+        func=con_27_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_28_expr = "Ln(X[3]) - (-0.0516687 * X[1] + 4.015687)"
+    con_28 = Constraint(
+        name="Independent X[1], dependent Ln(X[3]). More than part.",
+        symbol="con_28",
+        func=con_28_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_29_expr = "(-6.32e-06 * X[2]**3 + 3.694027) - Ln(X[6])"
+    con_29 = Constraint(
+        name="Independent X[2]^3, dependent Ln(X[6]). Less than part.",
+        symbol="con_29",
+        func=con_29_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_30_expr = "Ln(X[6]) - (-3.72e-06 * X[2]**3 + 4.566568)"
+    con_30 = Constraint(
+        name="Independent X[2]^3, dependent Ln(X[6]). More than part.",
+        symbol="con_30",
+        func=con_30_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_31_expr = "(-19.18876 * Ln(X[3]) + 44.91148) - X[6]"
+    con_31 = Constraint(
+        name="Independent Ln(X[3]), dependent X[6]. Less than part.",
+        symbol="con_31",
+        func=con_31_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_32_expr = "X[6] - (-12.08424 * Ln(X[3]) + 60.52347)"
+    con_32 = Constraint(
+        name="Independent Ln(X[3]), dependent X[6]. More than part.",
+        symbol="con_32",
+        func=con_32_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_33_expr = "(0.6393434 * Ln(X[4]) + 1.433712) - Ln(X[8])"
+    con_33 = Constraint(
+        name="Independent Ln(X[4]), dependent Ln(X[8]). Less than part.",
+        symbol="con_33",
+        func=con_33_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_34_expr = "Ln(X[8]) - (1.1418 * Ln(X[4]) + 1.759434)"
+    con_34 = Constraint(
+        name="Independent Ln(X[4]), dependent Ln(X[8]). More than part.",
+        symbol="con_34",
+        func=con_34_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_f1_1_expr = "-1.0*f1"
+    con_f1_1 = Constraint(
+        name="f1 greater than zero",
+        symbol="con_f1_1",
+        func=con_f1_1_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_f1_2_expr = "f1 - 4.0"
+    con_f1_2 = Constraint(
+        name="f1 less than four",
+        symbol="con_f1_2",
+        func=con_f1_2_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_f2_1_expr = "-1.0*f2"
+    con_f2_1 = Constraint(
+        name="f2 greater than zero",
+        symbol="con_f2_1",
+        func=con_f2_1_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_f2_2_expr = "f2 - 4.0"
+    con_f2_2 = Constraint(
+        name="f2 less than four",
+        symbol="con_f2_2",
+        func=con_f2_2_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_f3_1_expr = "-1.0*f3"
+    con_f3_1 = Constraint(
+        name="f3 greater than zero",
+        symbol="con_f3_1",
+        func=con_f3_1_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    con_f3_2_expr = "f3 - 4.0"
+    con_f3_2 = Constraint(
+        name="f3 less than four",
+        symbol="con_f3_2",
+        func=con_f3_2_expr,
+        cons_type=ConstraintTypeEnum.LTE,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    constraints = [
+        con_1,
+        con_2,
+        con_3,
+        con_4,
+        con_5,
+        con_6,
+        con_7,
+        con_8,
+        con_9,
+        con_10,
+        con_11,
+        con_12,
+        con_13,
+        con_14,
+        con_15,
+        con_16,
+        con_17,
+        con_18,
+        con_19,
+        con_20,
+        con_21,
+        con_22,
+        con_23,
+        con_24,
+        con_25,
+        con_26,
+        con_27,
+        con_28,
+        con_29,
+        con_30,
+        con_31,
+        con_32,
+        con_33,
+        con_34,
+        con_f1_1,
+        con_f1_2,
+        con_f2_1,
+        con_f2_2,
+        con_f3_1,
+        con_f3_2,
+    ]
+
+    return Problem(
+        name="Spanish sustainability problem.",
+        description="Defines a sustainability problem with three indicators: societal, economical, and environmental.",
+        constants=constants,
+        variables=variables,
+        objectives=objectives,
+        constraints=constraints,
+    )
+
+
+def spanish_sustainability_problem_discrete():
+    """Implements the Spanish sustainability problem using Pareto front representation."""
+    filename = "datasets/sustainability_spanish.csv"
+    varnames = [f"x{i}" for i in range(1, 12)]
+    objNames = {"f1": "social", "f2": "economic", "f3": "environmental"}
+
+    path = Path(__file__).parent.parent.parent / filename
+    data = pl.read_csv(path, has_header=True)
+
+    data = data.rename({"social": "f1", "economic": "f2", "environmental": "f3"})
+
+    variables = [
+        Variable(
+            name=varname,
+            symbol=varname,
+            variable_type=VariableTypeEnum.real,
+            lowerbound=data[varname].min(),
+            upperbound=data[varname].max(),
+            initial_value=data[varname].mean(),
+        )
+        for varname in varnames
+    ]
+
+    objectives = [
+        Objective(
+            name=objNames[objname],
+            symbol=objname,
+            objective_type=ObjectiveTypeEnum.data_based,
+            ideal=data[objname].max(),
+            nadir=data[objname].min(),
+            maximize=True,
+        )
+        for objname in objNames
+    ]
+
+    discrete_def = DiscreteRepresentation(
+        variable_values=data[varnames].to_dict(),
+        objective_values=data[[obj.symbol for obj in objectives]].to_dict(),
+    )
+
+    return Problem(
+        name="Spanish sustainability problem (Discrete)",
+        description="Defines a sustainability problem with three indicators: social, ecological, and environmental.",
+        variables=variables,
+        objectives=objectives,
+        discrete_representation=discrete_def,
+    )
+
+
+def forest_problem_discrete() -> Problem:
+    """Implements the forest problem using Pareto front representation.
+
+    Returns:
+        Problem: A problem instance representing the forest problem.
+    """
+    filename = "datasets/forest_holding_4.csv"
+
+    path = Path(__file__).parent.parent.parent / filename
+
+    obj_names = ["stock", "harvest_value", "npv"]
+
+    var_name = "index"
+
+    data = pl.read_csv(
+        path, has_header=True, columns=["stock", "harvest_value", "npv"], separator=";", decimal_comma=True
+    )
+
+    variables = [
+        Variable(
+            name=var_name,
+            symbol=var_name,
+            variable_type=VariableTypeEnum.integer,
+            lowerbound=0,
+            upperbound=len(data) - 1,
+            initial_value=0,
+        )
+    ]
+
+    objectives = [
+        Objective(
+            name=obj_name,
+            symbol=obj_name,
+            objective_type=ObjectiveTypeEnum.data_based,
+            ideal=data[obj_name].max(),
+            nadir=data[obj_name].min(),
+            maximize=True,
+        )
+        for obj_name in obj_names
+    ]
+
+    discrete_def = DiscreteRepresentation(
+        variable_values={"index": list(range(len(data)))},
+        objective_values=data[[obj.symbol for obj in objectives]].to_dict(),
+    )
+
+    return Problem(
+        name="Finnish Forest Problem (Discrete)",
+        description="Defines a forest problem with three objectives: stock, harvest value, and net present value.",
+        variables=variables,
+        objectives=objectives,
+        discrete_representation=discrete_def,
+    )
+
+
+def simulator_problem(file_dir: str | Path):
+    """A test problem with analytical, simulator and surrogate based objectives, constraints and extra functions.
+
+    The problem uses two different simulator files. There are also objectives, constraints and extra fucntions that
+    are surrogate based but it is assumed that the surrogate models are given when evaluating (while testing they
+    are stored as temporary directories and files by pytest). There are also analytical functions to test utilizing
+    PolarsEvaluator from the simulator evaluator.
+
+    Args:
+        file_dir (str | Path): path to the directory with the simulator files.
+    """
+    variables = [
+        Variable(name="x_1", symbol="x_1", variable_type=VariableTypeEnum.real),
+        Variable(name="x_2", symbol="x_2", variable_type=VariableTypeEnum.real),
+        Variable(name="x_3", symbol="x_3", variable_type=VariableTypeEnum.real),
+        Variable(name="x_4", symbol="x_4", variable_type=VariableTypeEnum.real),
+        Variable(name="x_5", symbol="x_5", variable_type=VariableTypeEnum.real),
+    ]
+    f1 = Objective(
+        name="f_1",
+        symbol="f_1",
+        simulator_path=Path(f"{file_dir}/simulator_file.py"),
+        objective_type=ObjectiveTypeEnum.simulator,
+    )
+    f2 = Objective(
+        name="f_2", symbol="f_2", func="x_1 + x_2 + x_3", maximize=True, objective_type=ObjectiveTypeEnum.analytical
+    )
+    f3 = Objective(
+        name="f_3",
+        symbol="f_3",
+        maximize=True,
+        simulator_path=f"{file_dir}/simulator_file2.py",
+        objective_type=ObjectiveTypeEnum.simulator,
+    )
+    f4 = Objective(
+        name="f_4",
+        symbol="f_4",
+        simulator_path=f"{file_dir}/simulator_file.py",
+        objective_type=ObjectiveTypeEnum.simulator,
+    )
+    f5 = Objective(name="f_5", symbol="f_5", objective_type=ObjectiveTypeEnum.surrogate)
+    f6 = Objective(name="f_6", symbol="f_6", objective_type=ObjectiveTypeEnum.surrogate)
+    g1 = Constraint(
+        name="g_1",
+        symbol="g_1",
+        cons_type=ConstraintTypeEnum.LTE,
+        simulator_path=f"{file_dir}/simulator_file2.py",
+    )
+    g2 = Constraint(
+        name="g_2",
+        symbol="g_2",
+        cons_type=ConstraintTypeEnum.LTE,
+        func="-x_1 - x_2 - x_3",
+    )
+    g3 = Constraint(
+        name="g_3",
+        symbol="g_3",
+        cons_type=ConstraintTypeEnum.LTE,
+    )
+    e1 = ExtraFunction(name="e_1", symbol="e_1", simulator_path=f"{file_dir}/simulator_file.py")
+    e2 = ExtraFunction(name="e_2", symbol="e_2", func="x_1 * x_2 * x_3")
+    e3 = ExtraFunction(
+        name="e_3",
+        symbol="e_3",
+    )
+    return Problem(
+        name="Simulator problem",
+        description="",
+        variables=variables,
+        objectives=[f1, f2, f3, f4, f5, f6],
+        constraints=[g1, g2, g3],
+        extra_funcs=[e1, e2, e3],
+        simulators=[
+            Simulator(
+                name="s_1", symbol="s_1", file=Path(f"{file_dir}/simulator_file.py"), parameter_options={"delta": 0.5}
+            ),
+            Simulator(name="s_2", symbol="s_2", file=Path(f"{file_dir}/simulator_file2.py")),
+        ],
+    )

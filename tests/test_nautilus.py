@@ -7,11 +7,10 @@ from fixtures import dtlz2_5x_3f_data_based  # noqa: F401
 
 from desdeo.mcdm.nautili import solve_reachable_bounds
 from desdeo.mcdm.nautilus import (
-    calculate_distance_to_front,
     calculate_navigation_point,
-    solve_reachable_solution,
-    ranks_to_weights,
     points_to_weights,
+    ranks_to_weights,
+    solve_reachable_solution,
 )
 from desdeo.problem import (
     binh_and_korn,
@@ -54,7 +53,6 @@ def test_calculate_navigation_point():
 @pytest.mark.nautilus
 def test_solve_reachable_solution():
     """Test the solving of a new reachable solution."""
-    # TODO: update to test other pref types when they are implemented
     problem = binh_and_korn()
     prev_nav_point = {"f_1": 80.0, "f_2": 30.0}
     ranks = {"f_1": 1, "f_2": 2}
@@ -109,7 +107,6 @@ def test_solve_reachable_solution_discrete(dtlz2_5x_3f_data_based):  # noqa: F81
 @pytest.mark.nautilus
 def test_solve_reachable_bounds():
     """Test the solving of reachable bounds."""
-    # TODO: check if this is fine. Imported from nautili
     # Two objectives, both min
     problem = binh_and_korn(maximize=(False, False))
 
@@ -184,19 +181,19 @@ def test_solve_reachable_bounds_complicated():
     lower_bounds, upper_bounds = solve_reachable_bounds(problem, nav_point)
 
     # lower bound should be lower (better) than the navigation point, for min objectives
-    assert lower_bounds["f_1"] < nav_point["f_1"]
-    assert lower_bounds["f_2"] < nav_point["f_2"]
     assert lower_bounds["f_5"] < nav_point["f_5"]
     # lower bound should be higher or equal to the nav point for max objectives
+    assert lower_bounds["f_1"] >= nav_point["f_1"]
+    assert lower_bounds["f_2"] >= nav_point["f_2"]
     assert lower_bounds["f_3"] >= nav_point["f_3"]
     assert lower_bounds["f_4"] >= nav_point["f_4"]
 
     # upper bound should be less than or equel to nav point min objectives
-    assert upper_bounds["f_1"] <= nav_point["f_1"]
-    assert upper_bounds["f_2"] <= nav_point["f_2"]
     assert upper_bounds["f_5"] <= nav_point["f_5"]
 
     # upper bound should be higher (better) than nav point for max objectives
+    assert upper_bounds["f_1"] > nav_point["f_1"]
+    assert upper_bounds["f_2"] > nav_point["f_2"]
     assert upper_bounds["f_3"] > nav_point["f_3"]
     assert upper_bounds["f_4"] > nav_point["f_4"]
 
