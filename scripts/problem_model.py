@@ -333,6 +333,3 @@ def forest_problem_vaaler(
         f.write(json_data)
 
     return problem
-
-
-forest_problem_vaaler()
