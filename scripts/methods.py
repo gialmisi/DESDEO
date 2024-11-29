@@ -6,7 +6,7 @@ from functools import partial
 from desdeo.emo.methods.bases import EMOResult, template1
 from desdeo.emo.operators.crossover import SimulatedBinaryCrossover, SinglePointBinaryCrossover
 from desdeo.emo.operators.evaluator import EMOEvaluator
-from desdeo.emo.operators.generator import LHSGenerator
+from desdeo.emo.operators.generator import RandomBinaryGenerator, LHSGenerator
 from desdeo.emo.operators.mutation import BinaryFlipMutation, BoundedPolynomialMutation
 from desdeo.emo.operators.selection import NSGAIII_select, ReferenceVectorOptions, RVEASelector
 from desdeo.emo.operators.termination import MaxGenerationsTerminator
@@ -14,7 +14,7 @@ from desdeo.problem import Problem
 from desdeo.tools.patterns import Publisher
 
 
-def rvea(
+def binary_rvea(
     *,
     problem: Problem,
     seed: int = 0,
@@ -66,7 +66,7 @@ def rvea(
     # Note that the initial population size is equal to the number of reference vectors
     n_points = selector.reference_vectors.shape[0]
 
-    generator = LHSGenerator(
+    generator = RandomBinaryGenerator(
         problem=problem,
         evaluator=evaluator,
         publisher=publisher,
@@ -74,13 +74,13 @@ def rvea(
         seed=seed,
         verbosity=forced_verbosity if forced_verbosity is not None else 1,
     )
-    crossover = SimulatedBinaryCrossover(
+    crossover = SinglePointBinaryCrossover(
         problem=problem,
         publisher=publisher,
         seed=seed,
         verbosity=forced_verbosity if forced_verbosity is not None else 1,
     )
-    mutation = BoundedPolynomialMutation(
+    mutation = BinaryFlipMutation(
         problem=problem,
         publisher=publisher,
         seed=seed,
@@ -158,7 +158,7 @@ def binary_nsga3(
     # Note that the initial population size is equal to the number of reference vectors
     n_points = selector.reference_vectors.shape[0]
 
-    generator = LHSGenerator(
+    generator = RandomBinaryGenerator(
         problem=problem,
         evaluator=evaluator,
         publisher=publisher,
