@@ -103,7 +103,7 @@ def simple_forest_problem() -> Problem:
                 name=f"Row {j+1} of stand {i+1} must sum to one.",
                 symbol=f"row_constraint_{i}{j}",
                 # minus 1 because constraint must equal 0
-                func=" + ".join(f"X_{i+1}[{j+1}, {r+1}]" for r in range(number_of_regimes)) + " - 1",
+                func="Abs(" + " + ".join(f"X_{i+1}[{j+1}, {r+1}]" for r in range(number_of_regimes)) + " - 1" + ")",
                 cons_type=ConstraintTypeEnum.EQ,
                 is_linear=True,
                 is_convex=True,
