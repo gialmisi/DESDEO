@@ -103,8 +103,21 @@ def simple_forest_problem() -> Problem:
                 name=f"Row {j+1} of stand {i+1} must sum to one.",
                 symbol=f"row_constraint_{i}{j}",
                 # minus 1 because constraint must equal 0
-                func="Abs(" + " + ".join(f"X_{i+1}[{j+1}, {r+1}]" for r in range(number_of_regimes)) + " - 1" + ")",
-                cons_type=ConstraintTypeEnum.EQ,
+                func=" + ".join(f"X_{i+1}[{j+1}, {r+1}]" for r in range(number_of_regimes)) + " - 1",
+                cons_type=ConstraintTypeEnum.LTE,
+                is_linear=True,
+                is_convex=True,
+                is_twice_differentiable=True,
+            )
+
+            constraints.append(constraint_ij)
+
+            constraint_ij = Constraint(
+                name=f"Row {j+1} of stand {i+1} must sum to one.",
+                symbol=f"row_constraint_{i}{j}_",
+                # minus 1 because constraint must equal 0
+                func="-1*(" + " + ".join(f"X_{i+1}[{j+1}, {r+1}]" for r in range(number_of_regimes)) + ") + 1",
+                cons_type=ConstraintTypeEnum.LTE,
                 is_linear=True,
                 is_convex=True,
                 is_twice_differentiable=True,
@@ -175,7 +188,7 @@ def forest_problem_vaaler(
     n_stands = len(unique_stands)
     unique_regimes = df["branch"].unique().to_list()
     n_regimes = len(unique_regimes)
-    years = df["year"].unique().to_list()
+    years = [df["year"].unique().to_list()[0]]
     n_years = len(years)
 
     NPVs = {}
