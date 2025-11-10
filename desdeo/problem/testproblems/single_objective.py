@@ -8,6 +8,8 @@ from desdeo.problem import Constant, Constraint, ConstraintTypeEnum, Objective, 
 def mystery_function() -> Problem:
     """_summary_
 
+    Global solution's value: -1.4565 at x = [2.5044, 2.5778].
+
     Returns:
         Problem: _description_
     """
