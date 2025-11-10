@@ -6,12 +6,16 @@ from desdeo.problem import Constant, Constraint, ConstraintTypeEnum, Objective, 
 
 
 def mystery_function() -> Problem:
-    """_summary_
+    r"""Add the constrained mystery function as defined in Sasena 2002.
 
-    Global solution's value: -1.4565 at x = [2.5044, 2.5778].
+    Global solution's value (unconstrained): -1.4565 at x = [2.5044, 2.5778].
 
     Returns:
-        Problem: _description_
+        Problem: the problem model.
+
+    References:
+        Michael Sasena. 2002. Flexibility and Eiciency Enhancements For
+            Constrained Global Design Optimization with Kriging Approximations. Ph.D.  Dissertation.
     """
     pi = Constant(name="Pi", symbol="PI", value=math.pi)
     x_1 = Variable(
@@ -53,7 +57,56 @@ def mystery_function() -> Problem:
     )
 
 
-if __name__ == "__main__":
-    problem = mystery_function()
+def new_branin_function() -> Problem:
+    """Implements the new Branin function.
 
-    print(problem)
+    Global optimal at x = [3.2730, 0.0489].
+    """
+    pi = Constant(name="Pi", symbol="PI", value=math.pi)
+    x_1 = Variable(
+        name="x_1",
+        symbol="x_1",
+        variable_type=VariableTypeEnum.real,
+        lowerbound=-5.0,
+        upperbound=10.0,
+        initial_value=0.1,
+    )
+    x_2 = Variable(
+        name="x_2",
+        symbol="x_2",
+        variable_type=VariableTypeEnum.real,
+        lowerbound=0.0,
+        upperbound=15.0,
+        initial_value=0.1,
+    )
+
+    f_1_def = "-(x_1 - 10)**2 - (x_2 - 15)**2"
+    f_1 = Objective(
+        name="f_1",
+        symbol="f_1",
+        func=f_1_def,
+        maximize=False,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    c_1_def = "(x_2 - (5.1 / (4*PI**2)) * x_1**2 + (5 / PI)*x_1 - 6)**2 + 10*(1 - 1/(8*PI))*Cos(x_1) + 5"
+    c_1 = Constraint(
+        name="c_1",
+        symbol="c_1",
+        cons_type=ConstraintTypeEnum.LTE,
+        func=c_1_def,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    return Problem(
+        name="New Branin function",
+        description="The single-objective mystery function.",
+        constants=[pi],
+        variables=[x_1, x_2],
+        objectives=[f_1],
+        constraints=[c_1],
+    )
