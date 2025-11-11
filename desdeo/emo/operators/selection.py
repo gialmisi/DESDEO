@@ -9,15 +9,14 @@ from abc import abstractmethod
 from collections.abc import Sequence
 from enum import StrEnum
 from itertools import combinations
-from typing import Callable, Literal, TypedDict, TypeVar
+from typing import Callable, Literal, TypeVar
 
 import numpy as np
 import polars as pl
 from numba import njit
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 from scipy.special import comb
 from scipy.stats.qmc import LatinHypercube
-from sqlalchemy import false
 
 from desdeo.problem import Problem
 from desdeo.tools import get_corrected_ideal_and_nadir
@@ -243,7 +242,7 @@ class BaseDecompositionSelector(BaseSelector):
         for i in range(1, self.num_dims - 1):
             weight[:, i] = temp[:, i] - temp[:, i - 1]
         weight[:, -1] = lattice_resolution - temp[:, -1]
-        if not self.invert_reference_vectors: # todo, this currently only exists for nsga3
+        if not self.invert_reference_vectors:  # todo, this currently only exists for nsga3
             self.reference_vectors = weight / lattice_resolution
         else:
             self.reference_vectors = 1 - (weight / lattice_resolution)
@@ -818,6 +817,7 @@ class RVEASelector(BaseDecompositionSelector):
                         closest_angle = angle
             self.reference_vectors_gamma[i] = closest_angle
 
+
 @njit
 def jitted_calc_perpendicular_distance(
     solutions: np.ndarray, ref_dirs: np.ndarray, invert_reference_vectors: bool
@@ -843,6 +843,7 @@ def jitted_calc_perpendicular_distance(
             component = ref_dirs[i] - solutions[j] - np.dot(ref_dirs[i] - solutions[j], unit_vector) * unit_vector
             matrix[j, i] = np.linalg.norm(component)
     return matrix
+
 
 class NSGA3Selector(BaseDecompositionSelector):
     """The NSGA-III selection operator, heavily based on the version of nsga3 in the pymoo package by msu-coinlab."""
@@ -1156,8 +1157,6 @@ class NSGA3Selector(BaseDecompositionSelector):
 
         return matrix
 
-
-
     def state(self) -> Sequence[Message]:
         if self.verbosity == 0 or self.selection is None or self.selected_targets is None:
             return []
@@ -1413,6 +1412,121 @@ class IBEASelector(BaseSelector):
 
         self.notify()
         return self.selected_individuals, self.selected_targets
+
+    def state(self) -> Sequence[Message]:
+        """Return the state of the selector."""
+        if self.verbosity == 0 or self.selection is None or self.selected_targets is None:
+            return []
+        if self.verbosity == 1:
+            return [
+                DictMessage(
+                    topic=SelectorMessageTopics.STATE,
+                    value={
+                        "population_size": self.population_size,
+                        "selected_individuals": self.selection,
+                    },
+                    source=self.__class__.__name__,
+                )
+            ]
+        # verbosity == 2
+        if isinstance(self.selected_individuals, pl.DataFrame):
+            message = PolarsDataFrameMessage(
+                topic=SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS,
+                value=pl.concat([self.selected_individuals, self.selected_targets], how="horizontal"),
+                source=self.__class__.__name__,
+            )
+        else:
+            warnings.warn("Population is not a Polars DataFrame. Defaulting to providing OUTPUTS only.", stacklevel=2)
+            message = PolarsDataFrameMessage(
+                topic=SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS,
+                value=self.selected_targets,
+                source=self.__class__.__name__,
+            )
+        return [
+            DictMessage(
+                topic=SelectorMessageTopics.STATE,
+                value={
+                    "population_size": self.population_size,
+                    "selected_individuals": self.selection,
+                },
+                source=self.__class__.__name__,
+            ),
+            message,
+            NumpyArrayMessage(
+                topic=SelectorMessageTopics.SELECTED_FITNESS,
+                value=self.fitness,
+                source=self.__class__.__name__,
+            ),
+        ]
+
+    def update(self, message: Message) -> None:
+        pass
+
+
+class NSGA2Selector(BaseSelector):
+    """Implements the selection operator defined for NSGA2.
+
+    Implements the selection operator defined for NSGA2, which included the crowding
+    distance calculation.
+
+    Reference: Deb, K., Pratap, A., Agarwal, S., & Meyarivan, T. A. M. T.
+        (2002). A fast and elitist multiobjective genetic algorithm: NSGA-II. IEEE
+        transactions on evolutionary computation, 6(2), 182-197.
+    """
+
+    @property
+    def provided_topics(self):
+        """The topics provided for the NSGA2 method."""
+        return {
+            0: [],
+            1: [SelectorMessageTopics.STATE],
+            2: [SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS, SelectorMessageTopics.SELECTED_FITNESS],
+        }
+
+    @property
+    def interested_topics(self):
+        """The topics the NSGA2 method is interested in."""
+        return []
+
+    def __init__(
+        self,
+        problem: Problem,
+        verbosity: int,
+        publisher: Publisher,
+        population_size: int,
+        seed: int = 0,
+    ):
+        pass
+
+    def do(
+        self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
+    ) -> tuple[SolutionType, pl.DataFrame]:
+        """Perform the selection operation."""
+        if self.constraints_symbols is not None:
+            print(
+                "NSGA2 selector does not currently support constraints. "
+                "Results may vary if used to solve constrainted problems."
+            )
+
+        # First iteration, offspring is empty
+        # Do basic binary tournament selection, recombination, and mutation
+
+        # #Actual selection operator for NSGA2
+
+        # Combine parent and offspring R_t = P_t U Q_t
+        # Do fast non-dominated sorting on R_t -> F
+        # Set the new parent population to P_t+1 = empty and i=1
+        # Until the size of P_t+1 is less than N (pop size)
+        #   Compute the crowding distances for F_i
+        #   P_t+1 = P_t+1 U F_i
+        #   i = i + 1
+        #
+        # Sort F_i in descending order according to crowding distance
+        # P_t+1 = P_t+1 U F_i[1: (N - |P_t+1|)]
+        # (not here) Q_t+1 = new_population(P_t+1) # using tournament selection, crossover, and mutation
+
+        self.notify()
+        return parents, offsprings
 
     def state(self) -> Sequence[Message]:
         """Return the state of the selector."""
