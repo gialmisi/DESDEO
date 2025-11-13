@@ -41,6 +41,7 @@ from desdeo.emo.operators.mutation import (
 from desdeo.emo.operators.scalar_selection import TournamentSelection
 from desdeo.emo.operators.selection import (
     IBEASelector,
+    NSGA2Selector,
     NSGA3Selector,
     ParameterAdaptationStrategy,
     ReferenceVectorOptions,
@@ -1395,3 +1396,30 @@ def test_external_terminator():
             break
 
     assert term.current_generation == 51
+
+
+@pytest.mark.ea
+def test_nsga2_selection():
+    """Tests the NSGA2 selection operator."""
+    population_size = 100
+    publisher = Publisher()
+
+    n_vars = 10
+    n_objs = 3
+    problem = dtlz2(n_vars, n_objs)
+
+    selector = NSGA2Selector(problem=problem, verbosity=2, publisher=publisher, population_size=population_size, seed=0)
+    scalar_selection = TournamentSelection(winner_size=1, verbosity=2, publisher=publisher, tournament_size=2, seed=0)
+    evaluator = EMOEvaluator(problem=problem, publisher=publisher, verbosity=1)
+    generator = RandomGenerator(
+        problem=problem, evaluator=evaluator, publisher=publisher, n_points=10, seed=0, verbosity=1
+    )
+
+    components = [selector, evaluator, generator, scalar_selection]
+    [publisher.auto_subscribe(x) for x in components]
+    [publisher.register_topics(x.provided_topics[x.verbosity], x.__class__.__name__) for x in components]
+
+    population, outputs = generator.do()
+
+    selector.do(parents=(population, outputs), offsprings=(pl.DataFrame(), pl.DataFrame()))
+    print()

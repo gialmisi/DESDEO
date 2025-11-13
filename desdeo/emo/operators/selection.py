@@ -1496,20 +1496,28 @@ class NSGA2Selector(BaseSelector):
         population_size: int,
         seed: int = 0,
     ):
-        pass
-
-    def do(
-        self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
-    ) -> tuple[SolutionType, pl.DataFrame]:
-        """Perform the selection operation."""
+        super().__init__(problem=problem, verbosity=verbosity, publisher=publisher, seed=seed)
+        self.selection: list[int] | None = None
         if self.constraints_symbols is not None:
             print(
                 "NSGA2 selector does not currently support constraints. "
                 "Results may vary if used to solve constrainted problems."
             )
 
+    def do(
+        self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
+    ) -> tuple[SolutionType, pl.DataFrame]:
+        """Perform the selection operation."""
         # First iteration, offspring is empty
         # Do basic binary tournament selection, recombination, and mutation
+        # In practice, just compute the non-dom ranks and provide them as fitness
+
+        # Off-spring empty (first iteration, compute only non-dominated ranks and provide them as fitness)
+        if offsprings[0].is_empty() and offsprings[1].is_empty():
+            # just compute non-dominated ranks of population and be done
+
+            # self.fitness = SET ME
+            return parents, offsprings
 
         # #Actual selection operator for NSGA2
 
