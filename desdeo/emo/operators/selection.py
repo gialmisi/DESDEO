@@ -1497,12 +1497,16 @@ class NSGA2Selector(BaseSelector):
         seed: int = 0,
     ):
         super().__init__(problem=problem, verbosity=verbosity, publisher=publisher, seed=seed)
-        self.selection: list[int] | None = None
         if self.constraints_symbols is not None:
             print(
                 "NSGA2 selector does not currently support constraints. "
                 "Results may vary if used to solve constrainted problems."
             )
+        self.population_size = population_size
+        self.seed = seed
+        self.selection: list[int] | None = None
+        self.selected_individuals: SolutionType | None = None
+        self.selected_targets: pl.DataFrame | None = None
 
     def do(
         self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
@@ -1515,20 +1519,48 @@ class NSGA2Selector(BaseSelector):
         # Off-spring empty (first iteration, compute only non-dominated ranks and provide them as fitness)
         if offsprings[0].is_empty() and offsprings[1].is_empty():
             # just compute non-dominated ranks of population and be done
+            parents_a = parents[1][self.target_symbols].to_numpy()
+            fronts = fast_non_dominated_sort(parents_a)
 
-            # self.fitness = SET ME
-            return parents, offsprings
+            # assign fitness according to non-dom rank (lower better)
+            scores = np.arange(len(fronts))
+            fitness_values = scores @ fronts
+            self.fitness = fitness_values
+
+            # all selected in first iteration
+            self.selection = list(range(len(parents[1])))
+            self.selected_individuals = parents[0]
+            self.selected_targets = parents[1]
+
+            self.notify()
+
+            return self.selected_individuals, self.selected_targets
 
         # #Actual selection operator for NSGA2
 
         # Combine parent and offspring R_t = P_t U Q_t
+        r_solutions = parents[0].vstack(offsprings[0])
+        r_targets = parents[1].vstack(offsprings[1])
+        r_targets_arr = r_targets.to_numpy()
+
         # Do fast non-dominated sorting on R_t -> F
+        fronts = fast_non_dominated_sort(r_targets_arr)
+
         # Set the new parent population to P_t+1 = empty and i=1
-        # Until the size of P_t+1 is less than N (pop size)
-        #   Compute the crowding distances for F_i
-        #   P_t+1 = P_t+1 U F_i
-        #   i = i + 1
-        #
+        new_parents = np.array(r_targets_arr.shape)
+
+        for i, front in enumerate(fronts):
+            # Until the size of P_t+1 is less than N (pop size)
+
+            #   Compute the crowding distances for F_i
+            #   P_t+1 = P_t+1 U F_i
+
+            # once last fron found
+            last_front_index = None
+
+            pass
+
+        # TODO: remember, only done for the last (partial) front, if needed
         # Sort F_i in descending order according to crowding distance
         # P_t+1 = P_t+1 U F_i[1: (N - |P_t+1|)]
         # (not here) Q_t+1 = new_population(P_t+1) # using tournament selection, crossover, and mutation

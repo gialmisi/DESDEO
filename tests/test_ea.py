@@ -1404,22 +1404,52 @@ def test_nsga2_selection():
     population_size = 100
     publisher = Publisher()
 
+    seed = 0
     n_vars = 10
     n_objs = 3
     problem = dtlz2(n_vars, n_objs)
 
-    selector = NSGA2Selector(problem=problem, verbosity=2, publisher=publisher, population_size=population_size, seed=0)
-    scalar_selection = TournamentSelection(winner_size=1, verbosity=2, publisher=publisher, tournament_size=2, seed=0)
+    crossover = SimulatedBinaryCrossover(
+        problem=problem, seed=seed, verbosity=2, publisher=publisher, xover_probability=0.9, xover_distribution=20
+    )
+    mutation = BoundedPolynomialMutation(
+        problem=problem,
+        seed=seed,
+        verbosity=2,
+        publisher=publisher,
+        mutation_probability=1 / n_vars,
+        distribution_index=20,
+    )
+    selector = NSGA2Selector(
+        problem=problem, verbosity=2, publisher=publisher, population_size=population_size, seed=seed
+    )
+    scalar_selection = TournamentSelection(
+        winner_size=population_size, verbosity=2, publisher=publisher, tournament_size=2, seed=seed
+    )
     evaluator = EMOEvaluator(problem=problem, publisher=publisher, verbosity=1)
     generator = RandomGenerator(
-        problem=problem, evaluator=evaluator, publisher=publisher, n_points=10, seed=0, verbosity=1
+        problem=problem, evaluator=evaluator, publisher=publisher, n_points=population_size, seed=seed, verbosity=1
     )
 
-    components = [selector, evaluator, generator, scalar_selection]
+    components = [selector, evaluator, generator, scalar_selection, crossover, mutation]
     [publisher.auto_subscribe(x) for x in components]
     [publisher.register_topics(x.provided_topics[x.verbosity], x.__class__.__name__) for x in components]
 
-    population, outputs = generator.do()
+    # first iteration
+    solutions, outputs = generator.do()
+    offspring = pl.DataFrame(
+        schema=solutions.schema,
+    )
+    offspring_outputs = pl.DataFrame(
+        schema=outputs.schema,
+    )
+    solutions, outputs = selector.do(parents=(solutions, outputs), offsprings=(offspring, offspring_outputs))
 
-    selector.do(parents=(population, outputs), offsprings=(pl.DataFrame(), pl.DataFrame()))
+    parents, _ = scalar_selection.do((solutions, outputs))
+    offspring = crossover.do(population=parents)
+    offspring = mutation.do(offspring, solutions)
+    offspring_outputs = evaluator.evaluate(offspring)
+
+    solutions, outputs = selector.do(parents=(solutions, outputs), offsprings=(offspring, offspring_outputs))
+
     print()
