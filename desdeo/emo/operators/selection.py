@@ -1617,6 +1617,7 @@ class NSGA2Selector(BaseSelector):
             np.searchsorted(np.cumsum(np.sum(fronts, axis=1)), self.population_size, side="right") - 1
         )
 
+        last_ranking = 0  # in case first front is larger th population size
         for i in range(last_whole_front_idx + 1):  # inclusive
             # The looped front here will result in a new population with size <= 100.
 
@@ -1682,8 +1683,10 @@ class NSGA2Selector(BaseSelector):
             )[trimmed_and_sorted_indices]
 
             # compute fitness (see above for details)
-            max_no_inf = np.nanmax(
-                distances[trimmed_and_sorted_indices][distances[trimmed_and_sorted_indices] != np.inf]
+            max_no_inf = (
+                np.nanmax(distances[trimmed_and_sorted_indices][distances[trimmed_and_sorted_indices] != np.inf])
+                if len(trimmed_and_sorted_indices) > 2
+                else np.array([1, 1])  # we just have the boundary points
             )
             distances_no_inf = np.nan_to_num(distances[trimmed_and_sorted_indices], posinf=max_no_inf * 1.1)
 

@@ -82,7 +82,6 @@ def test_nsga3_river():
     problem = river_pollution_problem()
     solver, _ = algorithms.emo_constructor(problem=problem, emo_options=algorithms.nsga3_options())
 
-
     _ = solver()
 
 
@@ -120,6 +119,20 @@ def test_ibea_river():
     solver, _ = algorithms.emo_constructor(problem=problem, emo_options=algorithms.ibea_options())
 
     _ = solver()
+
+
+@pytest.mark.ea
+def test_nsga2_dtlz2():
+    """Test whether the 'default' NSGA-II variant can be initialized and run as a whole."""
+    n_vars = 4
+    n_objs = 3
+    problem = dtlz2(n_vars, n_objs)
+
+    solver, _ = algorithms.emo_constructor(problem=problem, emo_options=algorithms.nsga2_options())
+
+    result = solver()
+
+    print()
 
 
 # Other tests are covered by test_ea.py
