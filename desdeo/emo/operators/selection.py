@@ -1463,6 +1463,59 @@ class IBEASelector(BaseSelector):
         pass
 
 
+def _nsga2_crowding_distance_assignment(
+    non_dominated_front: np.ndarray, f_mins: np.ndarray, f_maxs: np.ndarray
+) -> np.ndarray:
+    """Computes the crowding distance as pecified in the definition of NSGA2.
+
+    This function computed the crowding distances for a non-dominated set of solutions.
+    A smaller value means that a solution is more crowded (worse), while a larger value means
+    it is less crowded (better).
+
+    Note:
+        The boundary point in `non_dominated_front` will be assigned a non-crowding
+            distance value of `np.inf` indicating, that they shouls always be included
+            in later sorting.
+
+    Args:
+        non_dominated_front (np.ndarray): a 2D numpy array (size n x m = number
+            of vectors x number of targets (obejctive funcitons)) containing
+            mutually non-dominated vectors. The values of the vectors correspond to
+            the optimization 'target' (usually the minimized objective function
+            values.)
+        f_mins (np.ndarray): a 1D numpy array of size m containing the minimum objective function
+            values in `non_dominated_front`.
+        f_maxs (np.ndarray): a 1D numpy array of size m containing the maximum objective function
+            values in `non_dominated_front`.
+
+    Returns:
+        np.ndarray: a numpy array of size m containing the crowding distances for each vector
+            in `non_dominated_front`.
+
+    Reference: Deb, K., Pratap, A., Agarwal, S., & Meyarivan, T. A. M. T.
+        (2002). A fast and elitist multiobjective genetic algorithm: NSGA-II. IEEE
+        transactions on evolutionary computation, 6(2), 182-197.
+    """
+    vectors = non_dominated_front  # I
+    num_vectors = vectors.shape[0]  # l
+    num_objectives = vectors.shape[1]
+
+    crowding_distances = np.zeros(num_vectors)  # I[i]_distance
+
+    for m in range(num_objectives):
+        # sort by column (objective)
+        vectors = vectors[vectors[:, m].argsort()]
+        # inlcude boundary points
+        crowding_distances[0], crowding_distances[-1] = np.inf, np.inf
+
+        for i in range(1, num_vectors - 1):
+            crowding_distances[i] = crowding_distances[i] + (vectors[i + 1, m] - vectors[i - 1, m]) / (
+                f_maxs[m] - f_mins[m]
+            )
+
+    return crowding_distances
+
+
 class NSGA2Selector(BaseSelector):
     """Implements the selection operator defined for NSGA2.
 

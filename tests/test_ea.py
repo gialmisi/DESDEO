@@ -46,6 +46,7 @@ from desdeo.emo.operators.selection import (
     ParameterAdaptationStrategy,
     ReferenceVectorOptions,
     RVEASelector,
+    _nsga2_crowding_distance_assignment,
 )
 from desdeo.emo.operators.termination import (
     CompositeTerminator,
@@ -1453,3 +1454,41 @@ def test_nsga2_selection():
     solutions, outputs = selector.do(parents=(solutions, outputs), offsprings=(offspring, offspring_outputs))
 
     print()
+
+
+@pytest.mark.ea
+def test_nsga2_crowding():
+    """Tests the NSGA2 crowding distance computation."""
+    front = np.array(
+        [
+            [-3.5, 4.5, 3.8],
+            [-2.2, 3.6, 3.0],
+            [-1.1, 2.7, 2.4],
+            # Crowded boys!
+            [-0.5, 2.0, 2.1],
+            [-0.3, 1.8, 2.0],
+            [-0.1, 1.6, 1.9],
+            [0.1, 1.4, 1.8],
+            # end crowded
+            [1.0, 0.7, 1.2],
+            [2.4, -0.1, 0.5],
+            [4.0, -1.5, -0.8],
+        ]
+    )
+
+    f_mins = np.min(front, axis=0)
+    f_maxs = np.max(front, axis=0)
+
+    distances = _nsga2_crowding_distance_assignment(front, f_mins, f_maxs)
+
+    # boundary points should always be included
+    assert all(distances[0] > distances[1:-1])
+    assert all(distances[-1] > distances[1:-1])
+
+    # crowded solutions should have worse value than non-crowded
+    # the 4 solutions in the 'middle' are considered crowded
+    for i_crowded in range(3, 7):
+        # compare to sparsely distributed first three solutions
+        assert all(distances[i_crowded] < distances[0:3])
+        # compare to sparsely distributed last three solutions
+        assert all(distances[i_crowded] < distances[7:-1])
