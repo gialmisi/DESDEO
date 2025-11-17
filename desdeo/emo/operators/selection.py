@@ -1593,33 +1593,117 @@ class NSGA2Selector(BaseSelector):
 
         # Combine parent and offspring R_t = P_t U Q_t
         r_solutions = parents[0].vstack(offsprings[0])
-        r_targets = parents[1].vstack(offsprings[1])
-        r_targets_arr = r_targets.to_numpy()
+        r_population = parents[1].vstack(offsprings[1])
+        r_targets_arr = r_population[self.target_symbols].to_numpy()
+
+        # the minimum and maximum target values in the whole current population
+        f_mins, f_maxs = np.min(r_targets_arr, axis=0), np.max(r_targets_arr, axis=0)
 
         # Do fast non-dominated sorting on R_t -> F
         fronts = fast_non_dominated_sort(r_targets_arr)
+        crowding_distances = np.ones(self.population_size) * np.nan
+        rankings = np.ones(self.population_size) * np.nan
+        fitness_values = np.ones(self.population_size) * np.nan
 
         # Set the new parent population to P_t+1 = empty and i=1
-        new_parents = np.array(r_targets_arr.shape)
+        new_parents = np.ones(parents[1].shape) * np.nan
+        new_parents_solutions = np.ones(parents[0].shape) * np.nan
+        parents_ptr = 0  # keep track where stuff was last added
 
-        for i, front in enumerate(fronts):
-            # Until the size of P_t+1 is less than N (pop size)
+        # the -1 is here because searchsorted returns the index where we can insert the population size to preserve the
+        # order, hence, the previous index of this will be the last element in the cumsum that is less than
+        # the population size
+        last_whole_front_idx = (
+            np.searchsorted(np.cumsum(np.sum(fronts, axis=1)), self.population_size, side="right") - 1
+        )
 
-            #   Compute the crowding distances for F_i
+        for i in range(last_whole_front_idx + 1):  # inclusive
+            # The looped front here will result in a new population with size <= 100.
+
+            # Compute the crowding distances for F_i
+            distances = _nsga2_crowding_distance_assignment(r_targets_arr[fronts[i]], f_mins, f_maxs)
+            crowding_distances[parents_ptr : parents_ptr + distances.shape[0]] = (
+                distances  # distances will have same number of elements as in front[i]
+            )
+
+            # keep track of the rankings as well (best = 0, larger worse). First
+            # non-dom front will have a rank fitness of 0.
+            rankings[parents_ptr : parents_ptr + distances.shape[0]] = i
+
             #   P_t+1 = P_t+1 U F_i
+            new_parents[parents_ptr : parents_ptr + distances.shape[0]] = r_population.filter(fronts[i])
+            new_parents_solutions[parents_ptr : parents_ptr + distances.shape[0]] = r_solutions.filter(fronts[i])
 
-            # once last fron found
-            last_front_index = None
+            # compute fitness
+            max_no_inf = np.nanmax(distances[distances != np.inf])
+            distances_no_inf = np.nan_to_num(distances, posinf=max_no_inf * 1.1)
 
-            pass
+            # Distances for the current front normalized between 0 and 1.
+            # The small scalar we add in the nominator and denominator is to
+            # ensure that no distance value would result in exactly 0 after
+            # normalizing, which would increase the corresponding solution
+            # ranking, once reversed, which we do not want to.
+            normalized_distances = (distances_no_inf - (distances_no_inf.min() - 1e-6)) / (
+                distances_no_inf.max() - (distances_no_inf.min() - 1e-6)
+            )
 
-        # TODO: remember, only done for the last (partial) front, if needed
-        # Sort F_i in descending order according to crowding distance
-        # P_t+1 = P_t+1 U F_i[1: (N - |P_t+1|)]
-        # (not here) Q_t+1 = new_population(P_t+1) # using tournament selection, crossover, and mutation
+            # since higher is better for the crowded distance, we substract the normalized distances from 1 so that
+            # lower is better, which allows us to combine them with the ranking
+            # No value here should be 1.0 or greater.
+            reversed_distances = 1.0 - normalized_distances
+
+            front_fitness = reversed_distances + rankings[parents_ptr : parents_ptr + distances.shape[0]]
+            fitness_values[parents_ptr : parents_ptr + distances.shape[0]] = front_fitness
+
+            # increment parent pointer
+            parents_ptr += distances.shape[0]
+
+            # keep track of last given rank
+            last_ranking = i
+
+        # deal with last (partial) front, if needed
+        if parents_ptr < self.population_size:
+            distances = _nsga2_crowding_distance_assignment(
+                r_targets_arr[fronts[last_whole_front_idx + 1]], f_mins, f_maxs
+            )
+
+            # Sort F_i in descending order according to crowding distance
+            trimmed_and_sorted_indices = distances.argsort()[::-1][: self.population_size - parents_ptr]
+
+            crowding_distances[parents_ptr : self.population_size] = distances[trimmed_and_sorted_indices]
+            rankings[parents_ptr : self.population_size] = last_ranking + 1
+
+            # P_t+1 = P_t+1 U F_i[1: (N - |P_t+1|)]
+            new_parents[parents_ptr : self.population_size] = r_population.filter(fronts[last_whole_front_idx + 1])[
+                trimmed_and_sorted_indices
+            ]
+            new_parents_solutions[parents_ptr : self.population_size] = r_solutions.filter(
+                fronts[last_whole_front_idx + 1]
+            )[trimmed_and_sorted_indices]
+
+            # compute fitness (see above for details)
+            max_no_inf = np.nanmax(
+                distances[trimmed_and_sorted_indices][distances[trimmed_and_sorted_indices] != np.inf]
+            )
+            distances_no_inf = np.nan_to_num(distances[trimmed_and_sorted_indices], posinf=max_no_inf * 1.1)
+
+            normalized_distances = (distances_no_inf - (distances_no_inf.min() - 1e-6)) / (
+                distances_no_inf.max() - (distances_no_inf.min() - 1e-6)
+            )
+
+            reversed_distances = 1.0 - normalized_distances
+
+            front_fitness = reversed_distances + rankings[parents_ptr : self.population_size]
+            fitness_values[parents_ptr : parents_ptr + self.population_size] = front_fitness
+
+        # back to polars, return values
+        solutions = pl.DataFrame(new_parents_solutions, schema=parents[0].schema)
+        outputs = pl.DataFrame(new_parents, schema=parents[1].schema)
+
+        self.fitness = fitness_values
 
         self.notify()
-        return parents, offsprings
+        return solutions, outputs
 
     def state(self) -> Sequence[Message]:
         """Return the state of the selector."""

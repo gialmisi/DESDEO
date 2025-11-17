@@ -1451,9 +1451,13 @@ def test_nsga2_selection():
     offspring = mutation.do(offspring, solutions)
     offspring_outputs = evaluator.evaluate(offspring)
 
+    # second iteration
     solutions, outputs = selector.do(parents=(solutions, outputs), offsprings=(offspring, offspring_outputs))
 
-    print()
+    parents, _ = scalar_selection.do((solutions, outputs))
+    offspring = crossover.do(population=parents)
+    offspring = mutation.do(offspring, solutions)
+    offspring_outputs = evaluator.evaluate(offspring)
 
 
 @pytest.mark.ea
