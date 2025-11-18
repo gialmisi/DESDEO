@@ -10,6 +10,7 @@ from desdeo.emo.operators.selection import (
     BaseSelector,
     IBEASelector,
     NSGA2Selector,
+    NSGA2ShadowSelector,
     NSGA3Selector,
     ParameterAdaptationStrategy,
     ReferenceVectorOptions,
@@ -71,6 +72,29 @@ class NSGA2SelectorOptions(BaseModel):
     """The population size."""
 
 
+class NSGA2ShadowSelectorOptions(BaseModel):
+    """Options for NSGA-II shadow Selection."""
+
+    name: Literal["NSGA2ShadowSelector"] = Field(
+        default="NSGA2ShadowSelector", frozen=True, description="The name of the selection operator."
+    )
+    """The name of the selection operator."""
+    population_size: int = Field(gt=0, description="The population size.")
+    """The population size."""
+    relaxed_constraint_symbol: str = Field(
+        description="The symbol of the objective to be considered as a relaxed constraint."
+    )
+    """The symbol of the objective to be considered as a relaxed constraint."""
+    constraint_threshold: float = Field(
+        description=(
+            "The value below which values of the relaxed constraint "
+            "objective will be considered feasible. Defaults to 0"
+        ),
+        default=0,
+    )
+    """The value below which values of the relaxed constraint objective will be considered feasible. Defaults to 0"""
+
+
 class IBEASelectorOptions(BaseModel):
     """Options for IBEA Selection."""
 
@@ -86,7 +110,9 @@ class IBEASelectorOptions(BaseModel):
     """The binary indicator for IBEA."""
 
 
-SelectorOptions = RVEASelectorOptions | NSGA2SelectorOptions | NSGA3SelectorOptions | IBEASelectorOptions
+SelectorOptions = (
+    RVEASelectorOptions | NSGA2SelectorOptions | NSGA2ShadowSelectorOptions | NSGA3SelectorOptions | IBEASelectorOptions
+)
 
 
 def selection_constructor(
@@ -110,6 +136,7 @@ def selection_constructor(
     selection_types = {
         "RVEASelector": RVEASelector,
         "NSGA2Selector": NSGA2Selector,
+        "NSGA2ShadowSelector": NSGA2ShadowSelector,
         "NSGA3Selector": NSGA3Selector,
         "IBEASelector": IBEASelector,
     }

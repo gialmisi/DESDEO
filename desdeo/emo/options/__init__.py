@@ -41,6 +41,7 @@ from .scalar_selection import (
 from .selection import (
     IBEASelectorOptions,
     NSGA2SelectorOptions,
+    NSGA2ShadowSelectorOptions,
     NSGA3SelectorOptions,
     ReferenceVectorOptions,
     RVEASelectorOptions,
@@ -77,6 +78,7 @@ __all__ = [  # noqa: RUF022
     "MPTMutationOptions",
     "MutationOptions",
     "NSGA2SelectorOptions",
+    "NSGA2ShadowSelectorOptions",
     "NSGA3SelectorOptions",
     "NonUniformMutationOptions",
     "PowerMutationOptions",

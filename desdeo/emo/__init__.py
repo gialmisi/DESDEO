@@ -58,6 +58,7 @@ from .options.scalar_selection import RouletteWheelSelectionOptions, TournamentS
 from .options.selection import (
     IBEASelectorOptions,
     NSGA2SelectorOptions,
+    NSGA2ShadowSelectorOptions,
     NSGA3SelectorOptions,
     ReferenceVectorOptions,
     RVEASelectorOptions,
@@ -102,6 +103,7 @@ selection = SimpleNamespace(
     IBEASelectorOptions=IBEASelectorOptions,
     NSGA3SelectorOptions=NSGA3SelectorOptions,
     NSGA2SelectorOptions=NSGA2SelectorOptions,
+    NSGA2ShadowSelectorOptions=NSGA2ShadowSelectorOptions,
     RVEASelectorOptions=RVEASelectorOptions,
 )
 
