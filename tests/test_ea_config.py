@@ -14,6 +14,27 @@ from desdeo.problem.testproblems import (
 
 
 @pytest.mark.ea
+def test_nsga2_dtlz2():
+    """Test whether the 'default' NSGA-II variant can be initialized and run as a whole."""
+    n_vars = 12
+    n_objs = 3
+    problem = dtlz2(n_vars, n_objs)
+
+    solver, _ = algorithms.emo_constructor(problem=problem, emo_options=algorithms.nsga2_options())
+
+    results = solver()
+
+    norm = results.optimal_outputs.with_columns(
+        (pl.col("f_1") ** 2 + pl.col("f_2") ** 2 + pl.col("f_3") ** 2).sqrt().alias("norm")
+    )["norm"]
+
+    # Assert that most solutions are on the spherical front
+    median = norm.median()
+    assert isinstance(median, float)
+    assert median < 1.1
+
+
+@pytest.mark.ea
 def test_nsga3_dtlz2():
     """Test whether the NSGA-III algorithm can be initialized and run as a whole."""
     problem = dtlz2(n_objectives=3, n_variables=12)
@@ -119,20 +140,6 @@ def test_ibea_river():
     solver, _ = algorithms.emo_constructor(problem=problem, emo_options=algorithms.ibea_options())
 
     _ = solver()
-
-
-@pytest.mark.ea
-def test_nsga2_dtlz2():
-    """Test whether the 'default' NSGA-II variant can be initialized and run as a whole."""
-    n_vars = 4
-    n_objs = 3
-    problem = dtlz2(n_vars, n_objs)
-
-    solver, _ = algorithms.emo_constructor(problem=problem, emo_options=algorithms.nsga2_options())
-
-    result = solver()
-
-    print()
 
 
 # Other tests are covered by test_ea.py
