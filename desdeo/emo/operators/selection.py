@@ -1636,7 +1636,8 @@ class NSGA2Selector(BaseSelector):
             new_parents_solutions[parents_ptr : parents_ptr + distances.shape[0]] = r_solutions.filter(fronts[i])
 
             # compute fitness
-            max_no_inf = np.nanmax(distances[distances != np.inf])
+            # If fronts[i].sum() == 2 ([inf, inf]) will result is zero-size array here, hence the if else
+            max_no_inf = np.nanmax(distances[distances != np.inf]) if fronts[i].sum() > 2 else np.ones(fronts[i].sum())
             distances_no_inf = np.nan_to_num(distances, posinf=max_no_inf * 1.1)
 
             # Distances for the current front normalized between 0 and 1.
@@ -1686,7 +1687,7 @@ class NSGA2Selector(BaseSelector):
             max_no_inf = (
                 np.nanmax(distances[trimmed_and_sorted_indices][distances[trimmed_and_sorted_indices] != np.inf])
                 if len(trimmed_and_sorted_indices) > 2
-                else np.array([1, 1])  # we just have the boundary points
+                else np.ones(len(trimmed_and_sorted_indices))  # we have 1 or 2 boundary points
             )
             distances_no_inf = np.nan_to_num(distances[trimmed_and_sorted_indices], posinf=max_no_inf * 1.1)
 
