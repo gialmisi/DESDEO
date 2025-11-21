@@ -2077,14 +2077,14 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
         # rank feasible solutions according to their fitness
         target_ranks = target_arr.argsort()[
-            constraint_arr[target_arr.argsort()] <= self.constraint_threshold if constraint_arr is not None else True
+            constraint_arr[target_arr.argsort()] <= 0 if constraint_arr is not None else True
         ].squeeze()
 
         # rank infeasible solutions according to their constraint violation value
         constraint_ranks = (
-            constraint_arr.argsort()[constraint_arr[constraint_arr.argsort()] > self.constraint_threshold].squeeze()
+            constraint_arr.argsort()[constraint_arr[constraint_arr.argsort()] > 0].squeeze()
             if constraint_arr is not None
-            else []
+            else np.array([], dtype=int)
         )
 
         # form a new population by picking solutions alternating between the rankings
@@ -2105,15 +2105,54 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                     remaining_targets = ~np.isin(target_ranks, order)
                     order[i] = target_ranks[remaining_targets][0]
 
-        else:
+        elif self.mode == "baseline":
             # do baseline fitness
             # feasbibles always better
             order = np.concat(
                 (
                     np.atleast_1d(target_ranks),
                     np.atleast_1d(constraint_ranks),
-                )
+                ),
             )[: self.population_size]
+
+        elif self.mode == "relaxed":
+            relaxed_target_ranks = target_arr.argsort()[
+                constraint_arr[target_arr.argsort()] <= self.constraint_threshold
+                if constraint_arr is not None
+                else True
+            ].squeeze()
+            relaxed_constraint_ranks = (
+                constraint_arr.argsort()[constraint_arr[constraint_arr.argsort()] > self.constraint_threshold].squeeze()
+                if constraint_arr is not None
+                else []
+            )
+            order_original = np.concat(
+                (
+                    np.atleast_1d(target_ranks),
+                    np.atleast_1d(constraint_ranks),
+                )
+            )
+            order_relaxed = np.concat(
+                (
+                    np.atleast_1d(relaxed_target_ranks),
+                    np.atleast_1d(relaxed_constraint_ranks),
+                )
+            )
+            for i in range(self.population_size):
+                # pick alternating, even i feasible rank, uneven infeasible rank
+                if (remaining_original := ~np.isin(order_original, order)).any() and i % 2 == 0:
+                    # feasible rank
+                    order[i] = order_original[remaining_original][0]
+                elif (remaining_relaxed := ~np.isin(order_relaxed, order)).any():
+                    # infeasible rank
+                    order[i] = order_relaxed[remaining_relaxed][0]
+                else:
+                    # feasible rank
+                    remaining_original = ~np.isin(order_original, order)
+                    order[i] = order_original[remaining_original][0]
+
+        else:
+            pass
 
         # remember to compute fitness
         # just 0, 1, 2, etc.. because of order
