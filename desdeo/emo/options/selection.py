@@ -15,6 +15,7 @@ from desdeo.emo.operators.selection import (
     ParameterAdaptationStrategy,
     ReferenceVectorOptions,
     RVEASelector,
+    SingleObjectiveConstrainedRankingSelector,
 )
 from desdeo.tools.indicators_binary import self_epsilon, self_hv
 
@@ -95,6 +96,36 @@ class NSGA2ShadowSelectorOptions(BaseModel):
     """The value below which values of the relaxed constraint objective will be considered feasible. Defaults to 0"""
 
 
+class SingleObjectiveConstrainedRankingSelectorOptions(BaseModel):
+    """Options for the single-objective ranking Selection."""
+
+    name: Literal["SingleObjectiveConstrainedRankingSelector"] = Field(
+        default="SingleObjectiveConstrainedRankingSelector",
+        frozen=True,
+        description="The name of the selection operator.",
+    )
+    """The name of the selection operator."""
+    population_size: int = Field(gt=0, description="The population size.")
+    """The population size."""
+    target_objective_symbol: str = Field(description="The symbol of the objective to be optimized.")
+    """The symbol of the objective to be optimized."""
+    target_constraint_symbol: str | None = Field(
+        default=None, description="The symbol of the constraint to be considered."
+    )
+    """The symbol of the constraint to be considered."""
+    constraint_threshold: float = Field(
+        default=0.0, description="The value over which constraints are considered to not be true."
+    )
+    """The value over which constraints are considered to not be true."""
+    mode: str = Field(
+        default="alternate",
+        description=(
+            "The mode of the operator. 'alternate' for alternative picking,'baseline' for baseline fitness assignment."
+        ),
+    )
+    """The mode of the operator. 'alternate' for alternative picking,'baseline' for baseline fitness assignment."""
+
+
 class IBEASelectorOptions(BaseModel):
     """Options for IBEA Selection."""
 
@@ -111,7 +142,12 @@ class IBEASelectorOptions(BaseModel):
 
 
 SelectorOptions = (
-    RVEASelectorOptions | NSGA2SelectorOptions | NSGA2ShadowSelectorOptions | NSGA3SelectorOptions | IBEASelectorOptions
+    RVEASelectorOptions
+    | NSGA2SelectorOptions
+    | NSGA2ShadowSelectorOptions
+    | NSGA3SelectorOptions
+    | IBEASelectorOptions
+    | SingleObjectiveConstrainedRankingSelectorOptions
 )
 
 
@@ -139,6 +175,7 @@ def selection_constructor(
         "NSGA2ShadowSelector": NSGA2ShadowSelector,
         "NSGA3Selector": NSGA3Selector,
         "IBEASelector": IBEASelector,
+        "SingleObjectiveConstrainedRankingSelector": SingleObjectiveConstrainedRankingSelector,
     }
     options: dict = options.model_dump()
     name = options.pop("name")

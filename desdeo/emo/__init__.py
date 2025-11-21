@@ -62,6 +62,7 @@ from .options.selection import (
     NSGA3SelectorOptions,
     ReferenceVectorOptions,
     RVEASelectorOptions,
+    SingleObjectiveConstrainedRankingSelectorOptions,
 )
 from .options.templates import (
     DesirableRangesOptions,
@@ -104,6 +105,7 @@ selection = SimpleNamespace(
     NSGA3SelectorOptions=NSGA3SelectorOptions,
     NSGA2SelectorOptions=NSGA2SelectorOptions,
     NSGA2ShadowSelectorOptions=NSGA2ShadowSelectorOptions,
+    SingleObjectiveConstrainedRankingSelectorOptions=SingleObjectiveConstrainedRankingSelectorOptions,
     RVEASelectorOptions=RVEASelectorOptions,
 )
 

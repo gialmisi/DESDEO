@@ -2011,3 +2011,170 @@ class NSGA2ShadowSelector(BaseSelector):
 
     def update(self, message: Message) -> None:
         pass
+
+
+class SingleObjectiveConstrainedRankingSelector(BaseSelector):
+    """Implements a single-objective selector.
+
+    This operator ranks solutions according to a single objective. Solutions
+    with the best value are chosen. Considers also infeasible solutions by
+    ranking them according to their constraint violation value. The selected
+    population will consists of both feasible and infeasible solutions, which
+    are picked alternatively from the original population based on the two
+    rankings.
+    """
+
+    @property
+    def provided_topics(self):
+        """The topics provided for the NSGA2 method."""
+        return {
+            0: [],
+            1: [SelectorMessageTopics.STATE],
+            2: [SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS, SelectorMessageTopics.SELECTED_FITNESS],
+        }
+
+    @property
+    def interested_topics(self):
+        """The topics the operator is interested in."""
+        return []
+
+    def __init__(
+        self,
+        problem: Problem,
+        verbosity: int,
+        publisher: Publisher,
+        population_size: int,
+        target_objective_symbol: str,
+        mode: str = "alternate",
+        target_constraint_symbol: str | None = None,
+        seed: int = 0,
+        constraint_threshold: float = 0,
+    ):
+        super().__init__(problem=problem, verbosity=verbosity, publisher=publisher, seed=seed)
+        self.population_size = population_size
+        self.seed = seed
+        self.selection: list[int] | None = None
+        self.selected_individuals: SolutionType | None = None
+        self.selected_targets: pl.DataFrame | None = None
+        self.mode = mode
+        self.target_objective_symbol = target_objective_symbol
+        self.constraint_threshold = constraint_threshold
+        self.target_constraint_symbol = target_constraint_symbol
+
+    def do(
+        self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
+    ) -> tuple[SolutionType, pl.DataFrame]:
+        """Perform the selection operation."""
+        # combine the population
+        target = self.target_objective_symbol + "_min"
+        solutions = parents[0].vstack(offsprings[0])
+        population = parents[1].vstack(offsprings[1])
+
+        target_arr = population[target].to_numpy()
+        constraint_arr = (
+            population[self.target_constraint_symbol].to_numpy() if self.target_constraint_symbol is not None else None
+        )
+
+        # rank feasible solutions according to their fitness
+        target_ranks = target_arr.argsort()[
+            constraint_arr[target_arr.argsort()] <= self.constraint_threshold if constraint_arr is not None else True
+        ].squeeze()
+
+        # rank infeasible solutions according to their constraint violation value
+        constraint_ranks = (
+            constraint_arr.argsort()[constraint_arr[constraint_arr.argsort()] > self.constraint_threshold].squeeze()
+            if constraint_arr is not None
+            else []
+        )
+
+        # form a new population by picking solutions alternating between the rankings
+        order = np.ones(self.population_size, dtype=int) * -1
+
+        if self.mode == "alternate":
+            # do alternatve picking
+            for i in range(self.population_size):
+                # pick alternating, even i feasible rank, uneven infeasible rank
+                if (remaining_targets := ~np.isin(target_ranks, order)).any() and i % 2 == 0:
+                    # feasible rank
+                    order[i] = target_ranks[remaining_targets][0]
+                elif (remaining_constraints := ~np.isin(constraint_ranks, order)).any():
+                    # infeasible rank
+                    order[i] = constraint_ranks[remaining_constraints][0]
+                else:
+                    # feasible rank
+                    remaining_targets = ~np.isin(target_ranks, order)
+                    order[i] = target_ranks[remaining_targets][0]
+
+        else:
+            # do baseline fitness
+            # feasbibles always better
+            order = np.concat(
+                (
+                    np.atleast_1d(target_ranks),
+                    np.atleast_1d(constraint_ranks),
+                )
+            )[: self.population_size]
+
+        # remember to compute fitness
+        # just 0, 1, 2, etc.. because of order
+        self.fitness = np.arange(0, self.population_size)
+
+        # new population
+        new_solutions = pl.DataFrame(solutions[order], schema=solutions.schema)
+        new_outputs = pl.DataFrame(population[order], schema=population.schema)
+
+        self.selection = order
+        self.selected_individuals = new_solutions
+        self.selected_targets = new_outputs
+
+        self.notify()
+        return new_solutions, new_outputs
+
+    def state(self) -> Sequence[Message]:
+        """Return the state of the selector."""
+        if self.verbosity == 0 or self.selection is None or self.selected_targets is None:
+            return []
+        if self.verbosity == 1:
+            return [
+                DictMessage(
+                    topic=SelectorMessageTopics.STATE,
+                    value={
+                        "population_size": self.population_size,
+                        "selected_individuals": self.selection,
+                    },
+                    source=self.__class__.__name__,
+                )
+            ]
+        # verbosity == 2
+        if isinstance(self.selected_individuals, pl.DataFrame):
+            message = PolarsDataFrameMessage(
+                topic=SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS,
+                value=pl.concat([self.selected_individuals, self.selected_targets], how="horizontal"),
+                source=self.__class__.__name__,
+            )
+        else:
+            warnings.warn("Population is not a Polars DataFrame. Defaulting to providing OUTPUTS only.", stacklevel=2)
+            message = PolarsDataFrameMessage(
+                topic=SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS,
+                value=self.selected_targets,
+                source=self.__class__.__name__,
+            )
+        return [
+            DictMessage(
+                topic=SelectorMessageTopics.STATE,
+                value={
+                    "population_size": self.population_size,
+                    "selected_individuals": self.selection,
+                },
+                source=self.__class__.__name__,
+            ),
+            message,
+            NumpyArrayMessage(
+                topic=SelectorMessageTopics.SELECTED_FITNESS,
+                value=self.fitness,
+                source=self.__class__.__name__,
+            ),
+        ]
+
+    def update(self, message: Message) -> None:
+        pass

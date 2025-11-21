@@ -46,6 +46,7 @@ from .selection import (
     ReferenceVectorOptions,
     RVEASelectorOptions,
     SelectorOptions,
+    SingleObjectiveConstrainedRankingSelectorOptions,
     selection_constructor,
 )
 from .termination import (
@@ -95,6 +96,7 @@ __all__ = [  # noqa: RUF022
     "SelectorOptions",
     "SimulatedBinaryCrossoverOptions",
     "SingleArithmeticCrossoverOptions",
+    "SingleObjectiveConstrainedRankingSelectorOptions",
     "SinglePointBinaryCrossoverOptions",
     "TerminatorOptions",
     "terminator_constructor",
