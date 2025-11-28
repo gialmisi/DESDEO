@@ -2100,6 +2100,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         ].squeeze()
 
         # rank infeasible solutions according to their constraint violation value
+        # sort from lowest to high, filter positive values, then lowest value is better
         constraint_ranks = (
             constraint_arr.argsort()[constraint_arr[constraint_arr.argsort()] > 0].squeeze()
             if constraint_arr is not None
@@ -2126,7 +2127,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
         elif self.mode == "baseline":
             # do baseline fitness
-            # feasbibles always better
+            # feasbibles always better, cut at population size
             order = np.concat(
                 (
                     np.atleast_1d(target_ranks),
@@ -2169,6 +2170,70 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                     # feasible rank
                     remaining_original = ~np.isin(order_original, order)
                     order[i] = order_original[remaining_original][0]
+
+        elif self.mode == "ranking":
+            # 1. compute two ranking for each solution, one with the original constraint, one with the relaxed one
+            #   - in both cases, rank feasble solutions according to objective function value, and rank infeasible
+            #     solutions accordin to constraint violation value.
+            # 2. use the resulting fitness value to do non-dominated sorting + crowding distance
+            # 3. based on 2. assign fitness values to each solution {front}.{crowding distance}
+
+            # 1.
+            relaxed_target_ranks = target_arr.argsort()[
+                constraint_arr[target_arr.argsort()] <= self.constraint_threshold
+                if constraint_arr is not None
+                else True
+            ].squeeze()
+            relaxed_constraint_ranks = (
+                constraint_arr.argsort()[constraint_arr[constraint_arr.argsort()] > self.constraint_threshold].squeeze()
+                if constraint_arr is not None
+                else []
+            )
+            order_original = np.concat(
+                (
+                    np.atleast_1d(target_ranks),
+                    np.atleast_1d(constraint_ranks),
+                )
+            )
+            order_relaxed = np.concat(
+                (
+                    np.atleast_1d(relaxed_target_ranks),
+                    np.atleast_1d(relaxed_constraint_ranks),
+                )
+            )
+            # 2.
+            fitness_original = np.arange(population.shape[0])[order_original.argsort()]
+            fitness_relaxed = np.arange(population.shape[0])[order_relaxed.argsort()]
+
+            # non-dominated sorting, get fronts
+            pseudo_objectives = np.stack((fitness_original, fitness_relaxed), axis=-1)
+            fronts = fast_non_dominated_sort(pseudo_objectives)
+
+            # compute front ranks
+            front_ranks = [[i] * np.sum(row) for i, row in enumerate(fronts)]
+
+            # crowding distances, not normalized between 0 and <1, ascending order
+            f_mins = pseudo_objectives.min(axis=0)
+            f_maxs = pseudo_objectives.max(axis=0)
+            distances_raw = [
+                _nsga2_crowding_distance_assignment(pseudo_objectives[front], f_mins, f_maxs) for front in fronts
+            ]
+
+            # normalized between 0 and <1, descending order, preserves ordering, but not relative differences
+            distance_ranks = [
+                1
+                - ((unique_vals_and_inv := np.unique(front_distances, return_inverse=True))[1] + 1)
+                / (len(unique_vals_and_inv[0]) + 1)
+                for front_distances in distances_raw
+            ]
+
+            # combine ranks into a fitness value
+            fitness_combined = np.inf * np.ones(population.shape[0])
+            for i, front in enumerate(fronts):
+                fitness_combined[front] = front_ranks[i] + distance_ranks[i]
+
+            # ordering
+            order = fitness_combined.argsort()[: self.population_size]
 
         else:
             pass
