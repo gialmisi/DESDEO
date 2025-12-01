@@ -2135,6 +2135,24 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                 ),
             )[: self.population_size]
 
+        elif self.mode == "baseline2":
+            target_arr = population[target].to_numpy()
+
+            tol = 1e-8
+            target_arr_rounded = np.round(target_arr / tol) * tol
+
+            _, unique_idx = np.unique(target_arr_rounded, return_index=True)
+
+            order = np.concat(
+                (
+                    np.atleast_1d(target_ranks),
+                    np.atleast_1d(constraint_ranks),
+                ),
+            )
+
+            # Drop out duplicates
+            order = order[np.isin(order, unique_idx)][: self.population_size]
+
         elif self.mode == "relaxed":
             relaxed_target_ranks = target_arr.argsort()[
                 constraint_arr[target_arr.argsort()] <= self.constraint_threshold
