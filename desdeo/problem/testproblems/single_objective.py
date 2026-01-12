@@ -2,7 +2,16 @@
 
 import math
 
-from desdeo.problem import Constant, Constraint, ConstraintTypeEnum, Objective, Problem, Variable, VariableTypeEnum
+from desdeo.problem import (
+    Constant,
+    Constraint,
+    ConstraintTypeEnum,
+    ExtraFunction,
+    Objective,
+    Problem,
+    Variable,
+    VariableTypeEnum,
+)
 
 
 def mystery_function() -> Problem:
@@ -215,4 +224,66 @@ def rosenbrock_disk() -> Problem:
         variables=[x, y],
         objectives=[f_1],
         constraints=[c_1],
+    )
+
+
+def townsend_modified() -> Problem:
+    """Implements the modified Townsend function.
+
+    Global optima is -2.0239884 at [2.0052938, 1.1944509].
+    """
+    x = Variable(
+        name="x",
+        symbol="x",
+        variable_type=VariableTypeEnum.real,
+        lowerbound=-2.25,
+        upperbound=2.25,
+        initial_value=0.1,
+    )
+    y = Variable(
+        name="y",
+        symbol="y",
+        variable_type=VariableTypeEnum.real,
+        lowerbound=-2.5,
+        upperbound=1.75,
+        initial_value=0.1,
+    )
+
+    f_1_def = "-1.0 * (Cos((x - 0.1)*y))**2 - x*Sin(3.0*x + y)"
+    f_1 = Objective(
+        name="f_1",
+        symbol="f_1",
+        func=f_1_def,
+        maximize=False,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    # define the atan2 functions as the double of the arctangent of the half tangent
+    # Obs! Risk of dividing by zero!
+    t_symbol = "t"
+    t_def = "2.0*Arctan(x / (Sqrt(y**2 + x**2) + y))"
+    t = ExtraFunction(
+        name="Atan2", symbol=t_symbol, func=t_def, is_convex=False, is_linear=False, is_twice_differentiable=True
+    )
+
+    c_1_def = "x**2 + y**2 - (2.0*Cos(t) - 0.5*Cos(2.0*t) - 0.25*Cos(3.0*t) - 0.125*Cos(4.0*t))**2 - (2.0*Sin(t))**2"
+    c_1 = Constraint(
+        name="c_1",
+        symbol="c_1",
+        cons_type=ConstraintTypeEnum.LTE,
+        func=c_1_def,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    return Problem(
+        name="Townsend function",
+        description="The modified Townsend function.",
+        variables=[x, y],
+        objectives=[f_1],
+        constraints=[c_1],
+        extra_funcs=[t],
     )
