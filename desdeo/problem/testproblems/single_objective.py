@@ -163,3 +163,56 @@ def mishras_bird_constrained() -> Problem:
         objectives=[f_1],
         constraints=[c_1],
     )
+
+
+def rosenbrock_disk() -> Problem:
+    """Defines the Rosenbrock test functions constrained to a disk.
+
+    Global optima is 0 at [1.0, 1.0].
+    """
+    x = Variable(
+        name="x",
+        symbol="x",
+        variable_type=VariableTypeEnum.real,
+        lowerbound=-1.5,
+        upperbound=1.5,
+        initial_value=0.1,
+    )
+    y = Variable(
+        name="y",
+        symbol="y",
+        variable_type=VariableTypeEnum.real,
+        lowerbound=-1.5,
+        upperbound=1.5,
+        initial_value=0.1,
+    )
+
+    f_1_def = "(1 - x)**2 + 100*(y - x**2)**2"
+    f_1 = Objective(
+        name="f_1",
+        symbol="f_1",
+        func=f_1_def,
+        maximize=False,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    c_1_def = "x**2 + y**2 - 2.0"
+    c_1 = Constraint(
+        name="c_1",
+        symbol="c_1",
+        cons_type=ConstraintTypeEnum.LTE,
+        func=c_1_def,
+        is_linear=False,
+        is_convex=False,
+        is_twice_differentiable=True,
+    )
+
+    return Problem(
+        name="Rosenbrock test function",
+        description="The Rosenbrock test function constrained to a disk.",
+        variables=[x, y],
+        objectives=[f_1],
+        constraints=[c_1],
+    )
