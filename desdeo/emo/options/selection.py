@@ -109,12 +109,8 @@ class SingleObjectiveConstrainedRankingSelectorOptions(BaseModel):
     """The population size."""
     target_objective_symbol: str = Field(description="The symbol of the objective to be optimized.")
     """The symbol of the objective to be optimized."""
-    target_constraint_symbol: str | None = Field(
-        default=None, description="The symbol of the constraint to be considered."
-    )
-    """The symbol of the constraint to be considered."""
-    constraint_threshold: float = Field(
-        default=0.0, description="The value over which constraints are considered to not be true."
+    constraints: dict[str, float] = Field(
+        description="The values (by symbol) over which constraints are considered to not be true."
     )
     """The value over which constraints are considered to not be true."""
     mode: str = Field(

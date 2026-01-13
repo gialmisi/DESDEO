@@ -6,10 +6,10 @@ TODO:@light-weaver
 
 import warnings
 from abc import abstractmethod
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from enum import StrEnum
 from itertools import combinations
-from typing import Callable, Literal, TypeVar
+from typing import Literal, TypeVar
 
 import numpy as np
 import polars as pl
@@ -2032,7 +2032,7 @@ class NSGA2ShadowSelector(BaseSelector):
         pass
 
 
-class SingleObjectiveConstrainedRankingSelector(BaseSelector):
+class _SingleObjectiveConstrainedRankingSelector(BaseSelector):
     """Implements a single-objective selector.
 
     This operator ranks solutions according to a single objective. Solutions
@@ -2307,6 +2307,339 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                     "population_size": self.population_size,
                     "selected_individuals": self.selection,
                 },
+                source=self.__class__.__name__,
+            ),
+            message,
+            NumpyArrayMessage(
+                topic=SelectorMessageTopics.SELECTED_FITNESS,
+                value=self.fitness,
+                source=self.__class__.__name__,
+            ),
+        ]
+
+    def update(self, message: Message) -> None:
+        pass
+
+
+class SingleObjectiveConstrainedRankingSelector(BaseSelector):
+    """Selector with three modes: baseline2, relaxed, ranking.
+
+    Supports multiple constraints with per-constraint thresholds provided as a dict:
+        constraints = { "g1": thr1, "g2": thr2, ... }
+
+    Assumptions:
+      - Constraint columns are such that "original feasibility" is g_j <= 0.
+      - Thresholded feasibility for constraint j is g_j <= threshold_j.
+
+    baseline2 includes an additional objective-uniqueness filter:
+      - objective values are rounded with tol=1e-8
+      - only the first occurrence (by original population index) for each rounded objective value is kept
+    """
+
+    @property
+    def provided_topics(self):
+        return {
+            0: [],
+            1: [SelectorMessageTopics.STATE],
+            2: [SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS, SelectorMessageTopics.SELECTED_FITNESS],
+        }
+
+    @property
+    def interested_topics(self):
+        return []
+
+    def __init__(
+        self,
+        problem: Problem,
+        verbosity: int,
+        publisher: Publisher,
+        population_size: int,
+        target_objective_symbol: str,
+        mode: str = "baseline2",
+        constraints: dict[str, float] | None = None,
+        seed: int = 0,
+    ):
+        super().__init__(problem=problem, verbosity=verbosity, publisher=publisher, seed=seed)
+        self.population_size = int(population_size)
+        self.seed = seed
+        self.mode = mode
+        self.target_objective_symbol = target_objective_symbol
+
+        # constraints: dict symbol -> threshold
+        self.constraint_dict = dict(constraints) if constraints is not None else {}
+        self.constraint_symbols = list(self.constraint_dict.keys())
+        self.constraint_thresholds = np.asarray(list(self.constraint_dict.values()), dtype=float)
+
+        self.selection: list[int] | None = None
+        self.selected_individuals: SolutionType | None = None
+        self.selected_targets: pl.DataFrame | None = None
+        self.fitness: np.ndarray | None = None
+
+    @staticmethod
+    def _normalize_minmax(v: np.ndarray) -> np.ndarray:
+        """Min-max normalize per column. v shape (N, K). Returns (N, K)."""
+        vmin = v.min(axis=0)
+        vmax = v.max(axis=0)
+        denom = vmax - vmin
+        denom_safe = np.where(denom == 0.0, 1.0, denom)
+        out = (v - vmin) / denom_safe
+        out[:, denom == 0.0] = 0.0
+        return out
+
+    @staticmethod
+    def _breach_count(v: np.ndarray) -> np.ndarray:
+        """Count breached constraints per row. v is nonnegative violation matrix (N, K)."""
+        return (v > 0.0).sum(axis=1)
+
+    @staticmethod
+    def _objective_unique_mask(target_arr: np.ndarray, tol: float = 1e-8) -> np.ndarray:
+        """Return boolean mask for indices that are the first occurrence of each rounded objective value."""
+        rounded = np.round(target_arr / tol) * tol
+        _, first_idx = np.unique(rounded, return_index=True)
+        mask = np.zeros(target_arr.shape[0], dtype=bool)
+        mask[first_idx] = True
+        return mask
+
+    def _build_violation_all_original(self, c: np.ndarray) -> np.ndarray:
+        """Original violation for all constraints: max(0, g_j)."""
+        return np.maximum(0.0, c)
+
+    def _build_violation_single_threshold(self, cj: np.ndarray, thr: float) -> np.ndarray:
+        """Thresholded violation for one constraint: max(0, g_j - thr)."""
+        return np.maximum(0.0, cj - thr)
+
+    def _order_by_objective_then_violation(
+        self,
+        target_arr: np.ndarray,
+        violation: np.ndarray,
+    ) -> np.ndarray:
+        """Create an ordering for a set of constraints represented by violation matrix.
+
+        Rules:
+          - feasible (no breach) ranked first by objective
+          - infeasible ranked by (breach_count, sum(normalized_violation)), then objective
+        """
+        v = violation[:, None] if violation.ndim == 1 else violation
+
+        breach = self._breach_count(v)
+        feas_mask = breach == 0
+
+        # feasible: by objective
+        feas_idx = np.where(feas_mask)[0]
+        feas_sorted = feas_idx[np.argsort(target_arr[feas_idx], kind="mergesort")]
+
+        # infeasible: by (breach_count, sum_norm_violation), then objective
+        infeas_idx = np.where(~feas_mask)[0]
+        if infeas_idx.size == 0:
+            return feas_sorted.astype(int)
+
+        v_infeas = v[infeas_idx, :]
+        vn_infeas = self._normalize_minmax(v_infeas)
+        sum_vn = vn_infeas.sum(axis=1)
+        breach_infeas = breach[infeas_idx]
+
+        # primary: breach_infeas, secondary: sum_vn, tertiary: objective
+        keys = (target_arr[infeas_idx], sum_vn, breach_infeas)
+        infeas_sorted = infeas_idx[np.lexsort(keys)]
+
+        return np.concatenate([feas_sorted, infeas_sorted]).astype(int)
+
+    def _round_robin_from_pools(self, pool_orders: list[np.ndarray], m: int) -> np.ndarray:
+        """Round-robin pick across pool orderings, removing globally chosen indices."""
+        if not pool_orders:
+            return np.array([], dtype=int)
+
+        n = pool_orders[0].shape[0]
+        chosen = np.zeros(n, dtype=bool)
+        cursors = [0] * len(pool_orders)
+
+        out = np.ones(m, dtype=int) * -1
+        active = [True] * len(pool_orders)
+
+        p = 0  # start from feasible pool (pool 0)
+        i = 0
+        while i < m:
+            if not any(active):
+                break
+
+            # find next active pool
+            tries = 0
+            while tries < len(pool_orders) and not active[p]:
+                p = (p + 1) % len(pool_orders)
+                tries += 1
+            if tries == len(pool_orders) and not active[p]:
+                break
+
+            order = pool_orders[p]
+            k = cursors[p]
+            while k < len(order) and chosen[order[k]]:
+                k += 1
+            cursors[p] = k
+
+            if k >= len(order):
+                active[p] = False
+                p = (p + 1) % len(pool_orders)
+                continue
+
+            idx = int(order[k])
+            out[i] = idx
+            chosen[idx] = True
+            cursors[p] += 1
+
+            p = (p + 1) % len(pool_orders)
+            i += 1
+
+        return out[out >= 0]
+
+    def do(
+        self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
+    ) -> tuple[SolutionType, pl.DataFrame]:
+        target_col = self.target_objective_symbol + "_min"
+
+        solutions = parents[0].vstack(offsprings[0])
+        population = parents[1].vstack(offsprings[1])
+
+        target_arr = population[target_col].to_numpy()
+        N = population.shape[0]
+
+        # Constraints matrix (N, K). If no constraints, treat as empty.
+        if len(self.constraint_symbols) > 0:
+            C = population.select(self.constraint_symbols).to_numpy()
+        else:
+            C = np.zeros((N, 0), dtype=float)
+
+        if self.mode == "baseline2":
+            # Full ordering: feasible-by-objective first, then infeasible by (breach count, sum normalized violation)
+            if C.shape[1] == 0:
+                order_full = np.argsort(target_arr, kind="mergesort")
+            else:
+                V0 = self._build_violation_all_original(C)  # (N, K)
+                order_full = self._order_by_objective_then_violation(target_arr, V0)
+
+            # Objective unique filtering (as requested)
+            unique_mask = self._objective_unique_mask(target_arr, tol=1e-8)
+            order_full = order_full[unique_mask[order_full]]
+
+            order = order_full[: self.population_size]
+
+        elif self.mode == "relaxed":
+            # Pool 0: original constraints (ignore thresholds)
+            pool_orders: list[np.ndarray] = []
+            if C.shape[1] == 0:
+                pool0 = np.argsort(target_arr, kind="mergesort")
+                pool_orders.append(pool0.astype(int))
+            else:
+                V0 = self._build_violation_all_original(C)
+                pool0 = self._order_by_objective_then_violation(target_arr, V0)
+                pool_orders.append(pool0)
+
+            # Pools 1..K: per-constraint threshold, feasibility based only on that constraint
+            for j in range(C.shape[1]):
+                cj = C[:, j]
+                thr = float(self.constraint_thresholds[j])
+                vj = self._build_violation_single_threshold(cj, thr)  # (N,)
+                poolj = self._order_by_objective_then_violation(target_arr, vj)
+                pool_orders.append(poolj)
+
+            order = self._round_robin_from_pools(pool_orders, self.population_size)
+
+        elif self.mode == "ranking":
+            if C.shape[1] == 0:
+                order = np.argsort(target_arr, kind="mergesort")[: self.population_size]
+            else:
+                # Build 1 + K orderings
+                orderings: list[np.ndarray] = []
+
+                # Ranking 0: original constraints (all)
+                V0 = self._build_violation_all_original(C)
+                ord0 = self._order_by_objective_then_violation(target_arr, V0)
+                orderings.append(ord0)
+
+                # Rankings 1..K: each constraint with its threshold (single constraint)
+                for j in range(C.shape[1]):
+                    cj = C[:, j]
+                    thr = float(self.constraint_thresholds[j])
+                    vj = self._build_violation_single_threshold(cj, thr)
+                    orderings.append(self._order_by_objective_then_violation(target_arr, vj))
+
+                # Convert each ordering to rank vector
+                rank_vectors = np.empty((N, len(orderings)), dtype=float)
+                for k, ordk in enumerate(orderings):
+                    r = np.empty(N, dtype=float)
+                    r[ordk] = np.arange(N, dtype=float)
+                    rank_vectors[:, k] = r
+
+                # Non-dominated sorting + crowding distance (as in your current version)
+                fronts = fast_non_dominated_sort(rank_vectors)
+
+                front_ranks = [[i] * np.sum(row) for i, row in enumerate(fronts)]
+
+                f_mins = rank_vectors.min(axis=0)
+                f_maxs = rank_vectors.max(axis=0)
+                distances_raw = [
+                    _nsga2_crowding_distance_assignment(rank_vectors[front], f_mins, f_maxs) for front in fronts
+                ]
+
+                distance_ranks = [
+                    1
+                    - ((unique_vals_and_inv := np.unique(front_distances, return_inverse=True))[1] + 1)
+                    / (len(unique_vals_and_inv[0]) + 1)
+                    for front_distances in distances_raw
+                ]
+
+                fitness_combined = np.inf * np.ones(N)
+                for i, front in enumerate(fronts):
+                    fitness_combined[front] = front_ranks[i] + distance_ranks[i]
+
+                order = fitness_combined.argsort(kind="mergesort")[: self.population_size]
+
+        else:
+            raise ValueError(f"Unsupported mode '{self.mode}'. Expected one of: baseline2, relaxed, ranking.")
+
+        order = np.atleast_1d(order).astype(int)
+        self.fitness = np.arange(0, len(order))
+
+        new_solutions = pl.DataFrame(solutions[order], schema=solutions.schema)
+        new_outputs = pl.DataFrame(population[order], schema=population.schema)
+
+        self.selection = order.tolist()
+        self.selected_individuals = new_solutions
+        self.selected_targets = new_outputs
+
+        self.notify()
+        return new_solutions, new_outputs
+
+    def state(self) -> Sequence[Message]:
+        if self.verbosity == 0 or self.selection is None or self.selected_targets is None:
+            return []
+
+        if self.verbosity == 1:
+            return [
+                DictMessage(
+                    topic=SelectorMessageTopics.STATE,
+                    value={"population_size": self.population_size, "selected_individuals": self.selection},
+                    source=self.__class__.__name__,
+                )
+            ]
+
+        if isinstance(self.selected_individuals, pl.DataFrame):
+            message = PolarsDataFrameMessage(
+                topic=SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS,
+                value=pl.concat([self.selected_individuals, self.selected_targets], how="horizontal"),
+                source=self.__class__.__name__,
+            )
+        else:
+            warnings.warn("Population is not a Polars DataFrame. Defaulting to providing OUTPUTS only.", stacklevel=2)
+            message = PolarsDataFrameMessage(
+                topic=SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS,
+                value=self.selected_targets,
+                source=self.__class__.__name__,
+            )
+
+        return [
+            DictMessage(
+                topic=SelectorMessageTopics.STATE,
+                value={"population_size": self.population_size, "selected_individuals": self.selection},
                 source=self.__class__.__name__,
             ),
             message,
