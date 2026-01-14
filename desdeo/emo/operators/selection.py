@@ -2045,7 +2045,7 @@ class _SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
     @property
     def provided_topics(self):
-        """The topics provided for the NSGA2 method."""
+        """The topics provided for the operator."""
         return {
             0: [],
             1: [SelectorMessageTopics.STATE],
@@ -2322,22 +2322,47 @@ class _SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
 
 class SingleObjectiveConstrainedRankingSelector(BaseSelector):
-    """Selector with three modes: baseline2, relaxed, ranking.
+    """Single-objective selector for constrained problems.
 
-    Supports multiple constraints with per-constraint thresholds provided as a dict:
-        constraints = { "g1": thr1, "g2": thr2, ... }
+    Implements a selector suitable for single-objective optimization of constrained problems.
+    Currently supports three modes:
 
-    Assumptions:
-      - Constraint columns are such that "original feasibility" is g_j <= 0.
-      - Thresholded feasibility for constraint j is g_j <= threshold_j.
-
-    baseline2 includes an additional objective-uniqueness filter:
-      - objective values are rounded with tol=1e-8
-      - only the first occurrence (by original population index) for each rounded objective value is kept
+    1.  Baseline: in the baseline mode, selection first happens based on the
+        objective function value of feasible solutions (all constraint violations
+        are 0 or less). If this is not enough to form a new population, then
+        solutions are picked based on the number of violated constraints. If
+        multiple solutions breach the same number, then these are ranked based on
+        their total constraint violation until a large enough population is formed.
+        Total constraint violation is computed as the sum of the constraint
+        violations of all breached constraints, where each value is first normalized
+        to reside between 0 and 1 (based on the minimum and maximum value of the
+        constraint in the current population). Selection will filter for unique
+        solutions (based on their objective function value).
+    2.  Relaxed: in the relaxed mode, each solution is ranked c+1 times, where
+        c is the number of constraints. These ranking are collected into pools.
+        The first pool will always contain rankings based on the same selection
+        scheme as in the baseline mode. In the remaining c pools, a selection
+        scheme similar to the baseline is also applied, but now a constraint
+        is relaxed based on a supplied threshold value before ranking solutions
+        based on it. After all the pools are formed, a new population is created
+        by picking alternatively from each pool the currently best ranked solution
+        (after picking, that solution is removed from all the pools). Picking
+        is follows a round robin scheme, where we first pick from pool 1, then
+        pool 2, and so forth until pool c+1. After that, picking starts again from
+        pool 1.
+    3.  Ranking: solutions are ranked as done in the relaxed mode, but now these
+        ranking are considered as pseudo-objectives. Therefore, each solution will
+        be represented by an objective vector, where each element corresponds to the
+        ranking given to it in each of the pools. These vectors are then sorted
+        based on non-dominated sorting and their crowding distances are computed
+        (like in NSGA-II). After that, utilizing the non-dominated ranking and the
+        distances, each solution is ranked and a new population is created based on
+        these rankings.
     """
 
     @property
     def provided_topics(self):
+        """The topics provided by the operator."""
         return {
             0: [],
             1: [SelectorMessageTopics.STATE],
@@ -2346,19 +2371,35 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
     @property
     def interested_topics(self):
+        """Topics the operator is interested in."""
         return []
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         problem: Problem,
         verbosity: int,
         publisher: Publisher,
         population_size: int,
         target_objective_symbol: str,
-        mode: str = "baseline2",
+        mode: str = "baseline",
         constraints: dict[str, float] | None = None,
         seed: int = 0,
     ):
+        """Initializes the operator.
+
+        Args:
+            problem (Problem): the problem to be solved.
+            verbosity (int): verbosity level.
+            publisher (Publisher): publisher the operator subscribes to.
+            population_size (int): the population size. This will be the size of the newly created population.
+            target_objective_symbol (str): the symbol of the objective function that should be optimized.
+            mode (str, optional): the mode the operator works in. Defaults to "baseline".
+            constraints (dict[str, float] | None, optional): A dict that
+                provides threshold values for each constraint present in `Problem`.
+                The keys should match the constraint symbols in `Problem`. Ignored
+                in the 'baseline' mode. Defaults to None.
+            seed (int, optional): the seed utilized in random number generation (currently not used). Defaults to 0.
+        """
         super().__init__(problem=problem, verbosity=verbosity, publisher=publisher, seed=seed)
         self.population_size = int(population_size)
         self.seed = seed
@@ -2401,11 +2442,11 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         return mask
 
     def _build_violation_all_original(self, c: np.ndarray) -> np.ndarray:
-        """Original violation for all constraints: max(0, g_j)."""
+        """Original violation for all constraints: max(0, constraint violation value)."""
         return np.maximum(0.0, c)
 
     def _build_violation_single_threshold(self, cj: np.ndarray, thr: float) -> np.ndarray:
-        """Thresholded violation for one constraint: max(0, g_j - thr)."""
+        """Thresholded violation for one constraint: max(0, constraint violation value - threshold)."""
         return np.maximum(0.0, cj - thr)
 
     def _order_by_objective_then_violation(
@@ -2413,7 +2454,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         target_arr: np.ndarray,
         violation: np.ndarray,
     ) -> np.ndarray:
-        """Create an ordering for a set of constraints represented by violation matrix.
+        """Create an ordering for a set of constraints represented by a violation matrix.
 
         Rules:
           - feasible (no breach) ranked first by objective
@@ -2424,42 +2465,51 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         breach = self._breach_count(v)
         feas_mask = breach == 0
 
-        # feasible: by objective
+        # rank feasible solutions
         feas_idx = np.where(feas_mask)[0]
         feas_sorted = feas_idx[np.argsort(target_arr[feas_idx], kind="mergesort")]
 
         # infeasible: by (breach_count, sum_norm_violation), then objective
         infeas_idx = np.where(~feas_mask)[0]
         if infeas_idx.size == 0:
+            # no breaches
             return feas_sorted.astype(int)
 
+        # rank infeasible solutions first by breach count, then sum of normalized violation, and then objective value
         v_infeas = v[infeas_idx, :]
         vn_infeas = self._normalize_minmax(v_infeas)
         sum_vn = vn_infeas.sum(axis=1)
         breach_infeas = breach[infeas_idx]
 
-        # primary: breach_infeas, secondary: sum_vn, tertiary: objective
         keys = (target_arr[infeas_idx], sum_vn, breach_infeas)
         infeas_sorted = infeas_idx[np.lexsort(keys)]
 
         return np.concatenate([feas_sorted, infeas_sorted]).astype(int)
 
     def _round_robin_from_pools(self, pool_orders: list[np.ndarray], m: int) -> np.ndarray:
-        """Round-robin pick across pool orderings, removing globally chosen indices."""
+        """Round-robin pick across pool orderings, removing chosen indices from each pool."""
         if not pool_orders:
             return np.array([], dtype=int)
 
         n = pool_orders[0].shape[0]
+
+        # keeps track of already chosen solutions
         chosen = np.zeros(n, dtype=bool)
+
+        # pointer for each pool, points to elements in each pool
         cursors = [0] * len(pool_orders)
 
         out = np.ones(m, dtype=int) * -1
+
+        # keep track of populated pools
         active = [True] * len(pool_orders)
 
-        p = 0  # start from feasible pool (pool 0)
+        p = 0  # pool 0 is always the feasible pool, start from it
         i = 0
         while i < m:
+            # iterate until population is full or all pools are exhausted
             if not any(active):
+                # no more populated pools
                 break
 
             # find next active pool
@@ -2491,85 +2541,99 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
         return out[out >= 0]
 
-    def do(
+    def do(  # noqa: PLR0912
         self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
     ) -> tuple[SolutionType, pl.DataFrame]:
+        """Run the operator.
+
+        Args:
+            parents (tuple[SolutionType, pl.DataFrame]): parent population.
+            offsprings (tuple[SolutionType, pl.DataFrame]): offspring population.
+
+        Raises:
+            ValueError: unsupported `mode`.
+
+        Returns:
+            tuple[SolutionType, pl.DataFrame]: a new population selected from the parent and offspring populations.
+        """
         target_col = self.target_objective_symbol + "_min"
 
         solutions = parents[0].vstack(offsprings[0])
         population = parents[1].vstack(offsprings[1])
 
         target_arr = population[target_col].to_numpy()
-        N = population.shape[0]
+        n = population.shape[0]
 
-        # Constraints matrix (N, K). If no constraints, treat as empty.
+        # Constraints matrix (n, k). If no constraints, treat as empty.
         if len(self.constraint_symbols) > 0:
-            C = population.select(self.constraint_symbols).to_numpy()
+            c_mat = population.select(self.constraint_symbols).to_numpy()
         else:
-            C = np.zeros((N, 0), dtype=float)
+            c_mat = np.zeros((n, 0), dtype=float)
 
-        if self.mode == "baseline2":
+        if self.mode == "baseline":
             # Full ordering: feasible-by-objective first, then infeasible by (breach count, sum normalized violation)
-            if C.shape[1] == 0:
+            if c_mat.shape[1] == 0:
                 order_full = np.argsort(target_arr, kind="mergesort")
             else:
-                V0 = self._build_violation_all_original(C)  # (N, K)
-                order_full = self._order_by_objective_then_violation(target_arr, V0)
+                v0 = self._build_violation_all_original(c_mat)  # (n, k)
+                order_full = self._order_by_objective_then_violation(target_arr, v0)
 
-            # Objective unique filtering (as requested)
+            # Filter unique solutions
             unique_mask = self._objective_unique_mask(target_arr, tol=1e-8)
             order_full = order_full[unique_mask[order_full]]
 
             order = order_full[: self.population_size]
 
         elif self.mode == "relaxed":
-            # Pool 0: original constraints (ignore thresholds)
+            # first pool, ignores thresholds
             pool_orders: list[np.ndarray] = []
-            if C.shape[1] == 0:
+            if c_mat.shape[1] == 0:
+                # no constraints
                 pool0 = np.argsort(target_arr, kind="mergesort")
                 pool_orders.append(pool0.astype(int))
             else:
-                V0 = self._build_violation_all_original(C)
-                pool0 = self._order_by_objective_then_violation(target_arr, V0)
+                # one or more constraints
+                v0 = self._build_violation_all_original(c_mat)
+                pool0 = self._order_by_objective_then_violation(target_arr, v0)
                 pool_orders.append(pool0)
 
-            # Pools 1..K: per-constraint threshold, feasibility based only on that constraint
-            for j in range(C.shape[1]):
-                cj = C[:, j]
+            # rest of pools, per-constraint threshold, feasibility based only on that constraint
+            for j in range(c_mat.shape[1]):
+                cj = c_mat[:, j]
                 thr = float(self.constraint_thresholds[j])
-                vj = self._build_violation_single_threshold(cj, thr)  # (N,)
+                vj = self._build_violation_single_threshold(cj, thr)
                 poolj = self._order_by_objective_then_violation(target_arr, vj)
                 pool_orders.append(poolj)
 
             order = self._round_robin_from_pools(pool_orders, self.population_size)
 
         elif self.mode == "ranking":
-            if C.shape[1] == 0:
+            if c_mat.shape[1] == 0:
                 order = np.argsort(target_arr, kind="mergesort")[: self.population_size]
             else:
-                # Build 1 + K orderings
+                # c + 1 rankings (orderings)
                 orderings: list[np.ndarray] = []
 
-                # Ranking 0: original constraints (all)
-                V0 = self._build_violation_all_original(C)
-                ord0 = self._order_by_objective_then_violation(target_arr, V0)
+                # First ranking with original constraints
+                v0 = self._build_violation_all_original(c_mat)
+                ord0 = self._order_by_objective_then_violation(target_arr, v0)
                 orderings.append(ord0)
 
-                # Rankings 1..K: each constraint with its threshold (single constraint)
-                for j in range(C.shape[1]):
-                    cj = C[:, j]
+                # Remaining ranking, each constraint with its threshold (single constraint)
+                for j in range(c_mat.shape[1]):
+                    cj = c_mat[:, j]
                     thr = float(self.constraint_thresholds[j])
                     vj = self._build_violation_single_threshold(cj, thr)
                     orderings.append(self._order_by_objective_then_violation(target_arr, vj))
 
-                # Convert each ordering to rank vector
-                rank_vectors = np.empty((N, len(orderings)), dtype=float)
+                # Convert to rank vectors (pseudo objective vectors)
+                rank_vectors = np.empty((n, len(orderings)), dtype=float)
                 for k, ordk in enumerate(orderings):
-                    r = np.empty(N, dtype=float)
-                    r[ordk] = np.arange(N, dtype=float)
+                    r = np.empty(n, dtype=float)
+                    r[ordk] = np.arange(n, dtype=float)
                     rank_vectors[:, k] = r
 
-                # Non-dominated sorting + crowding distance (as in your current version)
+                # Non-dominated sorting + crowding distance (NSGA-II style)
                 fronts = fast_non_dominated_sort(rank_vectors)
 
                 front_ranks = [[i] * np.sum(row) for i, row in enumerate(fronts)]
@@ -2587,7 +2651,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                     for front_distances in distances_raw
                 ]
 
-                fitness_combined = np.inf * np.ones(N)
+                fitness_combined = np.inf * np.ones(n)
                 for i, front in enumerate(fronts):
                     fitness_combined[front] = front_ranks[i] + distance_ranks[i]
 
@@ -2610,6 +2674,11 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         return new_solutions, new_outputs
 
     def state(self) -> Sequence[Message]:
+        """Return the state of the operator.
+
+        Returns:
+            Sequence[Message]: the current state.
+        """
         if self.verbosity == 0 or self.selection is None or self.selected_targets is None:
             return []
 
@@ -2651,4 +2720,8 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         ]
 
     def update(self, message: Message) -> None:
-        pass
+        """Update the state of the operator. Not used.
+
+        Args:
+            message (Message): message used to update the state.
+        """
