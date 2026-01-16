@@ -9,8 +9,13 @@ __all__ = [  # noqa: RUF022
     "EMOSaveState",
     "EMOSolveRequest",
     "EMOIterateState",
+    "ENautilusRepresentativeSolutionsRequest",
+    "ENautilusRepresentativeSolutionsResponse",
     "ENautilusState",
+    "ENautilusStateResponse",
+    "ENautilusStateRequest",
     "ENautilusStepRequest",
+    "ENautilusStepResponse",
     "ExtraFunctionDB",
     "ForestProblemMetaData",
     "GenericIntermediateSolutionResponse",
@@ -46,6 +51,7 @@ __all__ = [  # noqa: RUF022
     "PreferredSolutions",
     "PreferredRanges",
     "ProblemDB",
+    "ProblemAddFromJSONRequest",
     "ProblemGetRequest",
     "ProblemInfo",
     "ProblemInfoSmall",
@@ -125,7 +131,14 @@ from .emo import (
     EMOScoreResponse,
     Solution,
 )
-from .enautilus import EnautilusStepRequest
+from .enautilus import (
+    ENautilusRepresentativeSolutionsRequest,
+    ENautilusRepresentativeSolutionsResponse,
+    ENautilusStateRequest,
+    ENautilusStateResponse,
+    ENautilusStepRequest,
+    ENautilusStepResponse,
+)
 from .gdm.gdm_aggregate import (
     Group,
     GroupCreateRequest,
@@ -169,13 +182,13 @@ from .nimbus import (
     NIMBUSClassificationResponse,
     NIMBUSDeleteSaveRequest,
     NIMBUSDeleteSaveResponse,
+    NIMBUSFinalizeRequest,
+    NIMBUSFinalizeResponse,
     NIMBUSInitializationRequest,
     NIMBUSInitializationResponse,
     NIMBUSIntermediateSolutionResponse,
     NIMBUSSaveRequest,
     NIMBUSSaveResponse,
-    NIMBUSFinalizeRequest,
-    NIMBUSFinalizeResponse,
 )
 from .preference import (
     Bounds,
@@ -193,6 +206,7 @@ from .problem import (
     ExtraFunctionDB,
     ForestProblemMetaData,
     ObjectiveDB,
+    ProblemAddFromJSONRequest,
     ProblemDB,
     ProblemGetRequest,
     ProblemInfo,
@@ -225,9 +239,9 @@ from .state import (
     GNIMBUSVotingState,
     IntermediateSolutionState,
     NIMBUSClassificationState,
+    NIMBUSFinalState,
     NIMBUSInitializationState,
     NIMBUSSaveState,
-    NIMBUSFinalState,
     RPMState,
 )
 from .user import User, UserBase, UserPublic, UserRole
