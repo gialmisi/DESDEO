@@ -17,7 +17,7 @@ from desdeo.problem import (
 def mystery_function() -> Problem:
     r"""Add the constrained mystery function as defined in Sasena 2002.
 
-    Global solution's value (unconstrained): -1.4565 at x = [2.5044, 2.5778].
+    Global solution's value (constrained): -1.174261 at x = [2.5044, 2.5778].
 
     Returns:
         Problem: the problem model.
@@ -69,7 +69,7 @@ def mystery_function() -> Problem:
 def new_branin_function() -> Problem:
     """Implements the new Branin function.
 
-    Global optimal at x = [3.2730, 0.0489].
+    Global optimal -268.78792 at x = [3.2730, 0.0489].
     """
     pi = Constant(name="Pi", symbol="PI", value=math.pi)
     x_1 = Variable(
