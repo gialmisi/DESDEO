@@ -1,6 +1,7 @@
 """Tests related to routes and routers."""
 
 import json
+import time
 
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -11,8 +12,10 @@ from desdeo.api.models import (
     EMOIterateRequest,
     EMOIterateResponse,
     ForestProblemMetaData,
+    GDMSCOREBandsHistoryResponse,
+    GDMScoreBandsInitializationRequest,
+    GDMScoreBandsVoteRequest,
     GenericIntermediateSolutionResponse,
-    GetSessionRequest,
     GroupCreateRequest,
     GroupInfoRequest,
     GroupModifyRequest,
@@ -44,8 +47,11 @@ from desdeo.api.models.nimbus import NIMBUSInitializationResponse
 from desdeo.api.routers.user_authentication import create_access_token
 from desdeo.emo.options.algorithms import rvea_options
 from desdeo.emo.options.templates import ReferencePointOptions
+from desdeo.gdm.score_bands import SCOREBandsGDMConfig
 from desdeo.problem import Problem
 from desdeo.problem.testproblems import dtlz2, simple_knapsack_vectors
+from desdeo.tools.score_bands import KMeansOptions, SCOREBandsConfig
+from desdeo.tools.utils import available_solvers
 
 from .conftest import get_json, login, post_file_multipart, post_json
 from .test_models import compare_models
@@ -153,7 +159,7 @@ def test_add_problem(client: TestClient):
 
     problems = response.json()
 
-    assert len(problems) == 3
+    assert len(problems) == 4
 
 
 def test_add_problem_json(client: TestClient, session_and_user: dict):
@@ -169,7 +175,7 @@ def test_add_problem_json(client: TestClient, session_and_user: dict):
 
     assert response.status_code == 200
 
-    problem_from_db = session.get(ProblemDB, 3)
+    problem_from_db = session.get(ProblemDB, 4)
 
     assert compare_models(problem, Problem.from_problemdb(problem_from_db))
 
@@ -196,37 +202,110 @@ def test_new_session(client: TestClient, session_and_user: dict):
 
 
 def test_get_session(client: TestClient, session_and_user: dict):
-    """Test that getting a session works as intended."""
+    """Test that getting a session via GET works as intended."""
     user: User = session_and_user["user"]
 
     access_token = login(client)
 
     # no sessions
-    request = GetSessionRequest(session_id=1)
-    response = post_json(client, "/session/get", request.model_dump(), access_token)
+    response = client.get(
+        "/session/get/1",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    # add some sessions
-    request = CreateSessionRequest(info="My session")
+    # add session 1
+    request = CreateSessionRequest(info="Session 1")
     response = post_json(client, "/session/new", request.model_dump(), access_token)
     assert response.status_code == status.HTTP_200_OK
-
     assert user.active_session_id == 1
 
-    request = CreateSessionRequest(info="My session")
+    # add session 2
+    request = CreateSessionRequest(info="Session 2")
     response = post_json(client, "/session/new", request.model_dump(), access_token)
     assert response.status_code == status.HTTP_200_OK
-
     assert user.active_session_id == 2
 
-    # sessions with id 1 and 2 should exist
-    request = GetSessionRequest(session_id=1)
-    response = post_json(client, "/session/get", request.model_dump(), access_token)
+    # fetch session 1
+    response = client.get(
+        "/session/get/1",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == status.HTTP_200_OK
+    assert response.json()["id"] == 1
 
-    request = GetSessionRequest(session_id=2)
-    response = post_json(client, "/session/get", request.model_dump(), access_token)
+    # fetch session 2
+    response = client.get(
+        "/session/get/2",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     assert response.status_code == status.HTTP_200_OK
+    assert response.json()["id"] == 2
+
+
+def test_get_all_sessions_success(client: TestClient, session_and_user: dict):
+    """Test getting all sessions when sessions exist."""
+    access_token = login(client)
+
+    # create 2 test sessions
+    post_json(client, "/session/new", {"info": "S1"}, access_token)
+    post_json(client, "/session/new", {"info": "S2"}, access_token)
+
+    response = client.get(
+        "/session/get_all",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 2
+
+
+def test_get_all_sessions_not_found(client: TestClient, session_and_user: dict):
+    """Test get_all returns 404 if user has no sessions."""
+    access_token = login(client)
+
+    response = client.get(
+        "/session/get_all",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_delete_session_success(client: TestClient, session_and_user: dict):
+    """Test deleting an existing session."""
+    access_token = login(client)
+
+    # create session
+    post_json(client, "/session/new", {"info": "To delete"}, access_token)
+
+    response = client.delete(
+        "/session/1",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    # verify it's gone
+    response = client.get(
+        "/session/get/1",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_delete_session_not_found(client: TestClient, session_and_user: dict):
+    """Test deleting a non-existent session returns 404."""
+    access_token = login(client)
+
+    response = client.delete(
+        "/session/999",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 def test_rpm_solve(client: TestClient):
@@ -441,8 +520,8 @@ def test_nimbus_finalize(client: TestClient):
     access_token = login(client)
 
     # create some previous iterations
-    request = NIMBUSInitializationRequest(problem_id=1, solver=None)
-    response = post_json(client, "/method/nimbus/initialize", request.model_dump(), access_token)
+    request = NIMBUSInitializationRequest(problem_id=1)
+    response = post_json(client, "/method/nimbus/get-or-initialize", request.model_dump(), access_token)
     assert response.status_code == status.HTTP_200_OK
     init_response = NIMBUSInitializationResponse.model_validate(json.loads(response.content))
     assert init_response.state_id == 1
@@ -469,22 +548,43 @@ def test_nimbus_finalize(client: TestClient):
     optim_obj = result.current_solutions[solution_index].objective_values
     optim_var = result.current_solutions[solution_index].variable_values
 
-    prev_pref = result.previous_preference
     state_id = result.state_id
+
+    request = NIMBUSInitializationRequest(problem_id=1)
+    response = post_json(client, "/method/nimbus/get-or-initialize", request.model_dump(), access_token)
+    assert response.status_code == status.HTTP_200_OK
+    classify_result = NIMBUSClassificationResponse.model_validate(json.loads(response.content))
+    assert classify_result.state_id == 2
+    assert len(classify_result.current_solutions) == 3
+    assert len(classify_result.saved_solutions) == 0
+    assert len(classify_result.all_solutions) == 4
 
     request = NIMBUSFinalizeRequest(
         problem_id=1,
         solution_info=SolutionInfo(state_id=state_id, solution_index=solution_index),
-        preferences=prev_pref,
     )
 
+    # Finalize the process
     response = post_json(client, "/method/nimbus/finalize", request.model_dump(), access_token)
     assert response.status_code == status.HTTP_200_OK
     result: NIMBUSFinalizeResponse = NIMBUSFinalizeResponse.model_validate(json.loads(response.content.decode("utf-8")))
-    assert result.final_solution is not None
+    assert result.response_type == "nimbus.finalize"
     assert result.final_solution.objective_values == optim_obj
     assert result.final_solution.variable_values == optim_var
     assert result.final_solution.state_id != result.state_id
+    assert result.all_solutions is not None
+
+    request = NIMBUSInitializationRequest(problem_id=1)
+
+    # The last item in the pipe is a finalize state, so we should be getting a finalize response.
+    response = post_json(client, "/method/nimbus/get-or-initialize", request.model_dump(), access_token)
+    assert response.status_code == status.HTTP_200_OK
+    result: NIMBUSFinalizeResponse = NIMBUSFinalizeResponse.model_validate(json.loads(response.content.decode("utf-8")))
+    assert result.response_type == "nimbus.finalize"
+    assert result.final_solution.objective_values == optim_obj
+    assert result.final_solution.variable_values == optim_var
+    assert result.final_solution.state_id != result.state_id
+    assert result.all_solutions is not None
 
 
 def test_nimbus_save_and_delete_save(client: TestClient):
@@ -835,6 +935,19 @@ def test_preferred_solver(client: TestClient):
         print("  As that solver is what we set it to be in the start, we can verify that they actually get used.")
 
 
+def test_get_available_solvers(client: TestClient):
+    """Test that available solvers can be fetched."""
+    response = client.get("/problem/assign/solver")
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert isinstance(data, list)
+
+    # Check that the returned solver names match the available solvers
+    assert set(data) == set(available_solvers.keys())
+
+
 def test_emo_solve_with_reference_point(client: TestClient):
     """Test that using EMO with reference point works as expected."""
     return
@@ -846,8 +959,6 @@ def test_emo_solve_with_reference_point(client: TestClient):
         preference_options=ReferencePointOptions(preference={"f_1": 0.5, "f_2": 0.3, "f_3": 0.4}, method="Hakanen"),
     )
 
-    print("Request Data:", request.model_dump())
-
     response = post_json(client, "/method/emo/iterate", request.model_dump(), access_token)
 
     assert response.status_code == status.HTTP_200_OK
@@ -856,20 +967,16 @@ def test_emo_solve_with_reference_point(client: TestClient):
     emo_response = EMOIterateResponse.model_validate(response.json())
     assert emo_response.client_id is not None
     state_id = emo_response.state_id
-    print(emo_response)
-    import time
 
     initial_time = time.time()
     with client.websocket_connect(f"/method/emo/ws/{emo_response.client_id}") as websocket:
         while time.time() - initial_time < 10:
             message = websocket.receive_json()
-            print("WebSocket Message:", message)
             if message.get("message") == f"Finished {emo_response.method_ids[0]}":
                 break
     # Fetch the state to verify it worked
     fetch_request = EMOFetchRequest(problem_id=1, parent_state_id=state_id)
     response = post_json(client, "/method/emo/fetch", fetch_request.model_dump(), access_token)
-    print(response.json())
 
 
 def test_get_problem_metadata(client: TestClient):
@@ -890,6 +997,79 @@ def test_get_problem_metadata(client: TestClient):
     assert response.json()[0]["schedule_dict"] == {"type": "dict"}
 
     # No problem
-    req = {"problem_id": 3, "metadata_type": "forest_problem_metadata"}
+    req = {"problem_id": 4, "metadata_type": "forest_problem_metadata"}
     response = post_json(client=client, endpoint="/problem/get_metadata", json=req, access_token=access_token)
     assert response.status_code == 404
+
+
+def test_gdm_score_bands(client: TestClient):
+    """Test score bands endpoints."""
+    access_token = login(client=client)
+
+    # create group
+    req = GroupCreateRequest(
+        group_name="group",
+        problem_id=3,  # The discrete representation problem
+    ).model_dump()
+    response = post_json(client=client, endpoint="/gdm/create_group", json=req, access_token=access_token)
+    assert response.status_code == 201
+
+    # Add a dm to the group
+    # Create a new user to the database
+    response = client.post(
+        "/add_new_dm",
+        data={"username": "dm", "password": "dm", "grant_type": "password"},
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+    assert response.status_code == 201
+
+    req = GroupModifyRequest(group_id=1, user_id=2).model_dump()
+    response = post_json(client=client, endpoint="/gdm/add_to_group", json=req, access_token=access_token)
+    assert response.status_code == 200
+
+    access_token = login(client=client, username="dm", password="dm")
+
+    # Now we have a group, so let's get on with making stuff with gdm score bands.
+    req = GDMScoreBandsInitializationRequest(
+        group_id=1,
+        score_bands_config=SCOREBandsGDMConfig(
+            score_bands_config=SCOREBandsConfig(clustering_algorithm=KMeansOptions(n_clusters=5)), from_iteration=None
+        ),
+    ).model_dump()
+    response = post_json(
+        client=client, endpoint="/gdm-score-bands/get-or-initialize", json=req, access_token=access_token
+    )
+    assert response.status_code == 200
+    response_innards = GDMSCOREBandsHistoryResponse.model_validate(response.json())
+    cluster_size_1 = len(response_innards.history[-1].result.clusters)
+
+    # VOTE AND CONFIRM
+    req = GDMScoreBandsVoteRequest(
+        group_id=1,
+        vote=4,
+    ).model_dump()
+    response = post_json(client=client, endpoint="/gdm-score-bands/vote", json=req, access_token=access_token)
+    assert response.status_code == 200
+    req = GroupInfoRequest(group_id=1).model_dump()
+    response = post_json(client=client, endpoint="/gdm-score-bands/confirm", json=req, access_token=access_token)
+    assert response.status_code == 200
+
+    req = GDMScoreBandsInitializationRequest(
+        group_id=1,
+        score_bands_config=SCOREBandsGDMConfig(
+            score_bands_config=SCOREBandsConfig(clustering_algorithm=KMeansOptions(n_clusters=5)),
+            from_iteration=response_innards.history[-1].latest_iteration,
+        ),
+    ).model_dump()
+    response = post_json(
+        client=client, endpoint="/gdm-score-bands/get-or-initialize", json=req, access_token=access_token
+    )
+    assert response.status_code == 200
+    response_innards = GDMSCOREBandsHistoryResponse.model_validate(response.json())
+    cluster_size_2 = len(response_innards.history[-1].result.clusters)
+
+    # Since we've made one iteration, the length of the clustering and therefore the active
+    # indices should be smaller the second time around than the first one.
+    assert cluster_size_1 > cluster_size_2
+
+    # TODO: Test reverting, re-clustering

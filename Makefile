@@ -15,32 +15,19 @@
 #
 # test-failures: rerun the last falures only.
 #
-# requirements-rtd: Exports the current requiremetns into a requirements.txt
-# 	file and ouputs it into the docs folder. This file is needed when the DESDEO
-# 	docs are built on readthedocs.org.
-#
-# requirements-pip: Like above, but creates a requirements.txt file for
-# 	installing DESDEO utilizing pip/pipx.
-#
 # fullstack: run the web-API and web-GUI for local develpment.
 
 test:
-	pytest -n 4 -m "not nautilus and not performance and not skip"
+	pytest -n auto -m "not fixme" --disable-warnings
 
 test-all:
-	pytest -n 4
+	pytest -n auto
 
 test-changes:
-	pytest -n 4 --testmon
+	pytest -n auto --testmon
 
 test-failures:
-	pytest -n 4 --lf
-
-requirements-rtd:
-	poetry export --format requirements.txt --all-extras --without-hashes --output docs/requirements.txt
-
-requirements-pip:
-	poetry export --format requirements.txt --all-extras --without-hashes --output ./requirements.txt
+	pytest -n auto --lf
 
 fullstack:
 	./run_fullstack.sh

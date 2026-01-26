@@ -9,11 +9,9 @@ __all__ = [  # noqa: RUF022
     "EMOSaveState",
     "EMOSolveRequest",
     "EMOIterateState",
-    "ENautilusRepresentativeSolutionsRequest",
     "ENautilusRepresentativeSolutionsResponse",
     "ENautilusState",
     "ENautilusStateResponse",
-    "ENautilusStateRequest",
     "ENautilusStepRequest",
     "ENautilusStepResponse",
     "ExtraFunctionDB",
@@ -81,10 +79,11 @@ __all__ = [  # noqa: RUF022
     "Group",
     "GroupModifyRequest",
     "GroupCreateRequest",
+    "GroupRevertRequest",
     "GroupIteration",
     "GroupPublic",
     "GroupInfoRequest",
-    "BasePreferences",
+    "BaseGroupInfoContainer",
     "ReferencePointDictType",
     "BooleanDictTypeDecorator",
     "EMOSolveRequest",
@@ -100,6 +99,7 @@ __all__ = [  # noqa: RUF022
     "EMOScoreResponse",
     "Solution",
     "SolutionReference",
+    "SolutionReferenceLite",
     "SolutionReferenceResponse",
     "SolverSelectionMetadata",
     "UserSavedEMOResults",
@@ -117,6 +117,14 @@ __all__ = [  # noqa: RUF022
     "GNIMBUSAllIterationsResponse",
     "GNIMBUSSwitchPhaseRequest",
     "GNIMBUSSwitchPhaseResponse",
+    "GDMScoreBandsInitializationRequest",
+    "GDMSCOREBandInformation",
+    "GDMSCOREBandsResponse",
+    "GDMScoreBandsVoteRequest",
+    "GDMSCOREBandFinalSelection",
+    "GDMSCOREBandsDecisionResponse",
+    "GDMSCOREBandsRevertRequest",
+    "GDMSCOREBandsHistoryResponse",
 ]
 
 
@@ -132,9 +140,7 @@ from .emo import (
     Solution,
 )
 from .enautilus import (
-    ENautilusRepresentativeSolutionsRequest,
     ENautilusRepresentativeSolutionsResponse,
-    ENautilusStateRequest,
     ENautilusStateResponse,
     ENautilusStepRequest,
     ENautilusStepResponse,
@@ -146,11 +152,22 @@ from .gdm.gdm_aggregate import (
     GroupIteration,
     GroupModifyRequest,
     GroupPublic,
+    GroupRevertRequest,
 )
 from .gdm.gdm_base import (
-    BasePreferences,
+    BaseGroupInfoContainer,
     BooleanDictTypeDecorator,
     ReferencePointDictType,
+)
+from .gdm.gdm_score_bands import (
+    GDMSCOREBandFinalSelection,
+    GDMSCOREBandInformation,
+    GDMSCOREBandsDecisionResponse,
+    GDMSCOREBandsHistoryResponse,
+    GDMScoreBandsInitializationRequest,
+    GDMSCOREBandsResponse,
+    GDMSCOREBandsRevertRequest,
+    GDMScoreBandsVoteRequest,
 )
 from .gdm.gnimbus import (
     EndProcessPreference,
@@ -172,6 +189,7 @@ from .generic import (
 from .generic_states import (
     SavedSolutionReference,
     SolutionReference,
+    SolutionReferenceLite,
     SolutionReferenceResponse,
     State,
     StateDB,

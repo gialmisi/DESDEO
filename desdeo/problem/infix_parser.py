@@ -20,7 +20,7 @@ from pyparsing import (
 )
 
 # Enable Packrat for better performance in recursive parsing
-ParserElement.enablePackrat(None)
+ParserElement.enable_packrat(None)
 
 
 class InfixExpressionParser:
@@ -324,18 +324,3 @@ class InfixExpressionParser:
         # simple expressions, like 'x_1', are parsed into just a string after removing any extra
         # brackets, so we add them back there in case it is needed
         return expr if isinstance(expr, list) else [expr]
-
-
-if __name__ == "__main__":
-    # Parse and convert
-    test = "(x_1 - c_2) ** 2 + x_2 ** 2 - 25"
-
-    ohh_no = "['Add', ['Negate', ['Square', ['Subtract', 'x_1', 8]]], ['Negate', ['Square', ['Add', 'x_2', 3]]], 7.7]"
-
-    to_json_parser = InfixExpressionParser(target="MathJSON")
-
-    parsed_expression = to_json_parser.parse(test)
-
-    print(f"Expresion:\n{test}")
-    print(f"Parsed:\n{to_json_parser._pre_parse(test)}")
-    print(f"MathJSON:\n{parsed_expression}")
