@@ -27,11 +27,12 @@ const resolveBaseUrl = (): string => {
     (typeof process !== 'undefined' && process.env?.API_BASE_URL) ||
     (typeof process !== 'undefined' && process.env?.VITE_API_URL) ||
     '';
-  const viteBase = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_URL : '';
+  const viteBase =
+    typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_URL : '';
 
   if (isBrowser) {
     const origin = window.location.origin;
-    const base = viteBase || '';
+    const base = viteBase || '/api';
     if (!base) {
       return origin;
     }
