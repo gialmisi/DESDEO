@@ -113,6 +113,7 @@
 
 			const response = await initialize_navigator({
 				problem_id: selection.selectedProblemId,
+				session_id: selection.selectedSessionId ?? undefined,
 				total_steps
 			});
 
@@ -152,6 +153,7 @@
 
 			const response = await navigate_navigator({
 				problem_id: selection.selectedProblemId,
+				session_id: selection.selectedSessionId ?? undefined,
 				total_steps,
 				go_back_step,
 				steps_remaining,
