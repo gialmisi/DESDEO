@@ -79,6 +79,12 @@
 			preferencesType: ['reference point']
 		},
 		{
+			name: 'NAUTILUS Navigator',
+			path: '/interactive_methods/NAUTILUS-Navigator',
+			description: 'NAUTILUS Navigator method for free search in MOO.',
+			preferencesType: ['reference point', 'preferred ranges']
+		},
+		{
 			name: 'Evolutionary method',
 			path: '/interactive_methods/EMO',
 			description: 'Interactive evolutionary method for MOO.',

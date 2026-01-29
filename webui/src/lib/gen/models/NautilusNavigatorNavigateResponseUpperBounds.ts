@@ -7,9 +7,6 @@
  */
 
 /**
- * Response of NIMBUS save deletion.
+ * Upper bounds of the reachable region.
  */
-export interface NIMBUSDeleteSaveResponse {
-	response_type?: string;
-	message?: string | null;
-}
+export type NautilusNavigatorNavigateResponseUpperBounds = { [key: string]: number[] };

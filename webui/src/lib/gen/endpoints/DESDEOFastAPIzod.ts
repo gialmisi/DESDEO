@@ -803,8 +803,7 @@ export const GetProblemsInfoProblemAllInfoGetResponse = zod.array(
 
 Args:
     request (ProblemGetRequest): the request containing the problem's id `problem_id`.
-    user (Annotated[User, Depends): the current user.
-    session (Annotated[Session, Depends): the database session.
+    context (Annotated[SessionContext, Depends): the session context.
 
 Raises:
     HTTPException: could not find a problem with the given id.
@@ -1390,8 +1389,7 @@ export const GetProblemProblemGetPostResponse = zod
 
 Args:
     request (Problem): the JSON representation of the problem.
-    user (Annotated[User, Depends): the current user.
-    session (Annotated[Session, Depends): the database session.
+    context (Annotated[SessionContext, Depends): the session context.
 
 Note:
     Users with the role 'guest' may not add new problems.
@@ -1974,8 +1972,7 @@ export const AddProblemProblemAddPostResponse = zod
 
 Args:
     json_file (UploadFile): a file in JSON format describing the problem.
-    user (Annotated[User, Depends): the usr for which the problem is added.
-    session (Annotated[Session, Depends): the database session.
+    context (Annotated[SessionContext, Depends): the session context.
 
 Raises:
     HTTPException: if the provided `json_file` is empty.
@@ -2572,8 +2569,7 @@ section.
 
 Args:
     request (MetaDataGetRequest): the requested metadata type.
-    user (Annotated[User, Depends]): the current user.
-    session (Annotated[Session, Depends]): the database session.
+    context (Annotated[SessionContext, Depends]): the session context.
 
 Returns:
     list[ForestProblemMetadata | RepresentativeNonDominatedSolutions]: list containing all the metadata
@@ -2666,9 +2662,9 @@ export const GetAvailableSolversProblemAssignSolverGetResponse = zod.array(
 /**
  * Assign a specific solver for a problem.
 
-request: ProblemSelectSolverRequest: The request containing problem id and string representation of the solver
-user: Annotated[User, Depends(get_current_user): The user that is logged in.
-session: Annotated[Session, Depends(get_session)]: The database session.
+Args:
+    request: ProblemSelectSolverRequest: The request containing problem id and string representation of the solver
+    context: Annotated[SessionContext, Depends(get_session)]: The session context.
 
 Raises:
     HTTPException: Unknown solver, unauthorized user
@@ -2691,7 +2687,7 @@ export const SelectSolverProblemAssignSolverPostBody = zod
 export const SelectSolverProblemAssignSolverPostResponse = zod.unknown();
 
 /**
- * .
+ * Creates a new interactive session.
  * @summary Create New Session
  */
 export const CreateNewSessionSessionNewPostBody = zod
@@ -2753,7 +2749,7 @@ export const DeleteSessionSessionSessionIdDeleteParams = zod.object({
 Args:
     request (RPMSolveRequest): a request with the needed information to run the method.
     user (Annotated[User, Depends): the current user.
-    session (Annotated[Session, Depends): the current database session.
+    context (Annotated[SessionContext, Depends): the current session context.
 
 Returns:
     RPMState: a state with information on the results of iterating the reference point method
@@ -3942,8 +3938,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 
 Args:
     request (NIMBUSFinalizeRequest): The request containing the final solution, etc.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): The database session.
+    context (Annotated[User, get_session_context): The current context.
 
 Raises:
     HTTPException
@@ -4086,8 +4081,7 @@ export const FinalizeNimbusMethodNimbusFinalizePostResponse = zod
 
 Args:
     request (NIMBUSDeleteSaveRequest): request containing necessary information for deleting a save
-    user (Annotated[User, Depends): the current  (logged in) user
-    session (Annotated[Session, Depends): database session
+    context (Annotated[SessionContext, Depends): session context
 
 Raises:
     HTTPException
@@ -4099,7 +4093,8 @@ Returns:
 export const DeleteSaveMethodNimbusDeleteSavePostBody = zod
 	.object({
 		state_id: zod.number().describe('The ID of the save state.'),
-		solution_index: zod.number().describe('The ID of the solution within the above state.')
+		solution_index: zod.number().describe('The ID of the solution within the above state.'),
+		problem_id: zod.number().describe('The ID of the problem.')
 	})
 	.describe('Request model for deletion of a saved solution.');
 
@@ -4110,12 +4105,17 @@ export const DeleteSaveMethodNimbusDeleteSavePostResponse = zod
 		response_type: zod
 			.string()
 			.default(deleteSaveMethodNimbusDeleteSavePostResponseResponseTypeDefault),
-		message: zod.union([zod.string(), zod.null()])
+		message: zod.union([zod.string(), zod.null()]).optional()
 	})
 	.describe('Response of NIMBUS save deletion.');
 
 /**
  * Solve intermediate solutions between given two solutions.
+
+Args:
+    request (IntermediateSolutionRequest): The request object containing parameters
+        for fetching results.
+    context (Annotated[SessionContext, Depends]): The session context.
  * @summary Solve Intermediate
  */
 export const solveIntermediateMethodGenericIntermediatePostBodyNumDesiredDefault = 1;
@@ -4339,9 +4339,9 @@ export const CalculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataP
 
 Args:
     request (UtopiaRequest): the set of decision variables and problem for which the utopia forest map is requested
-    for.
-    user (Annotated[User, Depend(get_current_user)]) the current user
-    session (Annotated[Session, Depends(get_session)]) the current database session
+        for.
+    context (Annotated[SessionContext, Depends(get_session_context)]): the current session context
+
 Raises:
     HTTPException:
 Returns:
@@ -5241,6 +5241,115 @@ export const GetRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse
 			.describe('The solutions on the non-dominated front closest to the intermediate points.')
 	})
 	.describe('Model of the response when requesting representative solutions from E-NAUTILUS.');
+
+/**
+ * Initialize the NAUTILUS Navigator method.
+ * @summary Initialize Navigator
+ */
+export const initializeNavigatorMethodNautilusNavigatorInitializePostBodyTotalStepsDefault = 100;
+
+export const InitializeNavigatorMethodNautilusNavigatorInitializePostBody = zod
+	.object({
+		problem_id: zod.number(),
+		session_id: zod.union([zod.number(), zod.null()]).optional(),
+		parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+		total_steps: zod
+			.number()
+			.default(initializeNavigatorMethodNautilusNavigatorInitializePostBodyTotalStepsDefault)
+			.describe('The total number of steps in the NAUTILUS Navigator.')
+	})
+	.describe('Request model for initializing the NAUTILUS Navigator method.');
+
+export const InitializeNavigatorMethodNautilusNavigatorInitializePostResponse = zod
+	.object({
+		state_id: zod
+			.union([zod.number(), zod.null()])
+			.describe('The id of the state created by the initialization.'),
+		total_steps: zod.number().describe('The total number of steps in the NAUTILUS Navigator.'),
+		steps_remaining: zod.number().describe('The number of steps remaining.'),
+		step_number: zod.number().describe('The current step number.'),
+		distance_to_front: zod.number().describe('The distance to the Pareto front as a percentage.'),
+		navigation_point: zod
+			.record(zod.string(), zod.number())
+			.describe('The current navigation point.'),
+		reachable_solution: zod
+			.union([zod.record(zod.string(), zod.number()), zod.null()])
+			.describe('The reachable solution found in this step.'),
+		reachable_bounds: zod
+			.record(zod.string(), zod.record(zod.string(), zod.number()))
+			.describe('The reachable bounds for each objective.'),
+		reference_point: zod
+			.union([zod.record(zod.string(), zod.number()), zod.null()])
+			.describe('The reference point used in the step.'),
+		bounds: zod
+			.union([zod.record(zod.string(), zod.number()), zod.null()])
+			.describe('The user provided bounds.')
+	})
+	.describe('Response model for the NAUTILUS Navigator initialization.');
+
+/**
+ * Navigate the NAUTILUS Navigator method.
+ * @summary Navigate Navigator
+ */
+export const NavigateNavigatorMethodNautilusNavigatorNavigatePostBody = zod
+	.object({
+		problem_id: zod.number(),
+		session_id: zod.union([zod.number(), zod.null()]).optional(),
+		parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+		total_steps: zod.number().describe('The total number of steps in the NAUTILUS Navigator.'),
+		go_back_step: zod.number().describe('The step number to go back to before navigating forward.'),
+		steps_remaining: zod.number().describe('The number of steps remaining after the go-back step.'),
+		reference_point: zod
+			.record(zod.string(), zod.number())
+			.describe('The preference (reference point) of the DM.'),
+		bounds: zod
+			.union([zod.record(zod.string(), zod.number()), zod.null()])
+			.optional()
+			.describe('Optional bounds preference of the DM.')
+	})
+	.describe('Request model for navigating the NAUTILUS Navigator method.');
+
+export const NavigateNavigatorMethodNautilusNavigatorNavigatePostResponse = zod
+	.object({
+		objective_symbols: zod.array(zod.string()).describe('The symbols of the objectives.'),
+		objective_long_names: zod
+			.array(zod.string())
+			.describe('Long/descriptive names of the objectives.'),
+		units: zod
+			.union([zod.array(zod.string()), zod.null()])
+			.describe('The units of the objectives.'),
+		is_maximized: zod
+			.array(zod.boolean())
+			.describe('Whether the objectives are to be maximized or minimized.'),
+		ideal: zod.array(zod.number()).describe('The ideal values of the objectives.'),
+		nadir: zod.array(zod.number()).describe('The nadir values of the objectives.'),
+		total_steps: zod.number().describe('The total number of steps in the NAUTILUS Navigator.'),
+		current_step: zod.number().describe('The current step number.'),
+		step_numbers: zod.array(zod.number()).describe('The step numbers along the active path.'),
+		state_ids: zod.array(zod.number()).describe('The state ids along the active path.'),
+		distance_to_front: zod
+			.array(zod.number())
+			.describe('The distance to the Pareto front at each step.'),
+		navigation_points: zod
+			.record(zod.string(), zod.array(zod.number()))
+			.describe('The navigation points along the path.'),
+		lower_bounds: zod
+			.record(zod.string(), zod.array(zod.number()))
+			.describe('Lower bounds of the reachable region.'),
+		upper_bounds: zod
+			.record(zod.string(), zod.array(zod.number()))
+			.describe('Upper bounds of the reachable region.'),
+		preferences: zod
+			.record(zod.string(), zod.array(zod.number()))
+			.describe('The preferences used in each step.'),
+		bounds: zod
+			.record(zod.string(), zod.array(zod.number()))
+			.describe('The bounds preference of the DM at each step.'),
+		reachable_solution: zod
+			.union([zod.record(zod.string(), zod.number()), zod.null()])
+			.describe('The solution reached at the end of navigation.')
+	})
+	.describe('Response model for navigating the NAUTILUS Navigator method.');
 
 /**
  * Vote for a band using this endpoint.

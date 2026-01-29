@@ -18,6 +18,7 @@ from desdeo.api.models import (
     NIMBUSFinalState,
     NIMBUSInitializationState,
     NIMBUSSaveState,
+    NautilusNavigatorState,
     ObjectiveDB,
     PreferenceDB,
     ProblemDB,
@@ -38,6 +39,7 @@ from desdeo.api.models.gdm.gnimbus import (
     OptimizationPreference,
 )
 from desdeo.mcdm import enautilus_step, generate_starting_point, rpm_solve_solutions, solve_sub_problems
+from desdeo.mcdm.nautilus_navigator import navigator_init, navigator_step
 from desdeo.problem.schema import (
     Constant,
     Constraint,
@@ -1038,6 +1040,71 @@ def test_enautilus_state(session_and_user: dict[str, Session | list[User]]):
 
     assert state_1.parent is None
     assert state_2.parent == state_1
+
+
+def test_nautilus_navigator_state(session_and_user: dict[str, Session | list[User]]):
+    """Test that NAUTILUS Navigator states are stored and linked correctly."""
+    session = session_and_user["session"]
+    user = session_and_user["user"]
+
+    isession = InteractiveSessionDB(user_id=user.id)
+    session.add(isession)
+    session.commit()
+    session.refresh(isession)
+
+    test_problem = pareto_navigator_test_problem()
+    problemdb = ProblemDB.from_problem(test_problem, user)
+    session.add(problemdb)
+    session.commit()
+    session.refresh(problemdb)
+
+    init_response = navigator_init(test_problem)
+    init_state = NautilusNavigatorState(total_steps=3, nautilus_response=init_response)
+
+    state_1 = StateDB.create(
+        database_session=session,
+        problem_id=problemdb.id,
+        session_id=isession.id,
+        parent_id=None,
+        state=init_state,
+    )
+    session.add(state_1)
+    session.commit()
+    session.refresh(state_1)
+
+    reference_point = {
+        obj.symbol: (obj.ideal + obj.nadir) / 2 for obj in test_problem.objectives
+    }
+    step_response = navigator_step(
+        problem=test_problem,
+        steps_remaining=3,
+        step_number=1,
+        nav_point=init_response.navigation_point,
+        reference_point=reference_point,
+    )
+    step_state = NautilusNavigatorState(total_steps=3, nautilus_response=step_response)
+
+    state_2 = StateDB.create(
+        database_session=session,
+        problem_id=problemdb.id,
+        session_id=isession.id,
+        parent_id=state_1.id,
+        state=step_state,
+    )
+    session.add(state_2)
+    session.commit()
+    session.refresh(state_2)
+
+    assert state_1.problem_id == problemdb.id
+    assert state_2.problem_id == problemdb.id
+
+    assert state_1.session_id == isession.id
+    assert state_2.session_id == isession.id
+
+    assert state_1.parent is None
+    assert state_2.parent == state_1
+    assert state_1.state is not None
+    assert state_2.state is not None
 
     assert len(state_1.children) == 1
     assert state_1.children[0] == state_2

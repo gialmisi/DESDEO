@@ -7,9 +7,6 @@
  */
 
 /**
- * Response of NIMBUS save deletion.
+ * Optional bounds preference of the DM.
  */
-export interface NIMBUSDeleteSaveResponse {
-	response_type?: string;
-	message?: string | null;
-}
+export type NautilusNavigatorNavigateRequestBounds = { [key: string]: number } | null;

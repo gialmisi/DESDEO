@@ -40,6 +40,11 @@ __all__ = [  # noqa: RUF022
     "NIMBUSSaveResponse",
     "NIMBUSFinalizeRequest",
     "NIMBUSFinalizeResponse",
+    "NautilusNavigatorInitializeRequest",
+    "NautilusNavigatorInitializeResponse",
+    "NautilusNavigatorNavigateRequest",
+    "NautilusNavigatorNavigateResponse",
+    "NautilusNavigatorState",
     "NIMBUSFinalState",
     "NIMBUSSaveState",
     "NonPreferredSolutions",
@@ -144,6 +149,12 @@ from .enautilus import (
     ENautilusStateResponse,
     ENautilusStepRequest,
     ENautilusStepResponse,
+)
+from .nautilus_navigator import (
+    NautilusNavigatorInitializeRequest,
+    NautilusNavigatorInitializeResponse,
+    NautilusNavigatorNavigateRequest,
+    NautilusNavigatorNavigateResponse,
 )
 from .gdm.gdm_aggregate import (
     Group,
@@ -252,6 +263,7 @@ from .state import (
     EMOIterateState,
     EMOSaveState,
     ENautilusState,
+    NautilusNavigatorState,
     GNIMBUSEndState,
     GNIMBUSOptimizationState,
     GNIMBUSVotingState,

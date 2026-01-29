@@ -46,6 +46,10 @@ import type {
 	NIMBUSIntermediateSolutionResponse,
 	NIMBUSSaveRequest,
 	NIMBUSSaveResponse,
+	NautilusNavigatorInitializeRequest,
+	NautilusNavigatorInitializeResponse,
+	NautilusNavigatorNavigateRequest,
+	NautilusNavigatorNavigateResponse,
 	ProblemGetRequest,
 	ProblemInfo,
 	ProblemInfoSmall,
@@ -87,7 +91,7 @@ export type getCurrentUserInfoUserInfoGetResponseSuccess =
 export type getCurrentUserInfoUserInfoGetResponse = getCurrentUserInfoUserInfoGetResponseSuccess;
 
 export const getGetCurrentUserInfoUserInfoGetUrl = () => {
-	return `http://localhost:8000/user_info`;
+	return `undefined/user_info`;
 };
 
 export const getCurrentUserInfoUserInfoGet = async (
@@ -141,9 +145,7 @@ export const getLoginLoginPostUrl = (params?: LoginLoginPostParams) => {
 
 	const stringifiedParams = normalizedParams.toString();
 
-	return stringifiedParams.length > 0
-		? `http://localhost:8000/login?${stringifiedParams}`
-		: `http://localhost:8000/login`;
+	return stringifiedParams.length > 0 ? `undefined/login?${stringifiedParams}` : `undefined/login`;
 };
 
 export const loginLoginPost = async (
@@ -196,7 +198,7 @@ export type logoutLogoutPostResponseSuccess = logoutLogoutPostResponse200 & {
 export type logoutLogoutPostResponse = logoutLogoutPostResponseSuccess;
 
 export const getLogoutLogoutPostUrl = () => {
-	return `http://localhost:8000/logout`;
+	return `undefined/logout`;
 };
 
 export const logoutLogoutPost = async (
@@ -245,7 +247,7 @@ export type refreshAccessTokenRefreshPostResponse =
 	| refreshAccessTokenRefreshPostResponseError;
 
 export const getRefreshAccessTokenRefreshPostUrl = () => {
-	return `http://localhost:8000/refresh`;
+	return `undefined/refresh`;
 };
 
 export const refreshAccessTokenRefreshPost = async (
@@ -293,7 +295,7 @@ export type addNewDmAddNewDmPostResponse =
 	| addNewDmAddNewDmPostResponseError;
 
 export const getAddNewDmAddNewDmPostUrl = () => {
-	return `http://localhost:8000/add_new_dm`;
+	return `undefined/add_new_dm`;
 };
 
 export const addNewDmAddNewDmPost = async (
@@ -373,7 +375,7 @@ export type addNewAnalystAddNewAnalystPostResponse =
 	| addNewAnalystAddNewAnalystPostResponseError;
 
 export const getAddNewAnalystAddNewAnalystPostUrl = () => {
-	return `http://localhost:8000/add_new_analyst`;
+	return `undefined/add_new_analyst`;
 };
 
 export const addNewAnalystAddNewAnalystPost = async (
@@ -437,7 +439,7 @@ export type getProblemsProblemAllGetResponseSuccess = getProblemsProblemAllGetRe
 export type getProblemsProblemAllGetResponse = getProblemsProblemAllGetResponseSuccess;
 
 export const getGetProblemsProblemAllGetUrl = () => {
-	return `http://localhost:8000/problem/all`;
+	return `undefined/problem/all`;
 };
 
 export const getProblemsProblemAllGet = async (
@@ -472,7 +474,7 @@ export type getProblemsInfoProblemAllInfoGetResponse =
 	getProblemsInfoProblemAllInfoGetResponseSuccess;
 
 export const getGetProblemsInfoProblemAllInfoGetUrl = () => {
-	return `http://localhost:8000/problem/all_info`;
+	return `undefined/problem/all_info`;
 };
 
 export const getProblemsInfoProblemAllInfoGet = async (
@@ -492,8 +494,7 @@ export const getProblemsInfoProblemAllInfoGet = async (
 
 Args:
     request (ProblemGetRequest): the request containing the problem's id `problem_id`.
-    user (Annotated[User, Depends): the current user.
-    session (Annotated[Session, Depends): the database session.
+    context (Annotated[SessionContext, Depends): the session context.
 
 Raises:
     HTTPException: could not find a problem with the given id.
@@ -524,7 +525,7 @@ export type getProblemProblemGetPostResponse =
 	| getProblemProblemGetPostResponseError;
 
 export const getGetProblemProblemGetPostUrl = () => {
-	return `http://localhost:8000/problem/get`;
+	return `undefined/problem/get`;
 };
 
 export const getProblemProblemGetPost = async (
@@ -544,8 +545,7 @@ export const getProblemProblemGetPost = async (
 
 Args:
     request (Problem): the JSON representation of the problem.
-    user (Annotated[User, Depends): the current user.
-    session (Annotated[Session, Depends): the database session.
+    context (Annotated[SessionContext, Depends): the session context.
 
 Note:
     Users with the role 'guest' may not add new problems.
@@ -568,7 +568,7 @@ export type addProblemProblemAddPostResponseSuccess = addProblemProblemAddPostRe
 export type addProblemProblemAddPostResponse = addProblemProblemAddPostResponseSuccess;
 
 export const getAddProblemProblemAddPostUrl = () => {
-	return `http://localhost:8000/problem/add`;
+	return `undefined/problem/add`;
 };
 
 export const addProblemProblemAddPost = async (
@@ -585,8 +585,7 @@ export const addProblemProblemAddPost = async (
 
 Args:
     json_file (UploadFile): a file in JSON format describing the problem.
-    user (Annotated[User, Depends): the usr for which the problem is added.
-    session (Annotated[Session, Depends): the database session.
+    context (Annotated[SessionContext, Depends): the session context.
 
 Raises:
     HTTPException: if the provided `json_file` is empty.
@@ -620,7 +619,7 @@ export type addProblemJsonProblemAddJsonPostResponse =
 	| addProblemJsonProblemAddJsonPostResponseError;
 
 export const getAddProblemJsonProblemAddJsonPostUrl = () => {
-	return `http://localhost:8000/problem/add_json`;
+	return `undefined/problem/add_json`;
 };
 
 export const addProblemJsonProblemAddJsonPost = async (
@@ -649,8 +648,7 @@ section.
 
 Args:
     request (MetaDataGetRequest): the requested metadata type.
-    user (Annotated[User, Depends]): the current user.
-    session (Annotated[Session, Depends]): the database session.
+    context (Annotated[SessionContext, Depends]): the session context.
 
 Returns:
     list[ForestProblemMetadata | RepresentativeNonDominatedSolutions]: list containing all the metadata
@@ -682,7 +680,7 @@ export type getMetadataProblemGetMetadataPostResponse =
 	| getMetadataProblemGetMetadataPostResponseError;
 
 export const getGetMetadataProblemGetMetadataPostUrl = () => {
-	return `http://localhost:8000/problem/get_metadata`;
+	return `undefined/problem/get_metadata`;
 };
 
 export const getMetadataProblemGetMetadataPost = async (
@@ -717,7 +715,7 @@ export type getAvailableSolversProblemAssignSolverGetResponse =
 	getAvailableSolversProblemAssignSolverGetResponseSuccess;
 
 export const getGetAvailableSolversProblemAssignSolverGetUrl = () => {
-	return `http://localhost:8000/problem/assign/solver`;
+	return `undefined/problem/assign/solver`;
 };
 
 export const getAvailableSolversProblemAssignSolverGet = async (
@@ -735,9 +733,9 @@ export const getAvailableSolversProblemAssignSolverGet = async (
 /**
  * Assign a specific solver for a problem.
 
-request: ProblemSelectSolverRequest: The request containing problem id and string representation of the solver
-user: Annotated[User, Depends(get_current_user): The user that is logged in.
-session: Annotated[Session, Depends(get_session)]: The database session.
+Args:
+    request: ProblemSelectSolverRequest: The request containing problem id and string representation of the solver
+    context: Annotated[SessionContext, Depends(get_session)]: The session context.
 
 Raises:
     HTTPException: Unknown solver, unauthorized user
@@ -770,7 +768,7 @@ export type selectSolverProblemAssignSolverPostResponse =
 	| selectSolverProblemAssignSolverPostResponseError;
 
 export const getSelectSolverProblemAssignSolverPostUrl = () => {
-	return `http://localhost:8000/problem/assign_solver`;
+	return `undefined/problem/assign_solver`;
 };
 
 export const selectSolverProblemAssignSolverPost = async (
@@ -789,7 +787,7 @@ export const selectSolverProblemAssignSolverPost = async (
 };
 
 /**
- * .
+ * Creates a new interactive session.
  * @summary Create New Session
  */
 export type createNewSessionSessionNewPostResponse200 = {
@@ -816,7 +814,7 @@ export type createNewSessionSessionNewPostResponse =
 	| createNewSessionSessionNewPostResponseError;
 
 export const getCreateNewSessionSessionNewPostUrl = () => {
-	return `http://localhost:8000/session/new`;
+	return `undefined/session/new`;
 };
 
 export const createNewSessionSessionNewPost = async (
@@ -862,7 +860,7 @@ export type getSessionSessionGetSessionIdGetResponse =
 	| getSessionSessionGetSessionIdGetResponseError;
 
 export const getGetSessionSessionGetSessionIdGetUrl = (sessionId: number) => {
-	return `http://localhost:8000/session/get/${sessionId}`;
+	return `undefined/session/get/${sessionId}`;
 };
 
 export const getSessionSessionGetSessionIdGet = async (
@@ -894,7 +892,7 @@ export type getAllSessionsSessionGetAllGetResponseSuccess =
 export type getAllSessionsSessionGetAllGetResponse = getAllSessionsSessionGetAllGetResponseSuccess;
 
 export const getGetAllSessionsSessionGetAllGetUrl = () => {
-	return `http://localhost:8000/session/get_all`;
+	return `undefined/session/get_all`;
 };
 
 export const getAllSessionsSessionGetAllGet = async (
@@ -937,7 +935,7 @@ export type deleteSessionSessionSessionIdDeleteResponse =
 	| deleteSessionSessionSessionIdDeleteResponseError;
 
 export const getDeleteSessionSessionSessionIdDeleteUrl = (sessionId: number) => {
-	return `http://localhost:8000/session/${sessionId}`;
+	return `undefined/session/${sessionId}`;
 };
 
 export const deleteSessionSessionSessionIdDelete = async (
@@ -959,7 +957,7 @@ export const deleteSessionSessionSessionIdDelete = async (
 Args:
     request (RPMSolveRequest): a request with the needed information to run the method.
     user (Annotated[User, Depends): the current user.
-    session (Annotated[Session, Depends): the current database session.
+    context (Annotated[SessionContext, Depends): the current session context.
 
 Returns:
     RPMState: a state with information on the results of iterating the reference point method
@@ -990,7 +988,7 @@ export type solveSolutionsMethodRpmSolvePostResponse =
 	| solveSolutionsMethodRpmSolvePostResponseError;
 
 export const getSolveSolutionsMethodRpmSolvePostUrl = () => {
-	return `http://localhost:8000/method/rpm/solve`;
+	return `undefined/method/rpm/solve`;
 };
 
 export const solveSolutionsMethodRpmSolvePost = async (
@@ -1036,7 +1034,7 @@ export type solveSolutionsMethodNimbusSolvePostResponse =
 	| solveSolutionsMethodNimbusSolvePostResponseError;
 
 export const getSolveSolutionsMethodNimbusSolvePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/solve`;
+	return `undefined/method/nimbus/solve`;
 };
 
 export const solveSolutionsMethodNimbusSolvePost = async (
@@ -1082,7 +1080,7 @@ export type initializeMethodNimbusInitializePostResponse =
 	| initializeMethodNimbusInitializePostResponseError;
 
 export const getInitializeMethodNimbusInitializePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/initialize`;
+	return `undefined/method/nimbus/initialize`;
 };
 
 export const initializeMethodNimbusInitializePost = async (
@@ -1126,7 +1124,7 @@ export type saveMethodNimbusSavePostResponse =
 	| saveMethodNimbusSavePostResponseError;
 
 export const getSaveMethodNimbusSavePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/save`;
+	return `undefined/method/nimbus/save`;
 };
 
 export const saveMethodNimbusSavePost = async (
@@ -1169,7 +1167,7 @@ export type solveNimbusIntermediateMethodNimbusIntermediatePostResponse =
 	| solveNimbusIntermediateMethodNimbusIntermediatePostResponseError;
 
 export const getSolveNimbusIntermediateMethodNimbusIntermediatePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/intermediate`;
+	return `undefined/method/nimbus/intermediate`;
 };
 
 export const solveNimbusIntermediateMethodNimbusIntermediatePost = async (
@@ -1219,7 +1217,7 @@ export type getOrInitializeMethodNimbusGetOrInitializePostResponse =
 	| getOrInitializeMethodNimbusGetOrInitializePostResponseError;
 
 export const getGetOrInitializeMethodNimbusGetOrInitializePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/get-or-initialize`;
+	return `undefined/method/nimbus/get-or-initialize`;
 };
 
 export const getOrInitializeMethodNimbusGetOrInitializePost = async (
@@ -1242,8 +1240,7 @@ export const getOrInitializeMethodNimbusGetOrInitializePost = async (
 
 Args:
     request (NIMBUSFinalizeRequest): The request containing the final solution, etc.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): The database session.
+    context (Annotated[User, get_session_context): The current context.
 
 Raises:
     HTTPException
@@ -1276,7 +1273,7 @@ export type finalizeNimbusMethodNimbusFinalizePostResponse =
 	| finalizeNimbusMethodNimbusFinalizePostResponseError;
 
 export const getFinalizeNimbusMethodNimbusFinalizePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/finalize`;
+	return `undefined/method/nimbus/finalize`;
 };
 
 export const finalizeNimbusMethodNimbusFinalizePost = async (
@@ -1299,8 +1296,7 @@ export const finalizeNimbusMethodNimbusFinalizePost = async (
 
 Args:
     request (NIMBUSDeleteSaveRequest): request containing necessary information for deleting a save
-    user (Annotated[User, Depends): the current  (logged in) user
-    session (Annotated[Session, Depends): database session
+    context (Annotated[SessionContext, Depends): session context
 
 Raises:
     HTTPException
@@ -1333,7 +1329,7 @@ export type deleteSaveMethodNimbusDeleteSavePostResponse =
 	| deleteSaveMethodNimbusDeleteSavePostResponseError;
 
 export const getDeleteSaveMethodNimbusDeleteSavePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/delete_save`;
+	return `undefined/method/nimbus/delete_save`;
 };
 
 export const deleteSaveMethodNimbusDeleteSavePost = async (
@@ -1353,6 +1349,11 @@ export const deleteSaveMethodNimbusDeleteSavePost = async (
 
 /**
  * Solve intermediate solutions between given two solutions.
+
+Args:
+    request (IntermediateSolutionRequest): The request object containing parameters
+        for fetching results.
+    context (Annotated[SessionContext, Depends]): The session context.
  * @summary Solve Intermediate
  */
 export type solveIntermediateMethodGenericIntermediatePostResponse200 = {
@@ -1379,7 +1380,7 @@ export type solveIntermediateMethodGenericIntermediatePostResponse =
 	| solveIntermediateMethodGenericIntermediatePostResponseError;
 
 export const getSolveIntermediateMethodGenericIntermediatePostUrl = () => {
-	return `http://localhost:8000/method/generic/intermediate`;
+	return `undefined/method/generic/intermediate`;
 };
 
 export const solveIntermediateMethodGenericIntermediatePost = async (
@@ -1425,7 +1426,7 @@ export type calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPo
 	| calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponseError;
 
 export const getCalculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostUrl = () => {
-	return `http://localhost:8000/method/generic/score-bands-obj-data`;
+	return `undefined/method/generic/score-bands-obj-data`;
 };
 
 export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPost = async (
@@ -1448,9 +1449,9 @@ export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataP
 
 Args:
     request (UtopiaRequest): the set of decision variables and problem for which the utopia forest map is requested
-    for.
-    user (Annotated[User, Depend(get_current_user)]) the current user
-    session (Annotated[Session, Depends(get_session)]) the current database session
+        for.
+    context (Annotated[SessionContext, Depends(get_session_context)]): the current session context
+
 Raises:
     HTTPException:
 Returns:
@@ -1479,7 +1480,7 @@ export type getUtopiaDataUtopiaPostResponse =
 	| getUtopiaDataUtopiaPostResponseError;
 
 export const getGetUtopiaDataUtopiaPostUrl = () => {
-	return `http://localhost:8000/utopia/`;
+	return `undefined/utopia/`;
 };
 
 export const getUtopiaDataUtopiaPost = async (
@@ -1533,7 +1534,7 @@ export type createGroupGdmCreateGroupPostResponse =
 	| createGroupGdmCreateGroupPostResponseError;
 
 export const getCreateGroupGdmCreateGroupPostUrl = () => {
-	return `http://localhost:8000/gdm/create_group`;
+	return `undefined/gdm/create_group`;
 };
 
 export const createGroupGdmCreateGroupPost = async (
@@ -1587,7 +1588,7 @@ export type deleteGroupGdmDeleteGroupPostResponse =
 	| deleteGroupGdmDeleteGroupPostResponseError;
 
 export const getDeleteGroupGdmDeleteGroupPostUrl = () => {
-	return `http://localhost:8000/gdm/delete_group`;
+	return `undefined/gdm/delete_group`;
 };
 
 export const deleteGroupGdmDeleteGroupPost = async (
@@ -1639,7 +1640,7 @@ export type addToGroupGdmAddToGroupPostResponse =
 	| addToGroupGdmAddToGroupPostResponseError;
 
 export const getAddToGroupGdmAddToGroupPostUrl = () => {
-	return `http://localhost:8000/gdm/add_to_group`;
+	return `undefined/gdm/add_to_group`;
 };
 
 export const addToGroupGdmAddToGroupPost = async (
@@ -1693,7 +1694,7 @@ export type removeFromGroupGdmRemoveFromGroupPostResponse =
 	| removeFromGroupGdmRemoveFromGroupPostResponseError;
 
 export const getRemoveFromGroupGdmRemoveFromGroupPostUrl = () => {
-	return `http://localhost:8000/gdm/remove_from_group`;
+	return `undefined/gdm/remove_from_group`;
 };
 
 export const removeFromGroupGdmRemoveFromGroupPost = async (
@@ -1749,7 +1750,7 @@ export type getGroupInfoGdmGetGroupInfoPostResponse =
 	| getGroupInfoGdmGetGroupInfoPostResponseError;
 
 export const getGetGroupInfoGdmGetGroupInfoPostUrl = () => {
-	return `http://localhost:8000/gdm/get_group_info`;
+	return `undefined/gdm/get_group_info`;
 };
 
 export const getGroupInfoGdmGetGroupInfoPost = async (
@@ -1795,7 +1796,7 @@ export type gnimbusInitializeGnimbusInitializePostResponse =
 	| gnimbusInitializeGnimbusInitializePostResponseError;
 
 export const getGnimbusInitializeGnimbusInitializePostUrl = () => {
-	return `http://localhost:8000/gnimbus/initialize`;
+	return `undefined/gnimbus/initialize`;
 };
 
 export const gnimbusInitializeGnimbusInitializePost = async (
@@ -1854,7 +1855,7 @@ export type getLatestResultsGnimbusGetLatestResultsPostResponse =
 	| getLatestResultsGnimbusGetLatestResultsPostResponseError;
 
 export const getGetLatestResultsGnimbusGetLatestResultsPostUrl = () => {
-	return `http://localhost:8000/gnimbus/get_latest_results`;
+	return `undefined/gnimbus/get_latest_results`;
 };
 
 export const getLatestResultsGnimbusGetLatestResultsPost = async (
@@ -1913,7 +1914,7 @@ export type fullIterationGnimbusAllIterationsPostResponse =
 	| fullIterationGnimbusAllIterationsPostResponseError;
 
 export const getFullIterationGnimbusAllIterationsPostUrl = () => {
-	return `http://localhost:8000/gnimbus/all_iterations`;
+	return `undefined/gnimbus/all_iterations`;
 };
 
 export const fullIterationGnimbusAllIterationsPost = async (
@@ -1959,7 +1960,7 @@ export type switchPhaseGnimbusTogglePhasePostResponse =
 	| switchPhaseGnimbusTogglePhasePostResponseError;
 
 export const getSwitchPhaseGnimbusTogglePhasePostUrl = () => {
-	return `http://localhost:8000/gnimbus/toggle_phase`;
+	return `undefined/gnimbus/toggle_phase`;
 };
 
 export const switchPhaseGnimbusTogglePhasePost = async (
@@ -2003,7 +2004,7 @@ export type getPhaseGnimbusGetPhasePostResponse =
 	| getPhaseGnimbusGetPhasePostResponseError;
 
 export const getGetPhaseGnimbusGetPhasePostUrl = () => {
-	return `http://localhost:8000/gnimbus/get_phase`;
+	return `undefined/gnimbus/get_phase`;
 };
 
 export const getPhaseGnimbusGetPhasePost = async (
@@ -2057,7 +2058,7 @@ export type revertIterationGnimbusRevertIterationPostResponse =
 	| revertIterationGnimbusRevertIterationPostResponseError;
 
 export const getRevertIterationGnimbusRevertIterationPostUrl = () => {
-	return `http://localhost:8000/gnimbus/revert_iteration`;
+	return `undefined/gnimbus/revert_iteration`;
 };
 
 export const revertIterationGnimbusRevertIterationPost = async (
@@ -2101,7 +2102,7 @@ export type stepMethodEnautilusStepPostResponse =
 	| stepMethodEnautilusStepPostResponseError;
 
 export const getStepMethodEnautilusStepPostUrl = () => {
-	return `http://localhost:8000/method/enautilus/step`;
+	return `undefined/method/enautilus/step`;
 };
 
 export const stepMethodEnautilusStepPost = async (
@@ -2144,7 +2145,7 @@ export type getStateMethodEnautilusGetStateStateIdGetResponse =
 	| getStateMethodEnautilusGetStateStateIdGetResponseError;
 
 export const getGetStateMethodEnautilusGetStateStateIdGetUrl = (stateId: number) => {
-	return `http://localhost:8000/method/enautilus/get_state/${stateId}`;
+	return `undefined/method/enautilus/get_state/${stateId}`;
 };
 
 export const getStateMethodEnautilusGetStateStateIdGet = async (
@@ -2208,7 +2209,7 @@ export type getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse 
 export const getGetRepresentativeMethodEnautilusGetRepresentativeStateIdGetUrl = (
 	stateId: number
 ) => {
-	return `http://localhost:8000/method/enautilus/get_representative/${stateId}`;
+	return `undefined/method/enautilus/get_representative/${stateId}`;
 };
 
 export const getRepresentativeMethodEnautilusGetRepresentativeStateIdGet = async (
@@ -2220,6 +2221,98 @@ export const getRepresentativeMethodEnautilusGetRepresentativeStateIdGet = async
 		{
 			...options,
 			method: 'GET'
+		}
+	);
+};
+
+/**
+ * Initialize the NAUTILUS Navigator method.
+ * @summary Initialize Navigator
+ */
+export type initializeNavigatorMethodNautilusNavigatorInitializePostResponse200 = {
+	data: NautilusNavigatorInitializeResponse;
+	status: 200;
+};
+
+export type initializeNavigatorMethodNautilusNavigatorInitializePostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type initializeNavigatorMethodNautilusNavigatorInitializePostResponseSuccess =
+	initializeNavigatorMethodNautilusNavigatorInitializePostResponse200 & {
+		headers: Headers;
+	};
+export type initializeNavigatorMethodNautilusNavigatorInitializePostResponseError =
+	initializeNavigatorMethodNautilusNavigatorInitializePostResponse422 & {
+		headers: Headers;
+	};
+
+export type initializeNavigatorMethodNautilusNavigatorInitializePostResponse =
+	| initializeNavigatorMethodNautilusNavigatorInitializePostResponseSuccess
+	| initializeNavigatorMethodNautilusNavigatorInitializePostResponseError;
+
+export const getInitializeNavigatorMethodNautilusNavigatorInitializePostUrl = () => {
+	return `undefined/method/nautilus_navigator/initialize`;
+};
+
+export const initializeNavigatorMethodNautilusNavigatorInitializePost = async (
+	nautilusNavigatorInitializeRequest: NautilusNavigatorInitializeRequest,
+	options?: RequestInit
+): Promise<initializeNavigatorMethodNautilusNavigatorInitializePostResponse> => {
+	return customFetch<initializeNavigatorMethodNautilusNavigatorInitializePostResponse>(
+		getInitializeNavigatorMethodNautilusNavigatorInitializePostUrl(),
+		{
+			...options,
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(nautilusNavigatorInitializeRequest)
+		}
+	);
+};
+
+/**
+ * Navigate the NAUTILUS Navigator method.
+ * @summary Navigate Navigator
+ */
+export type navigateNavigatorMethodNautilusNavigatorNavigatePostResponse200 = {
+	data: NautilusNavigatorNavigateResponse;
+	status: 200;
+};
+
+export type navigateNavigatorMethodNautilusNavigatorNavigatePostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type navigateNavigatorMethodNautilusNavigatorNavigatePostResponseSuccess =
+	navigateNavigatorMethodNautilusNavigatorNavigatePostResponse200 & {
+		headers: Headers;
+	};
+export type navigateNavigatorMethodNautilusNavigatorNavigatePostResponseError =
+	navigateNavigatorMethodNautilusNavigatorNavigatePostResponse422 & {
+		headers: Headers;
+	};
+
+export type navigateNavigatorMethodNautilusNavigatorNavigatePostResponse =
+	| navigateNavigatorMethodNautilusNavigatorNavigatePostResponseSuccess
+	| navigateNavigatorMethodNautilusNavigatorNavigatePostResponseError;
+
+export const getNavigateNavigatorMethodNautilusNavigatorNavigatePostUrl = () => {
+	return `undefined/method/nautilus_navigator/navigate`;
+};
+
+export const navigateNavigatorMethodNautilusNavigatorNavigatePost = async (
+	nautilusNavigatorNavigateRequest: NautilusNavigatorNavigateRequest,
+	options?: RequestInit
+): Promise<navigateNavigatorMethodNautilusNavigatorNavigatePostResponse> => {
+	return customFetch<navigateNavigatorMethodNautilusNavigatorNavigatePostResponse>(
+		getNavigateNavigatorMethodNautilusNavigatorNavigatePostUrl(),
+		{
+			...options,
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(nautilusNavigatorNavigateRequest)
 		}
 	);
 };
@@ -2263,7 +2356,7 @@ export type voteForABandGdmScoreBandsVotePostResponse =
 	| voteForABandGdmScoreBandsVotePostResponseError;
 
 export const getVoteForABandGdmScoreBandsVotePostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/vote`;
+	return `undefined/gdm-score-bands/vote`;
 };
 
 export const voteForABandGdmScoreBandsVotePost = async (
@@ -2320,7 +2413,7 @@ export type confirmVoteGdmScoreBandsConfirmPostResponse =
 	| confirmVoteGdmScoreBandsConfirmPostResponseError;
 
 export const getConfirmVoteGdmScoreBandsConfirmPostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/confirm`;
+	return `undefined/gdm-score-bands/confirm`;
 };
 
 export const confirmVoteGdmScoreBandsConfirmPost = async (
@@ -2380,7 +2473,7 @@ export type getOrInitializeGdmScoreBandsGetOrInitializePostResponse =
 	| getOrInitializeGdmScoreBandsGetOrInitializePostResponseError;
 
 export const getGetOrInitializeGdmScoreBandsGetOrInitializePostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/get-or-initialize`;
+	return `undefined/gdm-score-bands/get-or-initialize`;
 };
 
 export const getOrInitializeGdmScoreBandsGetOrInitializePost = async (
@@ -2437,7 +2530,7 @@ export type getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse =
 	| getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponseError;
 
 export const getGetVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/get-votes-and-confirms`;
+	return `undefined/gdm-score-bands/get-votes-and-confirms`;
 };
 
 export const getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPost = async (
@@ -2493,7 +2586,7 @@ export type revertGdmScoreBandsRevertPostResponse =
 	| revertGdmScoreBandsRevertPostResponseError;
 
 export const getRevertGdmScoreBandsRevertPostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/revert`;
+	return `undefined/gdm-score-bands/revert`;
 };
 
 export const revertGdmScoreBandsRevertPost = async (
@@ -2558,8 +2651,8 @@ export const getConfigureGdmGdmScoreBandsConfigurePostUrl = (
 	const stringifiedParams = normalizedParams.toString();
 
 	return stringifiedParams.length > 0
-		? `http://localhost:8000/gdm-score-bands/configure?${stringifiedParams}`
-		: `http://localhost:8000/gdm-score-bands/configure`;
+		? `undefined/gdm-score-bands/configure?${stringifiedParams}`
+		: `undefined/gdm-score-bands/configure`;
 };
 
 export const configureGdmGdmScoreBandsConfigurePost = async (

@@ -14,6 +14,7 @@ from sqlmodel import (
 
 from desdeo.emo.options.templates import PreferenceOptions, TemplateOptions
 from desdeo.mcdm import ENautilusResult
+from desdeo.mcdm.nautilus_navigator import NAUTILUS_Response
 from desdeo.problem import Tensor, VariableType
 from desdeo.tools import SolverResults
 from desdeo.tools.score_bands import SCOREBandsResult
@@ -53,6 +54,8 @@ class ResultsType(TypeDecorator):
         # TODO: see above
         if "closeness_measures" in value:  # noqa: SIM108
             model = ENautilusResult
+        elif "distance_to_front" in value:
+            model = NAUTILUS_Response
         else:
             model = SolverResults
 
@@ -461,3 +464,12 @@ class ENautilusState(SQLModel, table=True):
     enautilus_results: "ENautilusResult" = Field(sa_column=Column(ResultsType))
 
     non_dominated_solutions: "RepresentativeNonDominatedSolutions" = Relationship()
+
+
+class NautilusNavigatorState(SQLModel, table=True):
+    """NAUTILUS Navigator: one navigation step."""
+
+    id: int | None = Field(default=None, primary_key=True, foreign_key="states.id")
+
+    total_steps: int
+    nautilus_response: NAUTILUS_Response = Field(sa_column=Column(ResultsType))

@@ -7,9 +7,8 @@
  */
 
 /**
- * Response of NIMBUS save deletion.
+ * The reachable bounds for each objective.
  */
-export interface NIMBUSDeleteSaveResponse {
-	response_type?: string;
-	message?: string | null;
-}
+export type NautilusNavigatorInitializeResponseReachableBounds = {
+	[key: string]: { [key: string]: number };
+};
