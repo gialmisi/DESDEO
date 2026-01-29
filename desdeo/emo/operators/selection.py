@@ -6,7 +6,7 @@ TODO:@light-weaver
 
 import warnings
 from abc import abstractmethod
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from enum import StrEnum
 from itertools import combinations
 from typing import Literal, TypeVar
@@ -111,7 +111,7 @@ class ReferenceVectorOptions(BaseModel):
     """The method for normalizing the reference vectors. Defaults to "spherical"."""
     lattice_resolution: int | None = None
     """Number of divisions along an axis when creating the simplex lattice. This is not required/used for the "s_energy"
-    method. If not specified, the lattice resolution is calculated based on the `number_of_vectors`. If "spherical" is 
+    method. If not specified, the lattice resolution is calculated based on the `number_of_vectors`. If "spherical" is
     selected as the `vector_type`, this value overrides the `number_of_vectors`.
     """
     number_of_vectors: int = 200
@@ -261,10 +261,9 @@ class BaseDecompositionSelector(BaseSelector):
                 norm = np.sum(self.reference_vectors, axis=1).reshape(-1, 1)
                 self.reference_vectors = np.divide(self.reference_vectors, norm)
                 return
-            else:
-                norm = np.sum(1 - self.reference_vectors, axis=1).reshape(-1, 1)
-                self.reference_vectors = 1 - np.divide(1 - self.reference_vectors, norm)
-                return
+            norm = np.sum(1 - self.reference_vectors, axis=1).reshape(-1, 1)
+            self.reference_vectors = 1 - np.divide(1 - self.reference_vectors, norm)
+            return
         # Not needed due to pydantic validation
         raise ValueError("Invalid vector type. Must be either 'spherical' or 'planar'.")
 
@@ -979,10 +978,9 @@ class NSGA3Selector(BaseDecompositionSelector):
         for front_id in range(len(fronts)):
             if len(np.concatenate(fronts[: front_id + 1])) < self.n_survive:
                 continue
-            else:
-                fronts = fronts[: front_id + 1]
-                selection = np.concatenate(fronts)
-                break
+            fronts = fronts[: front_id + 1]
+            selection = np.concatenate(fronts)
+            break
         F = fitness[selection]
 
         last_front = fronts[-1]
@@ -2374,7 +2372,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         """Topics the operator is interested in."""
         return []
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         problem: Problem,
         verbosity: int,
@@ -2383,7 +2381,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         target_objective_symbol: str,
         mode: str = "baseline",
         constraints: dict[str, float] | None = None,
-        seed: int = 0,
+        seed: int | None = None,
     ):
         """Initializes the operator.
 
@@ -2541,7 +2539,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
         return out[out >= 0]
 
-    def do(  # noqa: PLR0912
+    def do(
         self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
     ) -> tuple[SolutionType, pl.DataFrame]:
         """Run the operator.
