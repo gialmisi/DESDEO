@@ -57,9 +57,11 @@ const getUrl = (contextUrl: string): string => {
 
   const base = resolveBaseUrl();
   const normalized = contextUrl.replace(/^undefined/, '');
-  const path = normalized.startsWith('/') ? normalized : `/${normalized}`;
+  const baseUrl = new URL(base);
+  const baseHref = baseUrl.href.endsWith('/') ? baseUrl.href : `${baseUrl.href}/`;
+  const path = normalized.startsWith('/') ? normalized.slice(1) : normalized;
 
-  return new URL(path, base).toString();
+  return new URL(path, baseHref).toString();
 };
 
 const getHeaders = (headers?: HeadersInit): HeadersInit => {
