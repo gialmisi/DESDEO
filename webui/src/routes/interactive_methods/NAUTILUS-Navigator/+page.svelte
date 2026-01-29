@@ -34,6 +34,9 @@
 	let bounds = $state<Record<string, number>>({});
 	let use_bounds = $state(false);
 	let defaults_ready = $state(false);
+	const totalStepsId = 'nautilus-total-steps';
+	const goBackId = 'nautilus-go-back-step';
+	const boundsToggleId = 'nautilus-enable-bounds';
 
 	let objective_keys = $derived.by(() => {
 		if (!problem_info?.objectives) return [];
@@ -156,7 +159,7 @@
 				session_id: selection.selectedSessionId ?? undefined,
 				total_steps,
 				go_back_step,
-				steps_remaining,
+				steps_remaining: 1,
 				reference_point,
 				bounds: use_bounds ? bounds : null
 			});
@@ -249,29 +252,31 @@
 				</div>
 
 				<div class="space-y-2 rounded border p-3">
-					<label class="text-sm font-medium text-gray-700">Total steps</label>
-					<Input
-						type="number"
-						min="1"
-						value={total_steps}
-						on:input={(event) => (total_steps = Number(event.currentTarget.value))}
-					/>
+						<label class="text-sm font-medium text-gray-700" for={totalStepsId}>Total steps</label>
+						<Input
+							id={totalStepsId}
+							type="number"
+							min="1"
+							value={total_steps}
+							on:input={(event) => (total_steps = Number(event.currentTarget.value))}
+						/>
 					<Button class="mt-2 w-full" onclick={handle_initialize}>Restart</Button>
 				</div>
 
 				<div class="space-y-3 rounded border p-3">
 					<div class="flex items-center justify-between">
-						<label class="text-sm font-medium text-gray-700">Enable bounds</label>
-						<Checkbox bind:checked={use_bounds} />
-					</div>
+							<label class="text-sm font-medium text-gray-700" for={boundsToggleId}>Enable bounds</label>
+							<Checkbox id={boundsToggleId} bind:checked={use_bounds} />
+						</div>
 
-					<label class="text-sm font-medium text-gray-700">Go back to step</label>
-					<Input
-						type="number"
-						min="0"
-						max={total_steps}
-						value={go_back_step}
-						on:input={(event) => (go_back_step = Number(event.currentTarget.value))}
+						<label class="text-sm font-medium text-gray-700" for={goBackId}>Go back to step</label>
+						<Input
+							id={goBackId}
+							type="number"
+							min="0"
+							max={total_steps}
+							value={go_back_step}
+							on:input={(event) => (go_back_step = Number(event.currentTarget.value))}
 					/>
 				</div>
 
@@ -280,17 +285,23 @@
 					{#each objective_keys as symbol, index}
 						<div class="rounded border p-3">
 							<p class="text-sm font-medium text-gray-700">{objective_labels[index]}</p>
-							<label class="mt-2 block text-xs text-gray-500">Reference point</label>
-							<Input
-								type="number"
-								value={reference_point[symbol] ?? ''}
-								on:input={(event) => updateReference(symbol, event.currentTarget.value)}
-							/>
-							<label class="mt-2 block text-xs text-gray-500">Bound</label>
-							<Input
-								type="number"
-								value={bounds[symbol] ?? ''}
-								disabled={!use_bounds}
+								<label class="mt-2 block text-xs text-gray-500" for={`nautilus-ref-${symbol}`}>
+									Reference point
+								</label>
+								<Input
+									id={`nautilus-ref-${symbol}`}
+									type="number"
+									value={reference_point[symbol] ?? ''}
+									on:input={(event) => updateReference(symbol, event.currentTarget.value)}
+								/>
+								<label class="mt-2 block text-xs text-gray-500" for={`nautilus-bound-${symbol}`}>
+									Bound
+								</label>
+								<Input
+									id={`nautilus-bound-${symbol}`}
+									type="number"
+									value={bounds[symbol] ?? ''}
+									disabled={!use_bounds}
 								on:input={(event) => updateBounds(symbol, event.currentTarget.value)}
 							/>
 						</div>
