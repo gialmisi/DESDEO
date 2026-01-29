@@ -42,6 +42,7 @@ from .options.generator import (
     RandomGeneratorOptions,
     RandomIntegerGeneratorOptions,
     RandomMixedIntegerGeneratorOptions,
+    SeededHybridGeneratorOptions,
 )
 from .options.mutation import (
     BinaryFlipMutationOptions,
@@ -135,6 +136,7 @@ generator = SimpleNamespace(
     RandomGeneratorOptions=RandomGeneratorOptions,
     RandomIntegerGeneratorOptions=RandomIntegerGeneratorOptions,
     RandomMixedIntegerGeneratorOptions=RandomMixedIntegerGeneratorOptions,
+    SeededHybridGeneratorOptions=SeededHybridGeneratorOptions,
 )
 
 templates = SimpleNamespace(
