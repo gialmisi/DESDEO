@@ -21,16 +21,44 @@ const getBody = async <T>(c: Response | Request): Promise<T> => {
   return (c as Response).text() as Promise<T>;
 };
 
+const resolveBaseUrl = (): string => {
+  const isBrowser = typeof window !== 'undefined';
+  const envBase =
+    (typeof process !== 'undefined' && process.env?.API_BASE_URL) ||
+    (typeof process !== 'undefined' && process.env?.VITE_API_URL) ||
+    '';
+  const viteBase = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_API_URL : '';
+
+  if (isBrowser) {
+    const origin = window.location.origin;
+    const base = viteBase || '';
+    if (!base) {
+      return origin;
+    }
+    if (base.startsWith('http')) {
+      return base;
+    }
+    return `${origin}${base}`;
+  }
+
+  if (envBase) {
+    return envBase;
+  }
+
+  return 'http://localhost:8000';
+};
+
 // NOTE: Update just base url
 const getUrl = (contextUrl: string): string => {
-  const url = new URL(contextUrl);
-  const origin = url.origin;
-  const pathname = url.pathname;
-  const search = url.search;
+  if (contextUrl.startsWith('http')) {
+    return contextUrl;
+  }
 
-  const requestUrl = new URL(`${origin}${pathname}${search}`);
+  const base = resolveBaseUrl();
+  const normalized = contextUrl.replace(/^undefined/, '');
+  const path = normalized.startsWith('/') ? normalized : `/${normalized}`;
 
-  return requestUrl.toString();
+  return new URL(path, base).toString();
 };
 
 const getHeaders = (headers?: HeadersInit): HeadersInit => {
