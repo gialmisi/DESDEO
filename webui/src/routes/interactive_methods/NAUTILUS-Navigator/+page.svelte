@@ -256,7 +256,7 @@
 						value={total_steps}
 						on:input={(event) => (total_steps = Number(event.currentTarget.value))}
 					/>
-					<Button class="mt-2 w-full" on:click={handle_initialize}>Restart</Button>
+					<Button class="mt-2 w-full" onclick={handle_initialize}>Restart</Button>
 				</div>
 
 				<div class="space-y-3 rounded border p-3">
@@ -297,7 +297,7 @@
 					{/each}
 				</div>
 
-				<Button class="w-full" on:click={handle_navigate}>Navigate</Button>
+				<Button class="w-full" onclick={handle_navigate}>Navigate</Button>
 			</div>
 		{/snippet}
 
