@@ -1,29 +1,19 @@
 import type { PageLoad } from '../../$types';
-import { api } from '$lib/api/client';
-import type { components } from '$lib/api/client-types';
+import { fetchGroupAndProblem } from './handler';
 
 type LoadData = {
 	refreshToken?: string;
 };
 
-type Problem = components['schemas']['ProblemInfo'];
-
-export const load: PageLoad<LoadData> = async ({ url, data }) => {
+export const load: PageLoad<LoadData> = async ({ url, data, fetch }) => {
 	const groupId = url.searchParams.get('group');
 	if (!groupId) throw new Error('No group ID provided');
 
-	const group = await api.POST('/gdm/get_group_info', { body: { group_id: parseInt(groupId) } });
-	if (!group.data) throw new Error('Failed to fetch group info');
-	const problemId = group.data.problem_id;
-	const resProblem = await api.POST(`/problem/get`, {
-		body: { problem_id: problemId },
-		headers: {
-			Authorization: `Bearer ${data.refreshToken}`
-		}
-	});
+	const res = await fetchGroupAndProblem(parseInt(groupId, 10), fetch);
+	if (!res.ok) throw new Error(res.error);
 	return {
-		problem: resProblem.data as Problem,
+		problem: res.data.problem,
 		refreshToken: data.refreshToken,
-		group: group.data
+		group: res.data.group
 	};
 };

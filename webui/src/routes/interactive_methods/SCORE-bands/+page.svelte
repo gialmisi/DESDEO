@@ -41,7 +41,7 @@
 	import ScoreBandsSolutionTable from './score-bands-solution-table.svelte';
 	import { onMount } from 'svelte';
 	import type { components } from '$lib/api/client-types';
-	import { methodSelection } from '../../../stores/methodSelection';
+	import { appContext } from '../../../stores/appContext';
 	import { errorMessage } from '../../../stores/uiState';
 	import Alert from '$lib/components/custom/notifications/alert.svelte';
 	import {
@@ -63,7 +63,7 @@
 	}>();
 	type ProblemInfo = components['schemas']['ProblemInfo'];
 	let problem: ProblemInfo | undefined = $state(undefined);
-	let problem_list: ProblemInfo[] = $state(data.problems);
+	let problem_list: ProblemInfo[] = $derived.by(() => data.problems ?? []);
 
 	let data_loaded = $state(false);
 	let loading_error: string | null = $state(null);
@@ -201,9 +201,9 @@
 
 	// Load data on component mount
 	onMount(async () => {
-		if ($methodSelection.selectedProblemId) {
+		if ($appContext.selectedProblemId) {
 			problem = problem_list.find(
-				(p: ProblemInfo) => String(p.id) === String($methodSelection.selectedProblemId)
+				(p: ProblemInfo) => String(p.id) === String($appContext.selectedProblemId)
 			);
 
 			if (problem) {
