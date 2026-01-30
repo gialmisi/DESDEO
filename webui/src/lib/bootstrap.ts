@@ -18,8 +18,10 @@ export async function bootstrapUser(
 		return bootstrapPromise;
 	}
 
-	bootstrapPromise = (async () => {
-		const response = await getCurrentUserInfoUserInfoGet({ fetchImpl });
+		bootstrapPromise = (async () => {
+			type FetchOptions = RequestInit & { fetchImpl?: typeof fetch };
+			const requestOptions = fetchImpl ? ({ fetchImpl } as FetchOptions) : undefined;
+			const response = await getCurrentUserInfoUserInfoGet(requestOptions);
 
 		if (response.status === 200) {
 			store.setUser(response.data);

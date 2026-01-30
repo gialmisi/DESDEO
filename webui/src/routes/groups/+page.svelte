@@ -40,8 +40,8 @@
 	import MathExpressionRenderer from '$lib/components/ui/MathExpressionRenderer/MathExpressionRenderer.svelte';
 
 	let { data }: PageProps = $props();
-	let problemList = data.problemList;
-	let groupList = data.groupList;
+	let problemList = $derived.by(() => data.problemList ?? []);
+	let groupList = $derived.by(() => data.groupList ?? []);
 	let selectedGroup = $state<GroupPublic | undefined>(undefined);
 	let selectedProblem = $state<ProblemInfo | undefined>(undefined);
 

@@ -7,7 +7,9 @@ type HandlerResult<T> = { ok: true; data: T } | { ok: false; error: string };
 export async function fetchProblemInfoList(
 	fetchImpl?: typeof fetch
 ): Promise<HandlerResult<ProblemInfo[]>> {
-	const response = await getProblemsInfoProblemAllInfoGet({ fetchImpl });
+	type FetchOptions = RequestInit & { fetchImpl?: typeof fetch };
+	const requestOptions = fetchImpl ? ({ fetchImpl } as FetchOptions) : undefined;
+	const response = await getProblemsInfoProblemAllInfoGet(requestOptions);
 
 	if (response.status !== 200) {
 		handleAuthFailure(response.status);
