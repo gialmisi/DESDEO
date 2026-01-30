@@ -86,7 +86,7 @@
 	 * List of available optimization problems
 	 * Extracted from the page data, with fallback to empty array
 	 */
-	let problem_list = data.problems ?? [];
+	let problem_list = $derived.by(() => data.problems ?? []);
 
 	/**
 	 * Selected type of solutions to visualize

@@ -111,7 +111,7 @@
 
 	let problem: ProblemInfo | null = $state(null);
 	const { data } = $props<{ data: ProblemInfo[] }>();
-	let problem_list = data.problems ?? [];
+	let problem_list = $derived.by(() => data.problems ?? []);
 	// user can choose from three types of solutions: current, best, or all
 	let selected_type_solutions = $state('current');
 	const frameworks = [

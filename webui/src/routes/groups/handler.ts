@@ -18,6 +18,8 @@ type GroupPageData = {
 export async function fetchGroupPageData(
 	fetchImpl?: typeof fetch
 ): Promise<HandlerResult<GroupPageData>> {
+	type FetchOptions = RequestInit & { fetchImpl?: typeof fetch };
+	const requestOptions = fetchImpl ? ({ fetchImpl } as FetchOptions) : undefined;
 	await bootstrapUser(appContext, fetchImpl);
 
 	const user: UserPublic | null = get(appContext).user;
@@ -31,30 +33,28 @@ export async function fetchGroupPageData(
 	}
 
 	const groupResponses = await Promise.all(
-		groupIds.map((id) => getGroupInfoGdmGetGroupInfoPost({ group_id: id }, { fetchImpl }))
+		groupIds.map((id) => getGroupInfoGdmGetGroupInfoPost({ group_id: id }, requestOptions))
 	);
 
-	for (const response of groupResponses) {
-		if (response.status !== 200) {
-			handleAuthFailure(response.status);
-			return { ok: false, error: 'Failed to fetch group info.' };
-		}
+	const groupError = groupResponses.find((response) => response.status !== 200);
+	if (groupError) {
+		handleAuthFailure(groupError.status);
+		return { ok: false, error: 'Failed to fetch group info.' };
 	}
 
-	const groupList = groupResponses.map((response) => response.data);
+	const groupList = groupResponses.map((response) => response.data as GroupPublic);
 
 	const problemResponses = await Promise.all(
-		groupList.map((group) => getProblemProblemGetPost({ problem_id: group.problem_id }, { fetchImpl }))
+		groupList.map((group) => getProblemProblemGetPost({ problem_id: group.problem_id }, requestOptions))
 	);
 
-	for (const response of problemResponses) {
-		if (response.status !== 200) {
-			handleAuthFailure(response.status);
-			return { ok: false, error: 'Failed to fetch problem info.' };
-		}
+	const problemError = problemResponses.find((response) => response.status !== 200);
+	if (problemError) {
+		handleAuthFailure(problemError.status);
+		return { ok: false, error: 'Failed to fetch problem info.' };
 	}
 
-	const problemList = problemResponses.map((response) => response.data);
+	const problemList = problemResponses.map((response) => response.data as ProblemInfo);
 
 	return { ok: true, data: { groupList, problemList } };
 }

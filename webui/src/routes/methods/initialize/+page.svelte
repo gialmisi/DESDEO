@@ -132,7 +132,7 @@
 				groupId?: string // This exists only in GDM when user comes to this page through group selecting page.
 			} 
 		}>();
-	let problemList = data.problems ?? [];
+	let problemList = $derived.by(() => data.problems ?? []);
 
 	const preferenceTypes = [...new Set(baseMethods.flatMap((m) => m.preferencesType))];
 

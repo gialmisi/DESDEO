@@ -7,7 +7,7 @@
 	import { goto } from '$app/navigation';
 
 	let { data }: PageProps = $props(); // from load in page.ts
-	let problemList = data.problems;
+	let problemList = $derived.by(() => data.problems ?? []);
 
 	let localSelectedProblemId = $state<number | null>(null);
 	let localSelectedMethod = $state<string | null>(null);

@@ -11,10 +11,9 @@ export async function fetchGroupAndProblem(
 	groupId: number,
 	fetchImpl?: typeof fetch
 ): Promise<HandlerResult<{ group: GroupPublic; problem: ProblemInfo }>> {
-	const groupResponse = await getGroupInfoGdmGetGroupInfoPost(
-		{ group_id: groupId },
-		{ fetchImpl }
-	);
+	type FetchOptions = RequestInit & { fetchImpl?: typeof fetch };
+	const requestOptions = fetchImpl ? ({ fetchImpl } as FetchOptions) : undefined;
+	const groupResponse = await getGroupInfoGdmGetGroupInfoPost({ group_id: groupId }, requestOptions);
 
 	if (groupResponse.status !== 200) {
 		handleAuthFailure(groupResponse.status);
@@ -23,7 +22,7 @@ export async function fetchGroupAndProblem(
 
 	const problemResponse = await getProblemProblemGetPost(
 		{ problem_id: groupResponse.data.problem_id },
-		{ fetchImpl }
+		requestOptions
 	);
 
 	if (problemResponse.status !== 200) {
