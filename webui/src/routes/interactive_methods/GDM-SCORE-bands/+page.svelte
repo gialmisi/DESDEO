@@ -84,7 +84,6 @@
 		generate_cluster_colors,
 		calculateScales
 	} from './helper-functions';
-	import { json } from 'd3';
 
 	const { data } = $props<{
 		data: { refreshToken: string; group: GroupPublic; problem: ProblemInfo };
