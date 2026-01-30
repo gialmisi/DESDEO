@@ -64,9 +64,7 @@ function setProblem(problemId: number | null) {
 function setMethod(method: string | null) {
 	store.update((s) => ({
 		...s,
-		selectedMethod: method,
-		selectedSessionId: null,
-		selectedSessionInfo: null
+		selectedMethod: method
 	}));
 }
 
