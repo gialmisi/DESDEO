@@ -461,3 +461,28 @@ class ENautilusState(SQLModel, table=True):
     enautilus_results: "ENautilusResult" = Field(sa_column=Column(ResultsType))
 
     non_dominated_solutions: "RepresentativeNonDominatedSolutions" = Relationship()
+
+
+class NautilusNavigatorStateBase(SQLModel):
+    """Shared fields for NAUTILUS Navigator states."""
+
+    total_steps: int
+    segment_start_step: int
+    segment_steps: int
+    go_back_step: int | None = Field(default=None)
+    reference_point: dict[str, float] | None = Field(sa_column=Column(JSON), default=None)
+    bounds: dict[str, float | None] | None = Field(sa_column=Column(JSON), default=None)
+    responses: list[dict] = Field(sa_column=Column(JSON), default_factory=list)
+    segment_responses: list[dict] = Field(sa_column=Column(JSON), default_factory=list)
+
+
+class NautilusNavigatorInitState(NautilusNavigatorStateBase, table=True):
+    """NAUTILUS Navigator: initialization."""
+
+    id: int | None = Field(default=None, primary_key=True, foreign_key="states.id")
+
+
+class NautilusNavigatorRecomputeState(NautilusNavigatorStateBase, table=True):
+    """NAUTILUS Navigator: recompute segment."""
+
+    id: int | None = Field(default=None, primary_key=True, foreign_key="states.id")

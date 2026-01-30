@@ -16,8 +16,6 @@ export interface ObjectiveDB {
 	scenario_keys?: string[] | null;
 	surrogates?: string[] | null;
 	simulator_path?: string | Url | null;
-	/** A longer description of the objective function. This can be used in UI and visualizations.             Meant to have longer text than what name should have. */
-	description?: string | null;
 	/** Descriptive name of the objective function. This can be used in UI and visualizations. Example: 'time'. */
 	name: string;
 	/** Symbol to represent the objective function. This will be used in the rest of the problem definition. It may also be used in UIs and visualizations. Example: 'f_1'. */

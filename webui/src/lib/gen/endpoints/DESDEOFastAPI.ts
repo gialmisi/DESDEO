@@ -10,27 +10,25 @@ import type {
 	BodyAddNewDmAddNewDmPost,
 	BodyAddProblemJsonProblemAddJsonPost,
 	BodyLoginLoginPost,
-	ConfigureGdmGdmScoreBandsConfigurePostParams,
 	CreateSessionRequest,
-	ENautilusRepresentativeSolutionsResponse,
-	ENautilusStateResponse,
-	ENautilusStepRequest,
-	ENautilusStepResponse,
+	EMOFetchRequest,
+	EMOIterateRequest,
+	EMOIterateResponse,
+	EMOScoreRequest,
+	EMOScoreResponse,
+	ENautilusState,
+	EnautilusStepRequest,
 	ForestProblemMetaData,
-	GDMSCOREBandsHistoryResponse,
-	GDMSCOREBandsRevertRequest,
-	GDMScoreBandsInitializationRequest,
-	GDMScoreBandsVoteRequest,
 	GNIMBUSAllIterationsResponse,
 	GNIMBUSResultResponse,
 	GNIMBUSSwitchPhaseRequest,
 	GNIMBUSSwitchPhaseResponse,
 	GenericIntermediateSolutionResponse,
+	GetSessionRequest,
 	GroupCreateRequest,
 	GroupInfoRequest,
 	GroupModifyRequest,
 	GroupPublic,
-	GroupRevertRequest,
 	HTTPValidationError,
 	InteractiveSessionBase,
 	IntermediateSolutionRequest,
@@ -46,6 +44,9 @@ import type {
 	NIMBUSIntermediateSolutionResponse,
 	NIMBUSSaveRequest,
 	NIMBUSSaveResponse,
+	NautilusNavigatorInitRequest,
+	NautilusNavigatorRecomputeRequest,
+	NautilusNavigatorSegmentResponse,
 	ProblemGetRequest,
 	ProblemInfo,
 	ProblemInfoSmall,
@@ -54,7 +55,6 @@ import type {
 	RPMSolveRequest,
 	RPMState,
 	RepresentativeNonDominatedSolutions,
-	SCOREBandsGDMConfig,
 	ScoreBandsRequest,
 	ScoreBandsResponse,
 	SolverSelectionMetadata,
@@ -87,7 +87,7 @@ export type getCurrentUserInfoUserInfoGetResponseSuccess =
 export type getCurrentUserInfoUserInfoGetResponse = getCurrentUserInfoUserInfoGetResponseSuccess;
 
 export const getGetCurrentUserInfoUserInfoGetUrl = () => {
-	return `http://localhost:8000/user_info`;
+	return `undefined/user_info`;
 };
 
 export const getCurrentUserInfoUserInfoGet = async (
@@ -141,9 +141,7 @@ export const getLoginLoginPostUrl = (params?: LoginLoginPostParams) => {
 
 	const stringifiedParams = normalizedParams.toString();
 
-	return stringifiedParams.length > 0
-		? `http://localhost:8000/login?${stringifiedParams}`
-		: `http://localhost:8000/login`;
+	return stringifiedParams.length > 0 ? `undefined/login?${stringifiedParams}` : `undefined/login`;
 };
 
 export const loginLoginPost = async (
@@ -196,7 +194,7 @@ export type logoutLogoutPostResponseSuccess = logoutLogoutPostResponse200 & {
 export type logoutLogoutPostResponse = logoutLogoutPostResponseSuccess;
 
 export const getLogoutLogoutPostUrl = () => {
-	return `http://localhost:8000/logout`;
+	return `undefined/logout`;
 };
 
 export const logoutLogoutPost = async (
@@ -245,7 +243,7 @@ export type refreshAccessTokenRefreshPostResponse =
 	| refreshAccessTokenRefreshPostResponseError;
 
 export const getRefreshAccessTokenRefreshPostUrl = () => {
-	return `http://localhost:8000/refresh`;
+	return `undefined/refresh`;
 };
 
 export const refreshAccessTokenRefreshPost = async (
@@ -293,7 +291,7 @@ export type addNewDmAddNewDmPostResponse =
 	| addNewDmAddNewDmPostResponseError;
 
 export const getAddNewDmAddNewDmPostUrl = () => {
-	return `http://localhost:8000/add_new_dm`;
+	return `undefined/add_new_dm`;
 };
 
 export const addNewDmAddNewDmPost = async (
@@ -373,7 +371,7 @@ export type addNewAnalystAddNewAnalystPostResponse =
 	| addNewAnalystAddNewAnalystPostResponseError;
 
 export const getAddNewAnalystAddNewAnalystPostUrl = () => {
-	return `http://localhost:8000/add_new_analyst`;
+	return `undefined/add_new_analyst`;
 };
 
 export const addNewAnalystAddNewAnalystPost = async (
@@ -437,7 +435,7 @@ export type getProblemsProblemAllGetResponseSuccess = getProblemsProblemAllGetRe
 export type getProblemsProblemAllGetResponse = getProblemsProblemAllGetResponseSuccess;
 
 export const getGetProblemsProblemAllGetUrl = () => {
-	return `http://localhost:8000/problem/all`;
+	return `undefined/problem/all`;
 };
 
 export const getProblemsProblemAllGet = async (
@@ -472,7 +470,7 @@ export type getProblemsInfoProblemAllInfoGetResponse =
 	getProblemsInfoProblemAllInfoGetResponseSuccess;
 
 export const getGetProblemsInfoProblemAllInfoGetUrl = () => {
-	return `http://localhost:8000/problem/all_info`;
+	return `undefined/problem/all_info`;
 };
 
 export const getProblemsInfoProblemAllInfoGet = async (
@@ -524,7 +522,7 @@ export type getProblemProblemGetPostResponse =
 	| getProblemProblemGetPostResponseError;
 
 export const getGetProblemProblemGetPostUrl = () => {
-	return `http://localhost:8000/problem/get`;
+	return `undefined/problem/get`;
 };
 
 export const getProblemProblemGetPost = async (
@@ -568,7 +566,7 @@ export type addProblemProblemAddPostResponseSuccess = addProblemProblemAddPostRe
 export type addProblemProblemAddPostResponse = addProblemProblemAddPostResponseSuccess;
 
 export const getAddProblemProblemAddPostUrl = () => {
-	return `http://localhost:8000/problem/add`;
+	return `undefined/problem/add`;
 };
 
 export const addProblemProblemAddPost = async (
@@ -620,7 +618,7 @@ export type addProblemJsonProblemAddJsonPostResponse =
 	| addProblemJsonProblemAddJsonPostResponseError;
 
 export const getAddProblemJsonProblemAddJsonPostUrl = () => {
-	return `http://localhost:8000/problem/add_json`;
+	return `undefined/problem/add_json`;
 };
 
 export const addProblemJsonProblemAddJsonPost = async (
@@ -682,7 +680,7 @@ export type getMetadataProblemGetMetadataPostResponse =
 	| getMetadataProblemGetMetadataPostResponseError;
 
 export const getGetMetadataProblemGetMetadataPostUrl = () => {
-	return `http://localhost:8000/problem/get_metadata`;
+	return `undefined/problem/get_metadata`;
 };
 
 export const getMetadataProblemGetMetadataPost = async (
@@ -696,38 +694,6 @@ export const getMetadataProblemGetMetadataPost = async (
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', ...options?.headers },
 			body: JSON.stringify(problemMetaDataGetRequest)
-		}
-	);
-};
-
-/**
- * Return the list of available solver names.
- * @summary Get Available Solvers
- */
-export type getAvailableSolversProblemAssignSolverGetResponse200 = {
-	data: string[];
-	status: 200;
-};
-
-export type getAvailableSolversProblemAssignSolverGetResponseSuccess =
-	getAvailableSolversProblemAssignSolverGetResponse200 & {
-		headers: Headers;
-	};
-export type getAvailableSolversProblemAssignSolverGetResponse =
-	getAvailableSolversProblemAssignSolverGetResponseSuccess;
-
-export const getGetAvailableSolversProblemAssignSolverGetUrl = () => {
-	return `http://localhost:8000/problem/assign/solver`;
-};
-
-export const getAvailableSolversProblemAssignSolverGet = async (
-	options?: RequestInit
-): Promise<getAvailableSolversProblemAssignSolverGetResponse> => {
-	return customFetch<getAvailableSolversProblemAssignSolverGetResponse>(
-		getGetAvailableSolversProblemAssignSolverGetUrl(),
-		{
-			...options,
-			method: 'GET'
 		}
 	);
 };
@@ -770,7 +736,7 @@ export type selectSolverProblemAssignSolverPostResponse =
 	| selectSolverProblemAssignSolverPostResponseError;
 
 export const getSelectSolverProblemAssignSolverPostUrl = () => {
-	return `http://localhost:8000/problem/assign_solver`;
+	return `undefined/problem/assign_solver`;
 };
 
 export const selectSolverProblemAssignSolverPost = async (
@@ -816,7 +782,7 @@ export type createNewSessionSessionNewPostResponse =
 	| createNewSessionSessionNewPostResponseError;
 
 export const getCreateNewSessionSessionNewPostUrl = () => {
-	return `http://localhost:8000/session/new`;
+	return `undefined/session/new`;
 };
 
 export const createNewSessionSessionNewPost = async (
@@ -835,122 +801,56 @@ export const createNewSessionSessionNewPost = async (
 };
 
 /**
- * Return an interactive session with a current user.
+ * Return an interactive session with a given id for the current user.
+
+Args:
+    request (GetSessionRequest): a request containing the id of the session.
+    user (Annotated[User, Depends): the current user.
+    session (Annotated[Session, Depends): the database session.
+
+Raises:
+    HTTPException: could not find an interactive session with the given id
+        for the current user.
+
+Returns:
+    InteractiveSessionInfo: info on the requested interactive session.
  * @summary Get Session
  */
-export type getSessionSessionGetSessionIdGetResponse200 = {
+export type getSessionSessionGetPostResponse200 = {
 	data: InteractiveSessionBase;
 	status: 200;
 };
 
-export type getSessionSessionGetSessionIdGetResponse422 = {
+export type getSessionSessionGetPostResponse422 = {
 	data: HTTPValidationError;
 	status: 422;
 };
 
-export type getSessionSessionGetSessionIdGetResponseSuccess =
-	getSessionSessionGetSessionIdGetResponse200 & {
-		headers: Headers;
-	};
-export type getSessionSessionGetSessionIdGetResponseError =
-	getSessionSessionGetSessionIdGetResponse422 & {
-		headers: Headers;
-	};
-
-export type getSessionSessionGetSessionIdGetResponse =
-	| getSessionSessionGetSessionIdGetResponseSuccess
-	| getSessionSessionGetSessionIdGetResponseError;
-
-export const getGetSessionSessionGetSessionIdGetUrl = (sessionId: number) => {
-	return `http://localhost:8000/session/get/${sessionId}`;
+export type getSessionSessionGetPostResponseSuccess = getSessionSessionGetPostResponse200 & {
+	headers: Headers;
+};
+export type getSessionSessionGetPostResponseError = getSessionSessionGetPostResponse422 & {
+	headers: Headers;
 };
 
-export const getSessionSessionGetSessionIdGet = async (
-	sessionId: number,
+export type getSessionSessionGetPostResponse =
+	| getSessionSessionGetPostResponseSuccess
+	| getSessionSessionGetPostResponseError;
+
+export const getGetSessionSessionGetPostUrl = () => {
+	return `undefined/session/get`;
+};
+
+export const getSessionSessionGetPost = async (
+	getSessionRequest: GetSessionRequest,
 	options?: RequestInit
-): Promise<getSessionSessionGetSessionIdGetResponse> => {
-	return customFetch<getSessionSessionGetSessionIdGetResponse>(
-		getGetSessionSessionGetSessionIdGetUrl(sessionId),
-		{
-			...options,
-			method: 'GET'
-		}
-	);
-};
-
-/**
- * Return all interactive sessions of the current user.
- * @summary Get All Sessions
- */
-export type getAllSessionsSessionGetAllGetResponse200 = {
-	data: InteractiveSessionBase[];
-	status: 200;
-};
-
-export type getAllSessionsSessionGetAllGetResponseSuccess =
-	getAllSessionsSessionGetAllGetResponse200 & {
-		headers: Headers;
-	};
-export type getAllSessionsSessionGetAllGetResponse = getAllSessionsSessionGetAllGetResponseSuccess;
-
-export const getGetAllSessionsSessionGetAllGetUrl = () => {
-	return `http://localhost:8000/session/get_all`;
-};
-
-export const getAllSessionsSessionGetAllGet = async (
-	options?: RequestInit
-): Promise<getAllSessionsSessionGetAllGetResponse> => {
-	return customFetch<getAllSessionsSessionGetAllGetResponse>(
-		getGetAllSessionsSessionGetAllGetUrl(),
-		{
-			...options,
-			method: 'GET'
-		}
-	);
-};
-
-/**
- * Delete an interactive session and all its related states.
- * @summary Delete Session
- */
-export type deleteSessionSessionSessionIdDeleteResponse204 = {
-	data: void;
-	status: 204;
-};
-
-export type deleteSessionSessionSessionIdDeleteResponse422 = {
-	data: HTTPValidationError;
-	status: 422;
-};
-
-export type deleteSessionSessionSessionIdDeleteResponseSuccess =
-	deleteSessionSessionSessionIdDeleteResponse204 & {
-		headers: Headers;
-	};
-export type deleteSessionSessionSessionIdDeleteResponseError =
-	deleteSessionSessionSessionIdDeleteResponse422 & {
-		headers: Headers;
-	};
-
-export type deleteSessionSessionSessionIdDeleteResponse =
-	| deleteSessionSessionSessionIdDeleteResponseSuccess
-	| deleteSessionSessionSessionIdDeleteResponseError;
-
-export const getDeleteSessionSessionSessionIdDeleteUrl = (sessionId: number) => {
-	return `http://localhost:8000/session/${sessionId}`;
-};
-
-export const deleteSessionSessionSessionIdDelete = async (
-	sessionId: number,
-	options?: RequestInit
-): Promise<deleteSessionSessionSessionIdDeleteResponse> => {
-	return customFetch<deleteSessionSessionSessionIdDeleteResponse>(
-		getDeleteSessionSessionSessionIdDeleteUrl(sessionId),
-		{
-			...options,
-			method: 'DELETE'
-		}
-	);
+): Promise<getSessionSessionGetPostResponse> => {
+	return customFetch<getSessionSessionGetPostResponse>(getGetSessionSessionGetPostUrl(), {
+		...options,
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...options?.headers },
+		body: JSON.stringify(getSessionRequest)
+	});
 };
 
 /**
@@ -990,7 +890,7 @@ export type solveSolutionsMethodRpmSolvePostResponse =
 	| solveSolutionsMethodRpmSolvePostResponseError;
 
 export const getSolveSolutionsMethodRpmSolvePostUrl = () => {
-	return `http://localhost:8000/method/rpm/solve`;
+	return `undefined/method/rpm/solve`;
 };
 
 export const solveSolutionsMethodRpmSolvePost = async (
@@ -1036,7 +936,7 @@ export type solveSolutionsMethodNimbusSolvePostResponse =
 	| solveSolutionsMethodNimbusSolvePostResponseError;
 
 export const getSolveSolutionsMethodNimbusSolvePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/solve`;
+	return `undefined/method/nimbus/solve`;
 };
 
 export const solveSolutionsMethodNimbusSolvePost = async (
@@ -1082,7 +982,7 @@ export type initializeMethodNimbusInitializePostResponse =
 	| initializeMethodNimbusInitializePostResponseError;
 
 export const getInitializeMethodNimbusInitializePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/initialize`;
+	return `undefined/method/nimbus/initialize`;
 };
 
 export const initializeMethodNimbusInitializePost = async (
@@ -1126,7 +1026,7 @@ export type saveMethodNimbusSavePostResponse =
 	| saveMethodNimbusSavePostResponseError;
 
 export const getSaveMethodNimbusSavePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/save`;
+	return `undefined/method/nimbus/save`;
 };
 
 export const saveMethodNimbusSavePost = async (
@@ -1169,7 +1069,7 @@ export type solveNimbusIntermediateMethodNimbusIntermediatePostResponse =
 	| solveNimbusIntermediateMethodNimbusIntermediatePostResponseError;
 
 export const getSolveNimbusIntermediateMethodNimbusIntermediatePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/intermediate`;
+	return `undefined/method/nimbus/intermediate`;
 };
 
 export const solveNimbusIntermediateMethodNimbusIntermediatePost = async (
@@ -1195,8 +1095,7 @@ export type getOrInitializeMethodNimbusGetOrInitializePostResponse200 = {
 	data:
 		| NIMBUSInitializationResponse
 		| NIMBUSClassificationResponse
-		| NIMBUSIntermediateSolutionResponse
-		| NIMBUSFinalizeResponse;
+		| NIMBUSIntermediateSolutionResponse;
 	status: 200;
 };
 
@@ -1219,7 +1118,7 @@ export type getOrInitializeMethodNimbusGetOrInitializePostResponse =
 	| getOrInitializeMethodNimbusGetOrInitializePostResponseError;
 
 export const getGetOrInitializeMethodNimbusGetOrInitializePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/get-or-initialize`;
+	return `undefined/method/nimbus/get-or-initialize`;
 };
 
 export const getOrInitializeMethodNimbusGetOrInitializePost = async (
@@ -1249,7 +1148,7 @@ Raises:
     HTTPException
 
 Returns:
-    NIMBUSFinalizeResponse: Response containing info on the final solution.
+    NIMBUSFinalizeResponse: Response containing state id of the final solution.
  * @summary Finalize Nimbus
  */
 export type finalizeNimbusMethodNimbusFinalizePostResponse200 = {
@@ -1276,7 +1175,7 @@ export type finalizeNimbusMethodNimbusFinalizePostResponse =
 	| finalizeNimbusMethodNimbusFinalizePostResponseError;
 
 export const getFinalizeNimbusMethodNimbusFinalizePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/finalize`;
+	return `undefined/method/nimbus/finalize`;
 };
 
 export const finalizeNimbusMethodNimbusFinalizePost = async (
@@ -1333,7 +1232,7 @@ export type deleteSaveMethodNimbusDeleteSavePostResponse =
 	| deleteSaveMethodNimbusDeleteSavePostResponseError;
 
 export const getDeleteSaveMethodNimbusDeleteSavePostUrl = () => {
-	return `http://localhost:8000/method/nimbus/delete_save`;
+	return `undefined/method/nimbus/delete_save`;
 };
 
 export const deleteSaveMethodNimbusDeleteSavePost = async (
@@ -1347,6 +1246,174 @@ export const deleteSaveMethodNimbusDeleteSavePost = async (
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', ...options?.headers },
 			body: JSON.stringify(nIMBUSDeleteSaveRequest)
+		}
+	);
+};
+
+/**
+ * Starts the EMO method.
+
+Args:
+    request (EMOSolveRequest): The request object containing parameters for the EMO method.
+    user (Annotated[User, Depends]): The current user.
+    session (Annotated[Session, Depends]): The database session.
+
+Raises:
+    HTTPException: If the request is invalid or the EMO method fails.
+
+Returns:
+    IterateResponse: A response object containing a list of IDs to be used for websocket communication.
+        Also contains the StateDB id where the results will be stored.
+ * @summary Iterate
+ */
+export type iterateMethodEmoIteratePostResponse200 = {
+	data: EMOIterateResponse;
+	status: 200;
+};
+
+export type iterateMethodEmoIteratePostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type iterateMethodEmoIteratePostResponseSuccess = iterateMethodEmoIteratePostResponse200 & {
+	headers: Headers;
+};
+export type iterateMethodEmoIteratePostResponseError = iterateMethodEmoIteratePostResponse422 & {
+	headers: Headers;
+};
+
+export type iterateMethodEmoIteratePostResponse =
+	| iterateMethodEmoIteratePostResponseSuccess
+	| iterateMethodEmoIteratePostResponseError;
+
+export const getIterateMethodEmoIteratePostUrl = () => {
+	return `undefined/method/emo/iterate`;
+};
+
+export const iterateMethodEmoIteratePost = async (
+	eMOIterateRequest: EMOIterateRequest,
+	options?: RequestInit
+): Promise<iterateMethodEmoIteratePostResponse> => {
+	return customFetch<iterateMethodEmoIteratePostResponse>(getIterateMethodEmoIteratePostUrl(), {
+		...options,
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...options?.headers },
+		body: JSON.stringify(eMOIterateRequest)
+	});
+};
+
+/**
+ * Fetches results from a completed EMO method.
+
+Args:
+    request (EMOFetchRequest): The request object containing parameters for fetching results.
+    user (Annotated[User, Depends]): The current user.
+    session (Annotated[Session, Depends]): The database session.
+
+Raises:
+    HTTPException: If the request is invalid or the EMO method has not completed.
+
+Returns:
+    StreamingResponse: A streaming response containing the results of the EMO method.
+ * @summary Fetch Results
+ */
+export type fetchResultsMethodEmoFetchPostResponse200 = {
+	data: unknown;
+	status: 200;
+};
+
+export type fetchResultsMethodEmoFetchPostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type fetchResultsMethodEmoFetchPostResponseSuccess =
+	fetchResultsMethodEmoFetchPostResponse200 & {
+		headers: Headers;
+	};
+export type fetchResultsMethodEmoFetchPostResponseError =
+	fetchResultsMethodEmoFetchPostResponse422 & {
+		headers: Headers;
+	};
+
+export type fetchResultsMethodEmoFetchPostResponse =
+	| fetchResultsMethodEmoFetchPostResponseSuccess
+	| fetchResultsMethodEmoFetchPostResponseError;
+
+export const getFetchResultsMethodEmoFetchPostUrl = () => {
+	return `undefined/method/emo/fetch`;
+};
+
+export const fetchResultsMethodEmoFetchPost = async (
+	eMOFetchRequest: EMOFetchRequest,
+	options?: RequestInit
+): Promise<fetchResultsMethodEmoFetchPostResponse> => {
+	return customFetch<fetchResultsMethodEmoFetchPostResponse>(
+		getFetchResultsMethodEmoFetchPostUrl(),
+		{
+			...options,
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(eMOFetchRequest)
+		}
+	);
+};
+
+/**
+ * Fetches results from a completed EMO method.
+
+Args:
+    request (EMOFetchRequest): The request object containing parameters for fetching results and of the SCORE bands
+        visualization.
+    user (Annotated[User, Depends]): The current user.
+    session (Annotated[Session, Depends]): The database session.
+
+Raises:
+    HTTPException: If the request is invalid or the EMO method has not completed.
+
+Returns:
+    SCOREBandsResult: The results of the SCORE bands visualization.
+ * @summary Fetch Score Bands
+ */
+export type fetchScoreBandsMethodEmoFetchScorePostResponse200 = {
+	data: EMOScoreResponse;
+	status: 200;
+};
+
+export type fetchScoreBandsMethodEmoFetchScorePostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type fetchScoreBandsMethodEmoFetchScorePostResponseSuccess =
+	fetchScoreBandsMethodEmoFetchScorePostResponse200 & {
+		headers: Headers;
+	};
+export type fetchScoreBandsMethodEmoFetchScorePostResponseError =
+	fetchScoreBandsMethodEmoFetchScorePostResponse422 & {
+		headers: Headers;
+	};
+
+export type fetchScoreBandsMethodEmoFetchScorePostResponse =
+	| fetchScoreBandsMethodEmoFetchScorePostResponseSuccess
+	| fetchScoreBandsMethodEmoFetchScorePostResponseError;
+
+export const getFetchScoreBandsMethodEmoFetchScorePostUrl = () => {
+	return `undefined/method/emo/fetch_score`;
+};
+
+export const fetchScoreBandsMethodEmoFetchScorePost = async (
+	eMOScoreRequest: EMOScoreRequest,
+	options?: RequestInit
+): Promise<fetchScoreBandsMethodEmoFetchScorePostResponse> => {
+	return customFetch<fetchScoreBandsMethodEmoFetchScorePostResponse>(
+		getFetchScoreBandsMethodEmoFetchScorePostUrl(),
+		{
+			...options,
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(eMOScoreRequest)
 		}
 	);
 };
@@ -1379,7 +1446,7 @@ export type solveIntermediateMethodGenericIntermediatePostResponse =
 	| solveIntermediateMethodGenericIntermediatePostResponseError;
 
 export const getSolveIntermediateMethodGenericIntermediatePostUrl = () => {
-	return `http://localhost:8000/method/generic/intermediate`;
+	return `undefined/method/generic/intermediate`;
 };
 
 export const solveIntermediateMethodGenericIntermediatePost = async (
@@ -1399,41 +1466,41 @@ export const solveIntermediateMethodGenericIntermediatePost = async (
 
 /**
  * Calculate SCORE bands parameters from objective data.
- * @summary Calculate Score Bands From Objective Data
+ * @summary Calculate Score Bands
  */
-export type calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponse200 = {
+export type calculateScoreBandsMethodGenericScoreBandsPostResponse200 = {
 	data: ScoreBandsResponse;
 	status: 200;
 };
 
-export type calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponse422 = {
+export type calculateScoreBandsMethodGenericScoreBandsPostResponse422 = {
 	data: HTTPValidationError;
 	status: 422;
 };
 
-export type calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponseSuccess =
-	calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponse200 & {
+export type calculateScoreBandsMethodGenericScoreBandsPostResponseSuccess =
+	calculateScoreBandsMethodGenericScoreBandsPostResponse200 & {
 		headers: Headers;
 	};
-export type calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponseError =
-	calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponse422 & {
+export type calculateScoreBandsMethodGenericScoreBandsPostResponseError =
+	calculateScoreBandsMethodGenericScoreBandsPostResponse422 & {
 		headers: Headers;
 	};
 
-export type calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponse =
-	| calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponseSuccess
-	| calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponseError;
+export type calculateScoreBandsMethodGenericScoreBandsPostResponse =
+	| calculateScoreBandsMethodGenericScoreBandsPostResponseSuccess
+	| calculateScoreBandsMethodGenericScoreBandsPostResponseError;
 
-export const getCalculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostUrl = () => {
-	return `http://localhost:8000/method/generic/score-bands-obj-data`;
+export const getCalculateScoreBandsMethodGenericScoreBandsPostUrl = () => {
+	return `undefined/method/generic/score-bands`;
 };
 
-export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPost = async (
+export const calculateScoreBandsMethodGenericScoreBandsPost = async (
 	scoreBandsRequest: ScoreBandsRequest,
 	options?: RequestInit
-): Promise<calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponse> => {
-	return customFetch<calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponse>(
-		getCalculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostUrl(),
+): Promise<calculateScoreBandsMethodGenericScoreBandsPostResponse> => {
+	return customFetch<calculateScoreBandsMethodGenericScoreBandsPostResponse>(
+		getCalculateScoreBandsMethodGenericScoreBandsPostUrl(),
 		{
 			...options,
 			method: 'POST',
@@ -1479,7 +1546,7 @@ export type getUtopiaDataUtopiaPostResponse =
 	| getUtopiaDataUtopiaPostResponseError;
 
 export const getGetUtopiaDataUtopiaPostUrl = () => {
-	return `http://localhost:8000/utopia/`;
+	return `undefined/utopia/`;
 };
 
 export const getUtopiaDataUtopiaPost = async (
@@ -1503,7 +1570,7 @@ Args:
     session (Annotated[Session, Depends(get_session)]): the database session.
 
 Returns:
-    JSONResponse: Acknowledgement that the group was created
+    JSONResponse: Aknowledgement that the gourp was created
 
 Raises:
     HTTPException
@@ -1533,7 +1600,7 @@ export type createGroupGdmCreateGroupPostResponse =
 	| createGroupGdmCreateGroupPostResponseError;
 
 export const getCreateGroupGdmCreateGroupPostUrl = () => {
-	return `http://localhost:8000/gdm/create_group`;
+	return `undefined/gdm/create_group`;
 };
 
 export const createGroupGdmCreateGroupPost = async (
@@ -1557,7 +1624,7 @@ Args:
     session (Annotated[Session, Depends(get_session)]): The database session
 
 Returns:
-    JSONResponse: Acknowledgement of the deletion
+    JSONResponse: Aknowledgement of the deletion
 
 Raises:
     HTTPException: Insufficient authorization etc.
@@ -1587,7 +1654,7 @@ export type deleteGroupGdmDeleteGroupPostResponse =
 	| deleteGroupGdmDeleteGroupPostResponseError;
 
 export const getDeleteGroupGdmDeleteGroupPostUrl = () => {
-	return `http://localhost:8000/gdm/delete_group`;
+	return `undefined/gdm/delete_group`;
 };
 
 export const deleteGroupGdmDeleteGroupPost = async (
@@ -1639,7 +1706,7 @@ export type addToGroupGdmAddToGroupPostResponse =
 	| addToGroupGdmAddToGroupPostResponseError;
 
 export const getAddToGroupGdmAddToGroupPostUrl = () => {
-	return `http://localhost:8000/gdm/add_to_group`;
+	return `undefined/gdm/add_to_group`;
 };
 
 export const addToGroupGdmAddToGroupPost = async (
@@ -1693,7 +1760,7 @@ export type removeFromGroupGdmRemoveFromGroupPostResponse =
 	| removeFromGroupGdmRemoveFromGroupPostResponseError;
 
 export const getRemoveFromGroupGdmRemoveFromGroupPostUrl = () => {
-	return `http://localhost:8000/gdm/remove_from_group`;
+	return `undefined/gdm/remove_from_group`;
 };
 
 export const removeFromGroupGdmRemoveFromGroupPost = async (
@@ -1749,7 +1816,7 @@ export type getGroupInfoGdmGetGroupInfoPostResponse =
 	| getGroupInfoGdmGetGroupInfoPostResponseError;
 
 export const getGetGroupInfoGdmGetGroupInfoPostUrl = () => {
-	return `http://localhost:8000/gdm/get_group_info`;
+	return `undefined/gdm/get_group_info`;
 };
 
 export const getGroupInfoGdmGetGroupInfoPost = async (
@@ -1795,7 +1862,7 @@ export type gnimbusInitializeGnimbusInitializePostResponse =
 	| gnimbusInitializeGnimbusInitializePostResponseError;
 
 export const getGnimbusInitializeGnimbusInitializePostUrl = () => {
-	return `http://localhost:8000/gnimbus/initialize`;
+	return `undefined/gnimbus/initialize`;
 };
 
 export const gnimbusInitializeGnimbusInitializePost = async (
@@ -1815,8 +1882,6 @@ export const gnimbusInitializeGnimbusInitializePost = async (
 
 /**
  * Get the latest results from group iteration.
-
-(OBSOLETE AND OUT OF DATE!)
 
 Args:
     request (GroupInfoRequest): essentially just the ID of the group
@@ -1854,7 +1919,7 @@ export type getLatestResultsGnimbusGetLatestResultsPostResponse =
 	| getLatestResultsGnimbusGetLatestResultsPostResponseError;
 
 export const getGetLatestResultsGnimbusGetLatestResultsPostUrl = () => {
-	return `http://localhost:8000/gnimbus/get_latest_results`;
+	return `undefined/gnimbus/get_latest_results`;
 };
 
 export const getLatestResultsGnimbusGetLatestResultsPost = async (
@@ -1913,7 +1978,7 @@ export type fullIterationGnimbusAllIterationsPostResponse =
 	| fullIterationGnimbusAllIterationsPostResponseError;
 
 export const getFullIterationGnimbusAllIterationsPostUrl = () => {
-	return `http://localhost:8000/gnimbus/all_iterations`;
+	return `undefined/gnimbus/all_iterations`;
 };
 
 export const fullIterationGnimbusAllIterationsPost = async (
@@ -1959,7 +2024,7 @@ export type switchPhaseGnimbusTogglePhasePostResponse =
 	| switchPhaseGnimbusTogglePhasePostResponseError;
 
 export const getSwitchPhaseGnimbusTogglePhasePostUrl = () => {
-	return `http://localhost:8000/gnimbus/toggle_phase`;
+	return `undefined/gnimbus/toggle_phase`;
 };
 
 export const switchPhaseGnimbusTogglePhasePost = async (
@@ -2003,7 +2068,7 @@ export type getPhaseGnimbusGetPhasePostResponse =
 	| getPhaseGnimbusGetPhasePostResponseError;
 
 export const getGetPhaseGnimbusGetPhasePostUrl = () => {
-	return `http://localhost:8000/gnimbus/get_phase`;
+	return `undefined/gnimbus/get_phase`;
 };
 
 export const getPhaseGnimbusGetPhasePost = async (
@@ -2019,68 +2084,11 @@ export const getPhaseGnimbusGetPhasePost = async (
 };
 
 /**
- * Changes the starting solution of an iteration so in case of emergency the group owner can just change it.
-
-Args:
-    request (GNIMBUSChangeStartingSolutionRequest): The request containing necessary details to fulfill the change.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): The database session.
-
-Raises:
-    HTTPException
-
-Returns:
-    JSONResponse: Response that acknowledges the changes.
- * @summary Revert Iteration
- */
-export type revertIterationGnimbusRevertIterationPostResponse200 = {
-	data: unknown;
-	status: 200;
-};
-
-export type revertIterationGnimbusRevertIterationPostResponse422 = {
-	data: HTTPValidationError;
-	status: 422;
-};
-
-export type revertIterationGnimbusRevertIterationPostResponseSuccess =
-	revertIterationGnimbusRevertIterationPostResponse200 & {
-		headers: Headers;
-	};
-export type revertIterationGnimbusRevertIterationPostResponseError =
-	revertIterationGnimbusRevertIterationPostResponse422 & {
-		headers: Headers;
-	};
-
-export type revertIterationGnimbusRevertIterationPostResponse =
-	| revertIterationGnimbusRevertIterationPostResponseSuccess
-	| revertIterationGnimbusRevertIterationPostResponseError;
-
-export const getRevertIterationGnimbusRevertIterationPostUrl = () => {
-	return `http://localhost:8000/gnimbus/revert_iteration`;
-};
-
-export const revertIterationGnimbusRevertIterationPost = async (
-	groupRevertRequest: GroupRevertRequest,
-	options?: RequestInit
-): Promise<revertIterationGnimbusRevertIterationPostResponse> => {
-	return customFetch<revertIterationGnimbusRevertIterationPostResponse>(
-		getRevertIterationGnimbusRevertIterationPostUrl(),
-		{
-			...options,
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', ...options?.headers },
-			body: JSON.stringify(groupRevertRequest)
-		}
-	);
-};
-
-/**
- * Steps the E-NAUTILUS method.
+ * .
  * @summary Step
  */
 export type stepMethodEnautilusStepPostResponse200 = {
-	data: ENautilusStepResponse;
+	data: ENautilusState;
 	status: 200;
 };
 
@@ -2101,479 +2109,109 @@ export type stepMethodEnautilusStepPostResponse =
 	| stepMethodEnautilusStepPostResponseError;
 
 export const getStepMethodEnautilusStepPostUrl = () => {
-	return `http://localhost:8000/method/enautilus/step`;
+	return `undefined/method/enautilus/step`;
 };
 
 export const stepMethodEnautilusStepPost = async (
-	eNautilusStepRequest: ENautilusStepRequest,
+	enautilusStepRequest: EnautilusStepRequest,
 	options?: RequestInit
 ): Promise<stepMethodEnautilusStepPostResponse> => {
 	return customFetch<stepMethodEnautilusStepPostResponse>(getStepMethodEnautilusStepPostUrl(), {
 		...options,
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json', ...options?.headers },
-		body: JSON.stringify(eNautilusStepRequest)
+		body: JSON.stringify(enautilusStepRequest)
 	});
 };
 
 /**
- * Fetch a previous state of the the E-NAUTILUS method.
- * @summary Get State
+ * Initialize NAUTILUS Navigator.
+ * @summary Initialize
  */
-export type getStateMethodEnautilusGetStateStateIdGetResponse200 = {
-	data: ENautilusStateResponse;
+export type initializeMethodNautilusNavigatorInitializePostResponse200 = {
+	data: NautilusNavigatorSegmentResponse;
 	status: 200;
 };
 
-export type getStateMethodEnautilusGetStateStateIdGetResponse422 = {
+export type initializeMethodNautilusNavigatorInitializePostResponse422 = {
 	data: HTTPValidationError;
 	status: 422;
 };
 
-export type getStateMethodEnautilusGetStateStateIdGetResponseSuccess =
-	getStateMethodEnautilusGetStateStateIdGetResponse200 & {
+export type initializeMethodNautilusNavigatorInitializePostResponseSuccess =
+	initializeMethodNautilusNavigatorInitializePostResponse200 & {
 		headers: Headers;
 	};
-export type getStateMethodEnautilusGetStateStateIdGetResponseError =
-	getStateMethodEnautilusGetStateStateIdGetResponse422 & {
+export type initializeMethodNautilusNavigatorInitializePostResponseError =
+	initializeMethodNautilusNavigatorInitializePostResponse422 & {
 		headers: Headers;
 	};
 
-export type getStateMethodEnautilusGetStateStateIdGetResponse =
-	| getStateMethodEnautilusGetStateStateIdGetResponseSuccess
-	| getStateMethodEnautilusGetStateStateIdGetResponseError;
+export type initializeMethodNautilusNavigatorInitializePostResponse =
+	| initializeMethodNautilusNavigatorInitializePostResponseSuccess
+	| initializeMethodNautilusNavigatorInitializePostResponseError;
 
-export const getGetStateMethodEnautilusGetStateStateIdGetUrl = (stateId: number) => {
-	return `http://localhost:8000/method/enautilus/get_state/${stateId}`;
+export const getInitializeMethodNautilusNavigatorInitializePostUrl = () => {
+	return `undefined/method/nautilus_navigator/initialize`;
 };
 
-export const getStateMethodEnautilusGetStateStateIdGet = async (
-	stateId: number,
+export const initializeMethodNautilusNavigatorInitializePost = async (
+	nautilusNavigatorInitRequest: NautilusNavigatorInitRequest,
 	options?: RequestInit
-): Promise<getStateMethodEnautilusGetStateStateIdGetResponse> => {
-	return customFetch<getStateMethodEnautilusGetStateStateIdGetResponse>(
-		getGetStateMethodEnautilusGetStateStateIdGetUrl(stateId),
-		{
-			...options,
-			method: 'GET'
-		}
-	);
-};
-
-/**
- * Computes the representative solutions that are closest to the intermediate solutions computed by E-NAUTILUS.
-
-This endpoint should be used to get the actual solution from the
-non-dominated representation used in the E-NAUTILUS method's last iteration
-(when number of iterations left is 0).
-
-Args:
-    state_id (int): id of the `StateDB` with information on the intermediate
-        points for which the representative solutions should be computed.
-    db_session (Annotated[Session, Depends): the database session.
-
-Raises:
-    HTTPException: 404 when a `StateDB`, `ProblemDB`, or
-        `RepresentativeNonDominatedSolutions` instance cannot be found. 406 when
-        the substate of the references `StateDB` is not an instance of
-        `ENautilusState`.
-
-Returns:
-    ENautilusRepresentativeSolutionsResponse: the information on the representative solutions.
- * @summary Get Representative
- */
-export type getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse200 = {
-	data: ENautilusRepresentativeSolutionsResponse;
-	status: 200;
-};
-
-export type getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse422 = {
-	data: HTTPValidationError;
-	status: 422;
-};
-
-export type getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponseSuccess =
-	getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse200 & {
-		headers: Headers;
-	};
-export type getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponseError =
-	getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse422 & {
-		headers: Headers;
-	};
-
-export type getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse =
-	| getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponseSuccess
-	| getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponseError;
-
-export const getGetRepresentativeMethodEnautilusGetRepresentativeStateIdGetUrl = (
-	stateId: number
-) => {
-	return `http://localhost:8000/method/enautilus/get_representative/${stateId}`;
-};
-
-export const getRepresentativeMethodEnautilusGetRepresentativeStateIdGet = async (
-	stateId: number,
-	options?: RequestInit
-): Promise<getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse> => {
-	return customFetch<getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse>(
-		getGetRepresentativeMethodEnautilusGetRepresentativeStateIdGetUrl(stateId),
-		{
-			...options,
-			method: 'GET'
-		}
-	);
-};
-
-/**
- * Vote for a band using this endpoint.
-
-Args:
-    request (GDMScoreBandsVoteRequest): A container for the group id and the vote.
-    user (Annotated[User, Depends): the current user.
-    session (Annotated[Session, Depends): database session
-
-Raises:
-    HTTPException: If something goes wrong. It hopefully let's you know what went wrong.
-
-Returns:
-    JSONResponse: A quick confirmation that vote went through.
- * @summary Vote For A Band
- */
-export type voteForABandGdmScoreBandsVotePostResponse200 = {
-	data: unknown;
-	status: 200;
-};
-
-export type voteForABandGdmScoreBandsVotePostResponse422 = {
-	data: HTTPValidationError;
-	status: 422;
-};
-
-export type voteForABandGdmScoreBandsVotePostResponseSuccess =
-	voteForABandGdmScoreBandsVotePostResponse200 & {
-		headers: Headers;
-	};
-export type voteForABandGdmScoreBandsVotePostResponseError =
-	voteForABandGdmScoreBandsVotePostResponse422 & {
-		headers: Headers;
-	};
-
-export type voteForABandGdmScoreBandsVotePostResponse =
-	| voteForABandGdmScoreBandsVotePostResponseSuccess
-	| voteForABandGdmScoreBandsVotePostResponseError;
-
-export const getVoteForABandGdmScoreBandsVotePostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/vote`;
-};
-
-export const voteForABandGdmScoreBandsVotePost = async (
-	gDMScoreBandsVoteRequest: GDMScoreBandsVoteRequest,
-	options?: RequestInit
-): Promise<voteForABandGdmScoreBandsVotePostResponse> => {
-	return customFetch<voteForABandGdmScoreBandsVotePostResponse>(
-		getVoteForABandGdmScoreBandsVotePostUrl(),
+): Promise<initializeMethodNautilusNavigatorInitializePostResponse> => {
+	return customFetch<initializeMethodNautilusNavigatorInitializePostResponse>(
+		getInitializeMethodNautilusNavigatorInitializePostUrl(),
 		{
 			...options,
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', ...options?.headers },
-			body: JSON.stringify(gDMScoreBandsVoteRequest)
+			body: JSON.stringify(nautilusNavigatorInitRequest)
 		}
 	);
 };
 
 /**
- * Confim the vote. If all confirm, the clustering and new iteration begins.
-
-Args:
-    request (GroupInfoRequest): Simple request to get the group ID.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): Database session.
-
-Raises:
-    HTTPException: If something goes awry. It should let you know what went wrong, though.
-
-Returns:
-    JSONResponse: A simple confirmation that everything went ok and that vote went in.
- * @summary Confirm Vote
+ * Recompute a NAUTILUS Navigator segment after a DM action.
+ * @summary Recompute
  */
-export type confirmVoteGdmScoreBandsConfirmPostResponse200 = {
-	data: unknown;
+export type recomputeMethodNautilusNavigatorRecomputePostResponse200 = {
+	data: NautilusNavigatorSegmentResponse;
 	status: 200;
 };
 
-export type confirmVoteGdmScoreBandsConfirmPostResponse422 = {
+export type recomputeMethodNautilusNavigatorRecomputePostResponse422 = {
 	data: HTTPValidationError;
 	status: 422;
 };
 
-export type confirmVoteGdmScoreBandsConfirmPostResponseSuccess =
-	confirmVoteGdmScoreBandsConfirmPostResponse200 & {
+export type recomputeMethodNautilusNavigatorRecomputePostResponseSuccess =
+	recomputeMethodNautilusNavigatorRecomputePostResponse200 & {
 		headers: Headers;
 	};
-export type confirmVoteGdmScoreBandsConfirmPostResponseError =
-	confirmVoteGdmScoreBandsConfirmPostResponse422 & {
+export type recomputeMethodNautilusNavigatorRecomputePostResponseError =
+	recomputeMethodNautilusNavigatorRecomputePostResponse422 & {
 		headers: Headers;
 	};
 
-export type confirmVoteGdmScoreBandsConfirmPostResponse =
-	| confirmVoteGdmScoreBandsConfirmPostResponseSuccess
-	| confirmVoteGdmScoreBandsConfirmPostResponseError;
+export type recomputeMethodNautilusNavigatorRecomputePostResponse =
+	| recomputeMethodNautilusNavigatorRecomputePostResponseSuccess
+	| recomputeMethodNautilusNavigatorRecomputePostResponseError;
 
-export const getConfirmVoteGdmScoreBandsConfirmPostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/confirm`;
+export const getRecomputeMethodNautilusNavigatorRecomputePostUrl = () => {
+	return `undefined/method/nautilus_navigator/recompute`;
 };
 
-export const confirmVoteGdmScoreBandsConfirmPost = async (
-	groupInfoRequest: GroupInfoRequest,
+export const recomputeMethodNautilusNavigatorRecomputePost = async (
+	nautilusNavigatorRecomputeRequest: NautilusNavigatorRecomputeRequest,
 	options?: RequestInit
-): Promise<confirmVoteGdmScoreBandsConfirmPostResponse> => {
-	return customFetch<confirmVoteGdmScoreBandsConfirmPostResponse>(
-		getConfirmVoteGdmScoreBandsConfirmPostUrl(),
+): Promise<recomputeMethodNautilusNavigatorRecomputePostResponse> => {
+	return customFetch<recomputeMethodNautilusNavigatorRecomputePostResponse>(
+		getRecomputeMethodNautilusNavigatorRecomputePostUrl(),
 		{
 			...options,
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', ...options?.headers },
-			body: JSON.stringify(groupInfoRequest)
-		}
-	);
-};
-
-/**
- * An endpoint for two things: Initializing the GDM Score Bands things and Fetching results.
-
-If a group hasn't been initialized, initialize and then return initial clustering information.
-If it has been initialized, just fetch the latest iteration's information (clustering, etc.)
-
-Args:
-    request (GDMScoreBandsInitializationRequest): Request that contains necessary information for initialization.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): Database session.
-
-Raises:
-    HTTPException: It'll let you know.
-
-Returns:
-    GDMSCOREBandsResponse: A response containing Group id, group iter id and ScoreBandsResponse.
- * @summary Get Or Initialize
- */
-export type getOrInitializeGdmScoreBandsGetOrInitializePostResponse200 = {
-	data: GDMSCOREBandsHistoryResponse;
-	status: 200;
-};
-
-export type getOrInitializeGdmScoreBandsGetOrInitializePostResponse422 = {
-	data: HTTPValidationError;
-	status: 422;
-};
-
-export type getOrInitializeGdmScoreBandsGetOrInitializePostResponseSuccess =
-	getOrInitializeGdmScoreBandsGetOrInitializePostResponse200 & {
-		headers: Headers;
-	};
-export type getOrInitializeGdmScoreBandsGetOrInitializePostResponseError =
-	getOrInitializeGdmScoreBandsGetOrInitializePostResponse422 & {
-		headers: Headers;
-	};
-
-export type getOrInitializeGdmScoreBandsGetOrInitializePostResponse =
-	| getOrInitializeGdmScoreBandsGetOrInitializePostResponseSuccess
-	| getOrInitializeGdmScoreBandsGetOrInitializePostResponseError;
-
-export const getGetOrInitializeGdmScoreBandsGetOrInitializePostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/get-or-initialize`;
-};
-
-export const getOrInitializeGdmScoreBandsGetOrInitializePost = async (
-	gDMScoreBandsInitializationRequest: GDMScoreBandsInitializationRequest,
-	options?: RequestInit
-): Promise<getOrInitializeGdmScoreBandsGetOrInitializePostResponse> => {
-	return customFetch<getOrInitializeGdmScoreBandsGetOrInitializePostResponse>(
-		getGetOrInitializeGdmScoreBandsGetOrInitializePostUrl(),
-		{
-			...options,
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', ...options?.headers },
-			body: JSON.stringify(gDMScoreBandsInitializationRequest)
-		}
-	);
-};
-
-/**
- * Returns the current status of votes and confirmations in current iteration.
-
-Args:
-    request (GroupInfoRequest): The group we'd like the info on.
-    user (Annotated[User, Depends): The user that requests the data.
-    session (Annotated[Session, Depends): The database session.
-
-Raises:
-    HTTPException: If group doesn't exists etc errors.
-
-Returns:
-    JSONResponse: A response containing the votes and confirmations.
- * @summary Get Votes And Confirms
- */
-export type getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse200 = {
-	data: unknown;
-	status: 200;
-};
-
-export type getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse422 = {
-	data: HTTPValidationError;
-	status: 422;
-};
-
-export type getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponseSuccess =
-	getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse200 & {
-		headers: Headers;
-	};
-export type getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponseError =
-	getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse422 & {
-		headers: Headers;
-	};
-
-export type getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse =
-	| getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponseSuccess
-	| getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponseError;
-
-export const getGetVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/get-votes-and-confirms`;
-};
-
-export const getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPost = async (
-	groupInfoRequest: GroupInfoRequest,
-	options?: RequestInit
-): Promise<getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse> => {
-	return customFetch<getVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse>(
-		getGetVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostUrl(),
-		{
-			...options,
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', ...options?.headers },
-			body: JSON.stringify(groupInfoRequest)
-		}
-	);
-};
-
-/**
- * Revert to a previous iteration. Usable only by the analyst.
-
-This implies that we're gonna need to see ALL previous iterations I'd say.
-
-Args:
-    request (GDMSCOREBandsRevertRequest): The request containing group id and iteration number.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): The database session.
-
-Returns:
-    JSONResponse: Acknowledgement of the revert.
- * @summary Revert
- */
-export type revertGdmScoreBandsRevertPostResponse200 = {
-	data: unknown;
-	status: 200;
-};
-
-export type revertGdmScoreBandsRevertPostResponse422 = {
-	data: HTTPValidationError;
-	status: 422;
-};
-
-export type revertGdmScoreBandsRevertPostResponseSuccess =
-	revertGdmScoreBandsRevertPostResponse200 & {
-		headers: Headers;
-	};
-export type revertGdmScoreBandsRevertPostResponseError =
-	revertGdmScoreBandsRevertPostResponse422 & {
-		headers: Headers;
-	};
-
-export type revertGdmScoreBandsRevertPostResponse =
-	| revertGdmScoreBandsRevertPostResponseSuccess
-	| revertGdmScoreBandsRevertPostResponseError;
-
-export const getRevertGdmScoreBandsRevertPostUrl = () => {
-	return `http://localhost:8000/gdm-score-bands/revert`;
-};
-
-export const revertGdmScoreBandsRevertPost = async (
-	gDMSCOREBandsRevertRequest: GDMSCOREBandsRevertRequest,
-	options?: RequestInit
-): Promise<revertGdmScoreBandsRevertPostResponse> => {
-	return customFetch<revertGdmScoreBandsRevertPostResponse>(getRevertGdmScoreBandsRevertPostUrl(), {
-		...options,
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json', ...options?.headers },
-		body: JSON.stringify(gDMSCOREBandsRevertRequest)
-	});
-};
-
-/**
- * Configure the SCORE Bands settings.
-
-Args:
-    config (SCOREBandsGDMConfig): The configuration object
-    group_id (int): group id
-    user (Annotated[User, Depends): The user doing the request
-    session (Annotated[Session, Depends): The database session.
-
-Returns:
-    JSONResponse: Acknowledgement that yeah ok reconfigured.
- * @summary Configure Gdm
- */
-export type configureGdmGdmScoreBandsConfigurePostResponse200 = {
-	data: unknown;
-	status: 200;
-};
-
-export type configureGdmGdmScoreBandsConfigurePostResponse422 = {
-	data: HTTPValidationError;
-	status: 422;
-};
-
-export type configureGdmGdmScoreBandsConfigurePostResponseSuccess =
-	configureGdmGdmScoreBandsConfigurePostResponse200 & {
-		headers: Headers;
-	};
-export type configureGdmGdmScoreBandsConfigurePostResponseError =
-	configureGdmGdmScoreBandsConfigurePostResponse422 & {
-		headers: Headers;
-	};
-
-export type configureGdmGdmScoreBandsConfigurePostResponse =
-	| configureGdmGdmScoreBandsConfigurePostResponseSuccess
-	| configureGdmGdmScoreBandsConfigurePostResponseError;
-
-export const getConfigureGdmGdmScoreBandsConfigurePostUrl = (
-	params: ConfigureGdmGdmScoreBandsConfigurePostParams
-) => {
-	const normalizedParams = new URLSearchParams();
-
-	Object.entries(params || {}).forEach(([key, value]) => {
-		if (value !== undefined) {
-			normalizedParams.append(key, value === null ? 'null' : value.toString());
-		}
-	});
-
-	const stringifiedParams = normalizedParams.toString();
-
-	return stringifiedParams.length > 0
-		? `http://localhost:8000/gdm-score-bands/configure?${stringifiedParams}`
-		: `http://localhost:8000/gdm-score-bands/configure`;
-};
-
-export const configureGdmGdmScoreBandsConfigurePost = async (
-	sCOREBandsGDMConfig: SCOREBandsGDMConfig,
-	params: ConfigureGdmGdmScoreBandsConfigurePostParams,
-	options?: RequestInit
-): Promise<configureGdmGdmScoreBandsConfigurePostResponse> => {
-	return customFetch<configureGdmGdmScoreBandsConfigurePostResponse>(
-		getConfigureGdmGdmScoreBandsConfigurePostUrl(params),
-		{
-			...options,
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', ...options?.headers },
-			body: JSON.stringify(sCOREBandsGDMConfig)
+			body: JSON.stringify(nautilusNavigatorRecomputeRequest)
 		}
 	);
 };

@@ -8,7 +8,7 @@
 import type { EndProcessPreferenceSetPreferences } from './EndProcessPreferenceSetPreferences';
 
 /**
- * A structure for storing info on whether everyone is happy to end the gnimbus process.
+ * A model for determining if everyone is happy with current solution so we can end the process.
  */
 export interface EndProcessPreference {
 	method?: string;

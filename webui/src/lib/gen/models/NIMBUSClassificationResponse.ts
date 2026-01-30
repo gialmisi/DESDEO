@@ -13,7 +13,6 @@ import type { SolutionReferenceResponse } from './SolutionReferenceResponse';
  * The response from NIMBUS classification endpoint.
  */
 export interface NIMBUSClassificationResponse {
-	response_type?: 'nimbus.classification';
 	/** The newly created state id */
 	state_id: number | null;
 	/** The previous preference used. */

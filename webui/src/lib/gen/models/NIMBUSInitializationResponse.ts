@@ -11,7 +11,6 @@ import type { SolutionReferenceResponse } from './SolutionReferenceResponse';
  * The response from NIMBUS classification endpoint.
  */
 export interface NIMBUSInitializationResponse {
-	response_type?: 'nimbus.initialization';
 	/** The newly created state id */
 	state_id: number | null;
 	/** The solutions from the current interation of nimbus. */

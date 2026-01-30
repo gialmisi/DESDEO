@@ -10,7 +10,7 @@ import type { SolutionReference } from './SolutionReference';
 import type { VotingPreference } from './VotingPreference';
 
 /**
- * The response for getting GNIMBUS results. NOTE: OBSOLETE!
+ * The response for getting GNIMBUS results.
  */
 export interface GNIMBUSResultResponse {
 	method: string;

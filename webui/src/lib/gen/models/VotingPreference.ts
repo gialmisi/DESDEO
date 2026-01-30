@@ -8,7 +8,7 @@
 import type { VotingPreferenceSetPreferences } from './VotingPreferenceSetPreferences';
 
 /**
- * A structure for storing voting preferences.
+ * Voting preferences.
  */
 export interface VotingPreference {
 	method?: string;

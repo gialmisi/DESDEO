@@ -42,6 +42,11 @@ __all__ = [  # noqa: RUF022
     "NIMBUSFinalizeResponse",
     "NIMBUSFinalState",
     "NIMBUSSaveState",
+    "NautilusNavigatorInitRequest",
+    "NautilusNavigatorRecomputeRequest",
+    "NautilusNavigatorSegmentResponse",
+    "NautilusNavigatorInitState",
+    "NautilusNavigatorRecomputeState",
     "NonPreferredSolutions",
     "ObjectiveDB",
     "PreferenceBase",
@@ -208,6 +213,11 @@ from .nimbus import (
     NIMBUSSaveRequest,
     NIMBUSSaveResponse,
 )
+from .nautilus_navigator import (
+    NautilusNavigatorInitRequest,
+    NautilusNavigatorRecomputeRequest,
+    NautilusNavigatorSegmentResponse,
+)
 from .preference import (
     Bounds,
     NonPreferredSolutions,
@@ -256,6 +266,8 @@ from .state import (
     GNIMBUSOptimizationState,
     GNIMBUSVotingState,
     IntermediateSolutionState,
+    NautilusNavigatorInitState,
+    NautilusNavigatorRecomputeState,
     NIMBUSClassificationState,
     NIMBUSFinalState,
     NIMBUSInitializationState,

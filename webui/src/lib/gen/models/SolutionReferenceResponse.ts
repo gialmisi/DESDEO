@@ -12,7 +12,7 @@ import type { SolutionReferenceResponseVariableValues } from './SolutionReferenc
  * The response information provided when `SolutionReference` object are returned from the client.
  */
 export interface SolutionReferenceResponse {
-	name?: string | null;
+	name: string | null;
 	solution_index: number | null;
 	state_id: number;
 	objective_values: SolutionReferenceResponseObjectiveValues;

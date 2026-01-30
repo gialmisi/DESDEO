@@ -12,9 +12,7 @@ import type { DistanceFormula } from './DistanceFormula';
 import type { GMMOptions } from './GMMOptions';
 import type { KMeansOptions } from './KMeansOptions';
 import type { SCOREBandsConfigAxisPositions } from './SCOREBandsConfigAxisPositions';
-import type { SCOREBandsConfigDescriptiveNames } from './SCOREBandsConfigDescriptiveNames';
 import type { SCOREBandsConfigScales } from './SCOREBandsConfigScales';
-import type { SCOREBandsConfigUnits } from './SCOREBandsConfigUnits';
 
 /**
  * Configuration options for SCORE bands visualization.
@@ -23,12 +21,6 @@ export interface SCOREBandsConfig {
 	/** List of variable/objective names (i.e., column names in the data) to include in the visualization.
 If None, all columns in the data are used. Defaults to None. */
 	dimensions?: string[] | null;
-	/** Optional dictionary mapping dimensions to descriptive names for display in the visualization.
-If None, the original dimension names are used. Defaults to None. */
-	descriptive_names?: SCOREBandsConfigDescriptiveNames;
-	/** Optional dictionary mapping dimensions to their units for display in the visualization.
-If None, no units are displayed. Defaults to None. */
-	units?: SCOREBandsConfigUnits;
 	/** Dictionary mapping objective names to their positions on the axes in the SCORE bands visualization. The first
 objective is at position 0.0, and the last objective is at position 1.0. Use this option if you want to
 manually set the axis positions. If None, the axis positions are calculated automatically based on correlations.

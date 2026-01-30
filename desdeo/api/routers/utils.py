@@ -13,6 +13,8 @@ from desdeo.api.db import get_session
 from desdeo.api.models import (
     ENautilusStepRequest,
     InteractiveSessionDB,
+    NautilusNavigatorInitRequest,
+    NautilusNavigatorRecomputeRequest,
     ProblemDB,
     RPMSolveRequest,
     StateDB,
@@ -20,7 +22,7 @@ from desdeo.api.models import (
 )
 from desdeo.api.routers.user_authentication import get_current_user
 
-RequestType = RPMSolveRequest | ENautilusStepRequest
+RequestType = RPMSolveRequest | ENautilusStepRequest | NautilusNavigatorInitRequest | NautilusNavigatorRecomputeRequest
 
 
 def fetch_interactive_session(user: User, request: RequestType, session: Session) -> InteractiveSessionDB | None:

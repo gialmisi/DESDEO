@@ -8,7 +8,7 @@
 import type { OptimizationPreferenceSetPreferences } from './OptimizationPreferenceSetPreferences';
 
 /**
- * A structure for storing optimization preferences. See GNIMBUS for details.
+ * An optimization preference class. As for the method and phase, see GNIMBUS for details.
  */
 export interface OptimizationPreference {
 	method?: string;

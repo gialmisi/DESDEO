@@ -428,12 +428,6 @@ export const GetProblemsInfoProblemAllInfoGetResponseItem = zod
 							zod.null()
 						])
 						.optional(),
-					description: zod
-						.union([zod.string(), zod.null()])
-						.optional()
-						.describe(
-							'A longer description of the objective function. This can be used in UI and visualizations.             Meant to have longer text than what name should have.'
-						),
 					name: zod
 						.string()
 						.describe(
@@ -1026,12 +1020,6 @@ export const GetProblemProblemGetPostResponse = zod
 							zod.null()
 						])
 						.optional(),
-					description: zod
-						.union([zod.string(), zod.null()])
-						.optional()
-						.describe(
-							'A longer description of the objective function. This can be used in UI and visualizations.             Meant to have longer text than what name should have.'
-						),
 					name: zod
 						.string()
 						.describe(
@@ -1610,12 +1598,6 @@ export const AddProblemProblemAddPostResponse = zod
 							zod.null()
 						])
 						.optional(),
-					description: zod
-						.union([zod.string(), zod.null()])
-						.optional()
-						.describe(
-							'A longer description of the objective function. This can be used in UI and visualizations.             Meant to have longer text than what name should have.'
-						),
 					name: zod
 						.string()
 						.describe(
@@ -2196,12 +2178,6 @@ export const AddProblemJsonProblemAddJsonPostResponse = zod
 							zod.null()
 						])
 						.optional(),
-					description: zod
-						.union([zod.string(), zod.null()])
-						.optional()
-						.describe(
-							'A longer description of the objective function. This can be used in UI and visualizations.             Meant to have longer text than what name should have.'
-						),
 					name: zod
 						.string()
 						.describe(
@@ -2655,15 +2631,6 @@ export const GetMetadataProblemGetMetadataPostResponse = zod.array(
 );
 
 /**
- * Return the list of available solver names.
- * @summary Get Available Solvers
- */
-export const GetAvailableSolversProblemAssignSolverGetResponseItem = zod.string();
-export const GetAvailableSolversProblemAssignSolverGetResponse = zod.array(
-	GetAvailableSolversProblemAssignSolverGetResponseItem
-);
-
-/**
  * Assign a specific solver for a problem.
 
 request: ProblemSelectSolverRequest: The request containing problem id and string representation of the solver
@@ -2679,12 +2646,8 @@ Returns:
  */
 export const SelectSolverProblemAssignSolverPostBody = zod
 	.object({
-		problem_id: zod.number().describe('ID of the problem that the solver is assigned to.'),
-		solver_string_representation: zod
-			.string()
-			.describe(
-				"One of the following: ['scipy_minimize', 'scipy_de', 'proximal', 'nevergrad', 'pyomo_bonmin', 'pyomo_cbc', 'pyomo_ipopt', 'pyomo_gurobi', 'gurobipy', 'gurobipy_persistent']"
-			)
+		problem_id: zod.number(),
+		solver_string_representation: zod.string()
 	})
 	.describe('Model to request a specific solver for a problem.');
 
@@ -2709,43 +2672,34 @@ export const CreateNewSessionSessionNewPostResponse = zod
 	.describe('The base model for representing interactive sessions.');
 
 /**
- * Return an interactive session with a current user.
+ * Return an interactive session with a given id for the current user.
+
+Args:
+    request (GetSessionRequest): a request containing the id of the session.
+    user (Annotated[User, Depends): the current user.
+    session (Annotated[Session, Depends): the database session.
+
+Raises:
+    HTTPException: could not find an interactive session with the given id
+        for the current user.
+
+Returns:
+    InteractiveSessionInfo: info on the requested interactive session.
  * @summary Get Session
  */
-export const GetSessionSessionGetSessionIdGetParams = zod.object({
-	session_id: zod.number()
-});
+export const GetSessionSessionGetPostBody = zod
+	.object({
+		session_id: zod.number()
+	})
+	.describe('Model of the request to get a specific session.');
 
-export const GetSessionSessionGetSessionIdGetResponse = zod
+export const GetSessionSessionGetPostResponse = zod
 	.object({
 		id: zod.union([zod.number(), zod.null()]),
 		user_id: zod.union([zod.number(), zod.null()]),
 		info: zod.union([zod.string(), zod.null()])
 	})
 	.describe('The base model for representing interactive sessions.');
-
-/**
- * Return all interactive sessions of the current user.
- * @summary Get All Sessions
- */
-export const GetAllSessionsSessionGetAllGetResponseItem = zod
-	.object({
-		id: zod.union([zod.number(), zod.null()]),
-		user_id: zod.union([zod.number(), zod.null()]),
-		info: zod.union([zod.string(), zod.null()])
-	})
-	.describe('The base model for representing interactive sessions.');
-export const GetAllSessionsSessionGetAllGetResponse = zod.array(
-	GetAllSessionsSessionGetAllGetResponseItem
-);
-
-/**
- * Delete an interactive session and all its related states.
- * @summary Delete Session
- */
-export const DeleteSessionSessionSessionIdDeleteParams = zod.object({
-	session_id: zod.number()
-});
 
 /**
  * Runs an iteration of the reference point method.
@@ -2914,14 +2868,10 @@ export const SolveSolutionsMethodNimbusSolvePostBody = zod
 	})
 	.describe('Model of the request to the nimbus method.');
 
-export const solveSolutionsMethodNimbusSolvePostResponseResponseTypeDefault = `nimbus.classification`;
 export const solveSolutionsMethodNimbusSolvePostResponsePreviousPreferencePreferenceTypeDefault = `reference_point`;
 
 export const SolveSolutionsMethodNimbusSolvePostResponse = zod
 	.object({
-		response_type: zod
-			.literal('nimbus.classification')
-			.default(solveSolutionsMethodNimbusSolvePostResponseResponseTypeDefault),
 		state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
 		previous_preference: zod
 			.object({
@@ -2940,7 +2890,7 @@ export const SolveSolutionsMethodNimbusSolvePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -2974,7 +2924,7 @@ export const SolveSolutionsMethodNimbusSolvePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3008,7 +2958,7 @@ export const SolveSolutionsMethodNimbusSolvePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3066,8 +3016,8 @@ export const InitializeMethodNimbusInitializePostBody = zod
 					.describe('Model for representing a reference point type of preference.'),
 				zod
 					.object({
-						state_id: zod.number().describe('State of the desired solution.'),
-						solution_index: zod.number().describe('Index of the desired solution.'),
+						state_id: zod.number(),
+						solution_index: zod.number(),
 						name: zod
 							.union([zod.string(), zod.null()])
 							.optional()
@@ -3095,19 +3045,14 @@ export const InitializeMethodNimbusInitializePostBody = zod
 	})
 	.describe('Model of the request to the nimbus method.');
 
-export const initializeMethodNimbusInitializePostResponseResponseTypeDefault = `nimbus.initialization`;
-
 export const InitializeMethodNimbusInitializePostResponse = zod
 	.object({
-		response_type: zod
-			.literal('nimbus.initialization')
-			.default(initializeMethodNimbusInitializePostResponseResponseTypeDefault),
 		state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
 		current_solutions: zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3141,7 +3086,7 @@ export const InitializeMethodNimbusInitializePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3175,7 +3120,7 @@ export const InitializeMethodNimbusInitializePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3220,8 +3165,8 @@ export const SaveMethodNimbusSavePostBody = zod
 		solution_info: zod.array(
 			zod
 				.object({
-					state_id: zod.number().describe('State of the desired solution.'),
-					solution_index: zod.number().describe('Index of the desired solution.'),
+					state_id: zod.number(),
+					solution_index: zod.number(),
 					name: zod
 						.union([zod.string(), zod.null()])
 						.optional()
@@ -3234,13 +3179,8 @@ export const SaveMethodNimbusSavePostBody = zod
 	})
 	.describe("Request model for saving solutions from any method's state.");
 
-export const saveMethodNimbusSavePostResponseResponseTypeDefault = `nimbus.save`;
-
 export const SaveMethodNimbusSavePostResponse = zod
 	.object({
-		response_type: zod
-			.literal('nimbus.save')
-			.default(saveMethodNimbusSavePostResponseResponseTypeDefault),
 		state_id: zod.union([zod.number(), zod.null()]).describe('The id of the newest state')
 	})
 	.describe('The response from NIMBUS save endpoint.');
@@ -3275,8 +3215,8 @@ export const SolveNimbusIntermediateMethodNimbusIntermediatePostBody = zod
 			.default(solveNimbusIntermediateMethodNimbusIntermediatePostBodyNumDesiredDefault),
 		reference_solution_1: zod
 			.object({
-				state_id: zod.number().describe('State of the desired solution.'),
-				solution_index: zod.number().describe('Index of the desired solution.'),
+				state_id: zod.number(),
+				solution_index: zod.number(),
 				name: zod
 					.union([zod.string(), zod.null()])
 					.optional()
@@ -3287,8 +3227,8 @@ export const SolveNimbusIntermediateMethodNimbusIntermediatePostBody = zod
 			),
 		reference_solution_2: zod
 			.object({
-				state_id: zod.number().describe('State of the desired solution.'),
-				solution_index: zod.number().describe('Index of the desired solution.'),
+				state_id: zod.number(),
+				solution_index: zod.number(),
 				name: zod
 					.union([zod.string(), zod.null()])
 					.optional()
@@ -3300,13 +3240,8 @@ export const SolveNimbusIntermediateMethodNimbusIntermediatePostBody = zod
 	})
 	.describe('Model of the request to solve intermediate solutions between two solutions.');
 
-export const solveNimbusIntermediateMethodNimbusIntermediatePostResponseResponseTypeDefault = `nimbus.intermediate`;
-
 export const SolveNimbusIntermediateMethodNimbusIntermediatePostResponse = zod
 	.object({
-		response_type: zod
-			.literal('nimbus.intermediate')
-			.default(solveNimbusIntermediateMethodNimbusIntermediatePostResponseResponseTypeDefault),
 		state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
 		reference_solution_1: zod
 			.record(zod.string(), zod.number())
@@ -3318,7 +3253,7 @@ export const SolveNimbusIntermediateMethodNimbusIntermediatePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3352,7 +3287,7 @@ export const SolveNimbusIntermediateMethodNimbusIntermediatePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3386,7 +3321,7 @@ export const SolveNimbusIntermediateMethodNimbusIntermediatePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3444,8 +3379,8 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostBody = zod
 					.describe('Model for representing a reference point type of preference.'),
 				zod
 					.object({
-						state_id: zod.number().describe('State of the desired solution.'),
-						solution_index: zod.number().describe('Index of the desired solution.'),
+						state_id: zod.number(),
+						solution_index: zod.number(),
 						name: zod
 							.union([zod.string(), zod.null()])
 							.optional()
@@ -3473,24 +3408,17 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostBody = zod
 	})
 	.describe('Model of the request to the nimbus method.');
 
-export const getOrInitializeMethodNimbusGetOrInitializePostResponseOneResponseTypeDefault = `nimbus.initialization`;
-export const getOrInitializeMethodNimbusGetOrInitializePostResponseTwoResponseTypeDefault = `nimbus.classification`;
 export const getOrInitializeMethodNimbusGetOrInitializePostResponseTwoPreviousPreferencePreferenceTypeDefault = `reference_point`;
-export const getOrInitializeMethodNimbusGetOrInitializePostResponseThreeResponseTypeDefault = `nimbus.intermediate`;
-export const getOrInitializeMethodNimbusGetOrInitializePostResponseFourResponseTypeDefault = `nimbus.finalize`;
 
 export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union([
 	zod
 		.object({
-			response_type: zod
-				.literal('nimbus.initialization')
-				.default(getOrInitializeMethodNimbusGetOrInitializePostResponseOneResponseTypeDefault),
 			state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
 			current_solutions: zod
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3524,7 +3452,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3558,7 +3486,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3592,9 +3520,6 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 		.describe('The response from NIMBUS classification endpoint.'),
 	zod
 		.object({
-			response_type: zod
-				.literal('nimbus.classification')
-				.default(getOrInitializeMethodNimbusGetOrInitializePostResponseTwoResponseTypeDefault),
 			state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
 			previous_preference: zod
 				.object({
@@ -3613,7 +3538,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3647,7 +3572,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3681,7 +3606,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3715,9 +3640,6 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 		.describe('The response from NIMBUS classification endpoint.'),
 	zod
 		.object({
-			response_type: zod
-				.literal('nimbus.intermediate')
-				.default(getOrInitializeMethodNimbusGetOrInitializePostResponseThreeResponseTypeDefault),
 			state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
 			reference_solution_1: zod
 				.record(zod.string(), zod.number())
@@ -3729,7 +3651,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3763,7 +3685,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3797,7 +3719,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				.array(
 					zod
 						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
+							name: zod.union([zod.string(), zod.null()]),
 							solution_index: zod.union([zod.number(), zod.null()]),
 							state_id: zod.number(),
 							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -3828,113 +3750,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 				)
 				.describe('All solutions generated by NIMBUS in all iterations.')
 		})
-		.describe('The response from NIMBUS classification endpoint.'),
-	zod
-		.object({
-			response_type: zod
-				.literal('nimbus.finalize')
-				.default(getOrInitializeMethodNimbusGetOrInitializePostResponseFourResponseTypeDefault),
-			state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
-			final_solution: zod
-				.object({
-					name: zod.union([zod.string(), zod.null()]).optional(),
-					solution_index: zod.union([zod.number(), zod.null()]),
-					state_id: zod.number(),
-					objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
-					variable_values: zod.union([
-						zod.record(
-							zod.string(),
-							zod.union([
-								zod.number(),
-								zod.number(),
-								zod.boolean(),
-								zod.union([
-									zod.array(zod.unknown()),
-									zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
-									zod.number(),
-									zod.number(),
-									zod.boolean(),
-									zod.literal('List'),
-									zod.null()
-								])
-							])
-						),
-						zod.null()
-					])
-				})
-				.describe(
-					'The response information provided when `SolutionReference` object are returned from the client.'
-				),
-			saved_solutions: zod
-				.array(
-					zod
-						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
-							solution_index: zod.union([zod.number(), zod.null()]),
-							state_id: zod.number(),
-							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
-							variable_values: zod.union([
-								zod.record(
-									zod.string(),
-									zod.union([
-										zod.number(),
-										zod.number(),
-										zod.boolean(),
-										zod.union([
-											zod.array(zod.unknown()),
-											zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
-											zod.number(),
-											zod.number(),
-											zod.boolean(),
-											zod.literal('List'),
-											zod.null()
-										])
-									])
-								),
-								zod.null()
-							])
-						})
-						.describe(
-							'The response information provided when `SolutionReference` object are returned from the client.'
-						)
-				)
-				.describe('The best candidate solutions saved by the decision maker.'),
-			all_solutions: zod
-				.array(
-					zod
-						.object({
-							name: zod.union([zod.string(), zod.null()]).optional(),
-							solution_index: zod.union([zod.number(), zod.null()]),
-							state_id: zod.number(),
-							objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
-							variable_values: zod.union([
-								zod.record(
-									zod.string(),
-									zod.union([
-										zod.number(),
-										zod.number(),
-										zod.boolean(),
-										zod.union([
-											zod.array(zod.unknown()),
-											zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
-											zod.number(),
-											zod.number(),
-											zod.boolean(),
-											zod.literal('List'),
-											zod.null()
-										])
-									])
-								),
-								zod.null()
-							])
-						})
-						.describe(
-							'The response information provided when `SolutionReference` object are returned from the client.'
-						)
-				)
-				.describe('All solutions generated by NIMBUS in all iterations.')
-		})
-		.describe('The response from NIMBUS finish endpoint.')
+		.describe('The response from NIMBUS classification endpoint.')
 ]);
 
 /**
@@ -3949,9 +3765,11 @@ Raises:
     HTTPException
 
 Returns:
-    NIMBUSFinalizeResponse: Response containing info on the final solution.
+    NIMBUSFinalizeResponse: Response containing state id of the final solution.
  * @summary Finalize Nimbus
  */
+export const finalizeNimbusMethodNimbusFinalizePostBodyPreferencesPreferenceTypeDefault = `reference_point`;
+
 export const FinalizeNimbusMethodNimbusFinalizePostBody = zod
 	.object({
 		problem_id: zod.number(),
@@ -3959,8 +3777,8 @@ export const FinalizeNimbusMethodNimbusFinalizePostBody = zod
 		parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
 		solution_info: zod
 			.object({
-				state_id: zod.number().describe('State of the desired solution.'),
-				solution_index: zod.number().describe('Index of the desired solution.'),
+				state_id: zod.number(),
+				solution_index: zod.number(),
 				name: zod
 					.union([zod.string(), zod.null()])
 					.optional()
@@ -3968,21 +3786,24 @@ export const FinalizeNimbusMethodNimbusFinalizePostBody = zod
 			})
 			.describe(
 				'Used when we wish to reference a solution in some `StateDB` stored in the database.'
-			)
+			),
+		preferences: zod
+			.object({
+				preference_type: zod
+					.literal('reference_point')
+					.default(finalizeNimbusMethodNimbusFinalizePostBodyPreferencesPreferenceTypeDefault),
+				aspiration_levels: zod.record(zod.string(), zod.number())
+			})
+			.describe('Model for representing a reference point type of preference.')
 	})
 	.describe('Request model for finalizing the NIMBUS procedure.');
 
-export const finalizeNimbusMethodNimbusFinalizePostResponseResponseTypeDefault = `nimbus.finalize`;
-
 export const FinalizeNimbusMethodNimbusFinalizePostResponse = zod
 	.object({
-		response_type: zod
-			.literal('nimbus.finalize')
-			.default(finalizeNimbusMethodNimbusFinalizePostResponseResponseTypeDefault),
-		state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
+		state_id: zod.union([zod.number(), zod.null()]).describe('The id of the newest state'),
 		final_solution: zod
 			.object({
-				name: zod.union([zod.string(), zod.null()]).optional(),
+				name: zod.union([zod.string(), zod.null()]),
 				solution_index: zod.union([zod.number(), zod.null()]),
 				state_id: zod.number(),
 				objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -4009,75 +3830,7 @@ export const FinalizeNimbusMethodNimbusFinalizePostResponse = zod
 			})
 			.describe(
 				'The response information provided when `SolutionReference` object are returned from the client.'
-			),
-		saved_solutions: zod
-			.array(
-				zod
-					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
-						solution_index: zod.union([zod.number(), zod.null()]),
-						state_id: zod.number(),
-						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
-						variable_values: zod.union([
-							zod.record(
-								zod.string(),
-								zod.union([
-									zod.number(),
-									zod.number(),
-									zod.boolean(),
-									zod.union([
-										zod.array(zod.unknown()),
-										zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
-										zod.number(),
-										zod.number(),
-										zod.boolean(),
-										zod.literal('List'),
-										zod.null()
-									])
-								])
-							),
-							zod.null()
-						])
-					})
-					.describe(
-						'The response information provided when `SolutionReference` object are returned from the client.'
-					)
 			)
-			.describe('The best candidate solutions saved by the decision maker.'),
-		all_solutions: zod
-			.array(
-				zod
-					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
-						solution_index: zod.union([zod.number(), zod.null()]),
-						state_id: zod.number(),
-						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
-						variable_values: zod.union([
-							zod.record(
-								zod.string(),
-								zod.union([
-									zod.number(),
-									zod.number(),
-									zod.boolean(),
-									zod.union([
-										zod.array(zod.unknown()),
-										zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
-										zod.number(),
-										zod.number(),
-										zod.boolean(),
-										zod.literal('List'),
-										zod.null()
-									])
-								])
-							),
-							zod.null()
-						])
-					})
-					.describe(
-						'The response information provided when `SolutionReference` object are returned from the client.'
-					)
-			)
-			.describe('All solutions generated by NIMBUS in all iterations.')
 	})
 	.describe('The response from NIMBUS finish endpoint.');
 
@@ -4103,16 +3856,2929 @@ export const DeleteSaveMethodNimbusDeleteSavePostBody = zod
 	})
 	.describe('Request model for deletion of a saved solution.');
 
-export const deleteSaveMethodNimbusDeleteSavePostResponseResponseTypeDefault = `nimbus.delete_save`;
-
 export const DeleteSaveMethodNimbusDeleteSavePostResponse = zod
 	.object({
-		response_type: zod
-			.string()
-			.default(deleteSaveMethodNimbusDeleteSavePostResponseResponseTypeDefault),
 		message: zod.union([zod.string(), zod.null()])
 	})
 	.describe('Response of NIMBUS save deletion.');
+
+/**
+ * Starts the EMO method.
+
+Args:
+    request (EMOSolveRequest): The request object containing parameters for the EMO method.
+    user (Annotated[User, Depends]): The current user.
+    session (Annotated[Session, Depends]): The database session.
+
+Raises:
+    HTTPException: If the request is invalid or the EMO method fails.
+
+Returns:
+    IterateResponse: A response object containing a list of IDs to be used for websocket communication.
+        Also contains the StateDB id where the results will be stored.
+ * @summary Iterate
+ */
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneNameDefault = `SimulatedBinaryCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverProbabilityDefault = 0.5;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverDistributionDefault = 30;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverDistributionExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverTwoNameDefault = `SinglePointBinaryCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverThreeNameDefault = `UniformIntegerCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFourNameDefault = `UniformMixedIntegerCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveNameDefault = `BlendAlphaCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveAlphaDefault = 0.5;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveAlphaMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveXoverProbabilityDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSixNameDefault = `SingleArithmeticCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSixXoverProbabilityDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSixXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSixXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSevenNameDefault = `LocalCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSevenXoverProbabilityDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSevenXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSevenXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightNameDefault = `BoundedExponentialCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightXoverProbabilityDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightLambdaDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightLambdaExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneNameDefault = `BoundedPolynomialMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneDistributionIndexDefault = 20;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneDistributionIndexExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationTwoNameDefault = `BinaryFlipMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationTwoMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationTwoMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationThreeNameDefault = `IntegerRandomMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationThreeMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationThreeMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFourNameDefault = `MixedIntegerRandomMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFourMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFourMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveNameDefault = `MPTMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveMutationExponentDefault = 2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveMutationExponentMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixNameDefault = `NonUniformMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixMaxGenerationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixBDefault = 5;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixBMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSevenNameDefault = `SelfAdaptiveGaussianMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSevenMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSevenMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightNameDefault = `PowerMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightPDefault = 1.5;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightPMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneNameDefault = `RVEASelector`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsAdaptationFrequencyDefault = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsCreationTypeDefault = `simplex`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsVectorTypeDefault = `spherical`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsNumberOfVectorsDefault = 200;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsAdaptationDistanceDefault = 0.2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneAlphaDefault = 2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneAlphaExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoNameDefault = `NSGA3Selector`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsAdaptationFrequencyDefault = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsCreationTypeDefault = `simplex`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsVectorTypeDefault = `spherical`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsNumberOfVectorsDefault = 200;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsAdaptationDistanceDefault = 0.2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoInvertReferenceVectorsDefault = false;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionThreeNameDefault = `IBEASelector`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionThreePopulationSizeExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionThreeKappaDefault = 0.05;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionThreeBinaryIndicatorDefault = `eps`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationOneNameDefault = `MaxGenerationsTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationOneMaxGenerationsDefault = 100;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationOneMaxGenerationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationTwoNameDefault = `MaxEvaluationsTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationTwoMaxEvaluationsDefault = 10000;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationTwoMaxEvaluationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationThreeNameDefault = `MaxTimeTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationThreeMaxTimeDefault = 30;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationThreeMaxTimeExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFourNameDefault = `ExternalCheckTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveNameDefault = `CompositeTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemOneNameDefault = `MaxEvaluationsTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemOneMaxEvaluationsDefault = 10000;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemOneMaxEvaluationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemTwoNameDefault = `MaxGenerationsTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemTwoMaxGenerationsDefault = 100;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemTwoMaxGenerationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemThreeNameDefault = `MaxTimeTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemThreeMaxTimeDefault = 30;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemThreeMaxTimeExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemFourNameDefault = `ExternalCheckTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveModeDefault = `any`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorOneNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorOneNameDefault = `LHSGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorTwoNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorTwoNameDefault = `RandomBinaryGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorThreeNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorThreeNameDefault = `RandomGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorFourNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorFourNameDefault = `RandomIntegerGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorFiveNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorFiveNameDefault = `RandomMixedIntegerGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneRepairOneNameDefault = `ClipRepair`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneRepairTwoNameDefault = `NoRepair`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneRepairDefault = {
+	name: 'NoRepair'
+};
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneUseArchiveDefault = true;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSeedDefault = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneVerbosityDefault = 2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneNameDefault = `Template1`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneNameDefault = `SimulatedBinaryCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverProbabilityDefault = 0.5;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverDistributionDefault = 30;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverDistributionExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverTwoNameDefault = `SinglePointBinaryCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverThreeNameDefault = `UniformIntegerCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFourNameDefault = `UniformMixedIntegerCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveNameDefault = `BlendAlphaCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveAlphaDefault = 0.5;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveAlphaMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveXoverProbabilityDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSixNameDefault = `SingleArithmeticCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSixXoverProbabilityDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSixXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSixXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSevenNameDefault = `LocalCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSevenXoverProbabilityDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSevenXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSevenXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightNameDefault = `BoundedExponentialCrossover`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightXoverProbabilityDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightXoverProbabilityMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightXoverProbabilityMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightLambdaDefault = 1;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightLambdaExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneNameDefault = `BoundedPolynomialMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneDistributionIndexDefault = 20;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneDistributionIndexExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationTwoNameDefault = `BinaryFlipMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationTwoMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationTwoMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationThreeNameDefault = `IntegerRandomMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationThreeMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationThreeMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFourNameDefault = `MixedIntegerRandomMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFourMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFourMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveNameDefault = `MPTMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveMutationExponentDefault = 2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveMutationExponentMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixNameDefault = `NonUniformMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixMaxGenerationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixBDefault = 5;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixBMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSevenNameDefault = `SelfAdaptiveGaussianMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSevenMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSevenMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightNameDefault = `PowerMutation`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightMutationProbabilityOneMin = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightMutationProbabilityOneMax = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightPDefault = 1.5;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightPMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneNameDefault = `RVEASelector`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsAdaptationFrequencyDefault = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsCreationTypeDefault = `simplex`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsVectorTypeDefault = `spherical`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsNumberOfVectorsDefault = 200;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsAdaptationDistanceDefault = 0.2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneAlphaDefault = 2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneAlphaExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoNameDefault = `NSGA3Selector`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsAdaptationFrequencyDefault = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsCreationTypeDefault = `simplex`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsVectorTypeDefault = `spherical`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsNumberOfVectorsDefault = 200;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsAdaptationDistanceDefault = 0.2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoInvertReferenceVectorsDefault = false;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionThreeNameDefault = `IBEASelector`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionThreePopulationSizeExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionThreeKappaDefault = 0.05;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionThreeBinaryIndicatorDefault = `eps`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationOneNameDefault = `MaxGenerationsTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationOneMaxGenerationsDefault = 100;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationOneMaxGenerationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationTwoNameDefault = `MaxEvaluationsTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationTwoMaxEvaluationsDefault = 10000;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationTwoMaxEvaluationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationThreeNameDefault = `MaxTimeTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationThreeMaxTimeDefault = 30;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationThreeMaxTimeExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFourNameDefault = `ExternalCheckTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveNameDefault = `CompositeTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemOneNameDefault = `MaxEvaluationsTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemOneMaxEvaluationsDefault = 10000;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemOneMaxEvaluationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemTwoNameDefault = `MaxGenerationsTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemTwoMaxGenerationsDefault = 100;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemTwoMaxGenerationsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemThreeNameDefault = `MaxTimeTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemThreeMaxTimeDefault = 30;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemThreeMaxTimeExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemFourNameDefault = `ExternalCheckTerminator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveModeDefault = `any`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorOneNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorOneNameDefault = `LHSGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorTwoNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorTwoNameDefault = `RandomBinaryGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorThreeNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorThreeNameDefault = `RandomGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorFourNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorFourNameDefault = `RandomIntegerGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorFiveNPointsExclusiveMin = 0;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorFiveNameDefault = `RandomMixedIntegerGenerator`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoRepairOneNameDefault = `ClipRepair`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoRepairTwoNameDefault = `NoRepair`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoRepairDefault = {
+	name: 'NoRepair'
+};
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoUseArchiveDefault = true;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSeedDefault = 0;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoVerbosityDefault = 2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoNameDefault = `Template2`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionOneNameDefault = `TournamentSelection`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionOneTournamentSizeDefault = 2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionOneWinnerSizeExclusiveMin = 1;
+
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionTwoNameDefault = `RouletteWheelSelection`;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionTwoTournamentSizeDefault = 2;
+export const iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionTwoWinnerSizeExclusiveMin = 1;
+
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsOneNameDefault = `reference_point`;
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsOneMethodDefault = `Hakanen`;
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsTwoNameDefault = `preferred_ranges`;
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsTwoMethodDefault = `Hakanen`;
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsTwoDesirabilityLevelsDefault = [
+	0.9, 0.1
+];
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsThreeNameDefault = `preferred_solutions`;
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsThreeMethodDefault = `Hakanen`;
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsFourNameDefault = `non_preferred_solutions`;
+export const iterateMethodEmoIteratePostBodyPreferenceOptionsFourMethodDefault = `Hakanen`;
+
+export const IterateMethodEmoIteratePostBody = zod
+	.object({
+		problem_id: zod.number().describe('Database ID of the problem to solve.'),
+		session_id: zod.union([zod.number(), zod.null()]).optional(),
+		parent_state_id: zod
+			.union([zod.number(), zod.null()])
+			.optional()
+			.describe(
+				'State ID of the parent state, if any. Should be None if this is the first state in a session.'
+			),
+		template_options: zod
+			.union([
+				zod.array(
+					zod.union([
+						zod
+							.object({
+								crossover: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('SimulatedBinaryCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverProbabilityDefault
+													)
+													.describe('The SBX crossover probability.'),
+												xover_distribution: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverDistributionExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverOneXoverDistributionDefault
+													)
+													.describe('The SBX distribution index.')
+											})
+											.describe('Options for Simulated Binary Crossover (SBX).'),
+										zod
+											.object({
+												name: zod
+													.literal('SinglePointBinaryCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverTwoNameDefault
+													)
+													.describe('The name of the crossover operator.')
+											})
+											.describe('Options for Single Point Binary Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('UniformIntegerCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverThreeNameDefault
+													)
+													.describe('The name of the crossover operator.')
+											})
+											.describe('Options for Uniform Integer Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('UniformMixedIntegerCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFourNameDefault
+													)
+													.describe('The name of the crossover operator.')
+											})
+											.describe('Options for Uniform Mixed Integer Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('BlendAlphaCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												alpha: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveAlphaMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveAlphaDefault
+													)
+													.describe(
+														"Non-negative blending factor 'alpha' that controls the extent to which offspring may be sampled outside the interval defined by each pair of parent genes. alpha = 0 restricts children strictly within the parents range, larger alpha allows some outliers."
+													),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverFiveXoverProbabilityDefault
+													)
+											})
+											.describe('Options for Blend Alpha Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('SingleArithmeticCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSixNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSixXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSixXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSixXoverProbabilityDefault
+													)
+													.describe('The crossover probability.')
+											})
+											.describe('Options for Single Arithmetic Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('LocalCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSevenNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSevenXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSevenXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverSevenXoverProbabilityDefault
+													)
+													.describe('The crossover probability.')
+											})
+											.describe('Options for Local Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('BoundedExponentialCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightXoverProbabilityDefault
+													)
+													.describe('The crossover probability.'),
+												lambda_: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightLambdaExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneCrossoverEightLambdaDefault
+													)
+													.describe('Positive scale λ for the exponential distribution.')
+											})
+											.describe('Options for Bounded Exponential Crossover.')
+									])
+									.describe('The crossover operator options.'),
+								mutation: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('BoundedPolynomialMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to\n1/<number of decision variables>.'
+													),
+												distribution_index: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneDistributionIndexExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationOneDistributionIndexDefault
+													)
+													.describe('The distribution index.')
+											})
+											.describe('Options for Bounded Polynomial Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('BinaryFlipMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationTwoNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationTwoMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationTwoMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													)
+											})
+											.describe('Options for Binary Flip Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('IntegerRandomMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationThreeNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationThreeMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationThreeMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													)
+											})
+											.describe('Options for Integer Random Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('MixedIntegerRandomMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFourNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFourMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFourMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													)
+											})
+											.describe('Options for Mixed Integer Random Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('MPTMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													),
+												mutation_exponent: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveMutationExponentMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationFiveMutationExponentDefault
+													)
+													.describe(
+														'Controls strength of small mutation (larger means smaller mutations).'
+													)
+											})
+											.describe('Options for MPT Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('NonUniformMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													),
+												max_generations: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixMaxGenerationsExclusiveMin
+													)
+													.describe(
+														'Maximum number of generations in the evolutionary run. Used to scale mutation decay.'
+													),
+												b: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixBMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSixBDefault
+													)
+													.describe(
+														'Non-uniform mutation decay parameter. Higher values causefaster reduction in mutation strength over generations.'
+													)
+											})
+											.describe('Options for Non-Uniform Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('SelfAdaptiveGaussianMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSevenNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSevenMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationSevenMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													)
+											})
+											.describe('Options for Self-Adaptive Gaussian Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('PowerMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													),
+												p: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightPMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneMutationEightPDefault
+													)
+													.describe(
+														'Power distribution parameter. Controls the perturbation magnitude.'
+													)
+											})
+											.describe('Options for Power Mutation.')
+									])
+									.describe('The mutation operator options.'),
+								selection: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('RVEASelector')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneNameDefault
+													)
+													.describe('The name of the selection operator.'),
+												reference_vector_options: zod
+													.object({
+														adaptation_frequency: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsAdaptationFrequencyDefault
+															)
+															.describe(
+																'Number of generations between reference vector adaptation. If set to 0, no adaptation occurs. Defaults to 0.\nOnly used if no preference is provided.'
+															),
+														creation_type: zod
+															.enum(['simplex', 's_energy'])
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsCreationTypeDefault
+															)
+															.describe(
+																'The method for creating reference vectors. Defaults to \"simplex\".\nCurrently only \"simplex\" is implemented. Future versions will include \"s_energy\".\n\nIf set to \"simplex\", the reference vectors are created using the simplex lattice design method.\nThis method is generates distributions with specific numbers of reference vectors.\nCheck: https://www.itl.nist.gov/div898/handbook/pri/section5/pri542.htm for more information.\nIf set to \"s_energy\", the reference vectors are created using the Riesz s-energy criterion. This method is used to\ndistribute an arbitrary number of reference vectors in the objective space while minimizing the s-energy.\nCurrently not implemented.'
+															),
+														vector_type: zod
+															.enum(['spherical', 'planar'])
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsVectorTypeDefault
+															)
+															.describe(
+																'The method for normalizing the reference vectors. Defaults to \"spherical\".'
+															),
+														lattice_resolution: zod
+															.union([zod.number(), zod.null()])
+															.optional()
+															.describe(
+																'Number of divisions along an axis when creating the simplex lattice. This is not required/used for the \"s_energy\"\nmethod. If not specified, the lattice resolution is calculated based on the `number_of_vectors`. If \"spherical\" is \nselected as the `vector_type`, this value overrides the `number_of_vectors`.'
+															),
+														number_of_vectors: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsNumberOfVectorsDefault
+															)
+															.describe(
+																'Number of reference vectors to be created. If \"simplex\" is selected as the `creation_type`, then the closest\n`lattice_resolution` is calculated based on this value. If \"s_energy\" is selected, then this value is used directly.\nNote that if neither `lattice_resolution` nor `number_of_vectors` is specified, the number of vectors defaults to\n200. Overridden if \"spherical\" is selected as the `vector_type` and `lattice_resolution` is provided.'
+															),
+														adaptation_distance: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneReferenceVectorOptionsAdaptationDistanceDefault
+															)
+															.describe(
+																'Distance parameter for the interactive adaptation methods. Defaults to 0.2.'
+															),
+														reference_point: zod
+															.union([zod.record(zod.string(), zod.number()), zod.null()])
+															.optional()
+															.describe('The reference point for interactive adaptation.'),
+														preferred_solutions: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The preferred solutions for interactive adaptation.'),
+														non_preferred_solutions: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The non-preferred solutions for interactive adaptation.'),
+														preferred_ranges: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The preferred ranges for interactive adaptation.')
+													})
+													.optional()
+													.describe('Pydantic model for Reference Vector arguments.'),
+												parameter_adaptation_strategy: zod
+													.enum(['GENERATION_BASED', 'FUNCTION_EVALUATION_BASED', 'OTHER'])
+													.optional()
+													.describe('The parameter adaptation strategies for the RVEA selector.'),
+												alpha: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneAlphaExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionOneAlphaDefault
+													)
+													.describe('The alpha parameter in the angle penalized distance.')
+											})
+											.describe('Options for RVEA Selection.'),
+										zod
+											.object({
+												name: zod
+													.literal('NSGA3Selector')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoNameDefault
+													)
+													.describe('The name of the selection operator.'),
+												reference_vector_options: zod
+													.object({
+														adaptation_frequency: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsAdaptationFrequencyDefault
+															)
+															.describe(
+																'Number of generations between reference vector adaptation. If set to 0, no adaptation occurs. Defaults to 0.\nOnly used if no preference is provided.'
+															),
+														creation_type: zod
+															.enum(['simplex', 's_energy'])
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsCreationTypeDefault
+															)
+															.describe(
+																'The method for creating reference vectors. Defaults to \"simplex\".\nCurrently only \"simplex\" is implemented. Future versions will include \"s_energy\".\n\nIf set to \"simplex\", the reference vectors are created using the simplex lattice design method.\nThis method is generates distributions with specific numbers of reference vectors.\nCheck: https://www.itl.nist.gov/div898/handbook/pri/section5/pri542.htm for more information.\nIf set to \"s_energy\", the reference vectors are created using the Riesz s-energy criterion. This method is used to\ndistribute an arbitrary number of reference vectors in the objective space while minimizing the s-energy.\nCurrently not implemented.'
+															),
+														vector_type: zod
+															.enum(['spherical', 'planar'])
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsVectorTypeDefault
+															)
+															.describe(
+																'The method for normalizing the reference vectors. Defaults to \"spherical\".'
+															),
+														lattice_resolution: zod
+															.union([zod.number(), zod.null()])
+															.optional()
+															.describe(
+																'Number of divisions along an axis when creating the simplex lattice. This is not required/used for the \"s_energy\"\nmethod. If not specified, the lattice resolution is calculated based on the `number_of_vectors`. If \"spherical\" is \nselected as the `vector_type`, this value overrides the `number_of_vectors`.'
+															),
+														number_of_vectors: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsNumberOfVectorsDefault
+															)
+															.describe(
+																'Number of reference vectors to be created. If \"simplex\" is selected as the `creation_type`, then the closest\n`lattice_resolution` is calculated based on this value. If \"s_energy\" is selected, then this value is used directly.\nNote that if neither `lattice_resolution` nor `number_of_vectors` is specified, the number of vectors defaults to\n200. Overridden if \"spherical\" is selected as the `vector_type` and `lattice_resolution` is provided.'
+															),
+														adaptation_distance: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoReferenceVectorOptionsAdaptationDistanceDefault
+															)
+															.describe(
+																'Distance parameter for the interactive adaptation methods. Defaults to 0.2.'
+															),
+														reference_point: zod
+															.union([zod.record(zod.string(), zod.number()), zod.null()])
+															.optional()
+															.describe('The reference point for interactive adaptation.'),
+														preferred_solutions: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The preferred solutions for interactive adaptation.'),
+														non_preferred_solutions: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The non-preferred solutions for interactive adaptation.'),
+														preferred_ranges: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The preferred ranges for interactive adaptation.')
+													})
+													.optional()
+													.describe('Pydantic model for Reference Vector arguments.'),
+												invert_reference_vectors: zod
+													.boolean()
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionTwoInvertReferenceVectorsDefault
+													)
+													.describe('Whether to invert the reference vectors (inverted triangle).')
+											})
+											.describe('Options for NSGA-III Selection.'),
+										zod
+											.object({
+												name: zod
+													.literal('IBEASelector')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionThreeNameDefault
+													)
+													.describe('The name of the selection operator.'),
+												population_size: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionThreePopulationSizeExclusiveMin
+													)
+													.describe('The population size.'),
+												kappa: zod
+													.number()
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionThreeKappaDefault
+													)
+													.describe('The kappa parameter for IBEA.'),
+												binary_indicator: zod
+													.enum(['eps', 'hv'])
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSelectionThreeBinaryIndicatorDefault
+													)
+													.describe('The binary indicator for IBEA.')
+											})
+											.describe('Options for IBEA Selection.')
+									])
+									.describe('The selection operator options.'),
+								termination: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('MaxGenerationsTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationOneNameDefault
+													)
+													.describe('The name of the termination operator.'),
+												max_generations: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationOneMaxGenerationsExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationOneMaxGenerationsDefault
+													)
+													.describe('The maximum number of generations allowed.')
+											})
+											.describe('Options for max generations terminator operator.'),
+										zod
+											.object({
+												name: zod
+													.literal('MaxEvaluationsTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationTwoNameDefault
+													)
+													.describe('The name of the termination operator.'),
+												max_evaluations: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationTwoMaxEvaluationsExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationTwoMaxEvaluationsDefault
+													)
+													.describe('The maximum number of evaluations allowed.')
+											})
+											.describe('Options for max evaluations terminator operator.'),
+										zod
+											.object({
+												name: zod
+													.literal('MaxTimeTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationThreeNameDefault
+													)
+													.describe('The name of the termination operator.'),
+												max_time: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationThreeMaxTimeExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationThreeMaxTimeDefault
+													)
+													.describe('The maximum time allowed (in seconds).')
+											})
+											.describe('Options for max time terminator operator.'),
+										zod
+											.object({
+												name: zod
+													.literal('ExternalCheckTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFourNameDefault
+													)
+													.describe('The name of the termination operator.')
+											})
+											.describe(
+												'Options for external check terminator operator. Note that the check function must be provided separately.'
+											),
+										zod
+											.object({
+												name: zod
+													.literal('CompositeTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveNameDefault
+													)
+													.describe('The name of the termination operator.'),
+												terminators: zod
+													.array(
+														zod.union([
+															zod
+																.object({
+																	name: zod
+																		.literal('MaxEvaluationsTerminator')
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemOneNameDefault
+																		)
+																		.describe('The name of the termination operator.'),
+																	max_evaluations: zod
+																		.number()
+																		.gt(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemOneMaxEvaluationsExclusiveMin
+																		)
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemOneMaxEvaluationsDefault
+																		)
+																		.describe('The maximum number of evaluations allowed.')
+																})
+																.describe('Options for max evaluations terminator operator.'),
+															zod
+																.object({
+																	name: zod
+																		.literal('MaxGenerationsTerminator')
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemTwoNameDefault
+																		)
+																		.describe('The name of the termination operator.'),
+																	max_generations: zod
+																		.number()
+																		.gt(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemTwoMaxGenerationsExclusiveMin
+																		)
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemTwoMaxGenerationsDefault
+																		)
+																		.describe('The maximum number of generations allowed.')
+																})
+																.describe('Options for max generations terminator operator.'),
+															zod
+																.object({
+																	name: zod
+																		.literal('MaxTimeTerminator')
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemThreeNameDefault
+																		)
+																		.describe('The name of the termination operator.'),
+																	max_time: zod
+																		.number()
+																		.gt(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemThreeMaxTimeExclusiveMin
+																		)
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemThreeMaxTimeDefault
+																		)
+																		.describe('The maximum time allowed (in seconds).')
+																})
+																.describe('Options for max time terminator operator.'),
+															zod
+																.object({
+																	name: zod
+																		.literal('ExternalCheckTerminator')
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveTerminatorsItemFourNameDefault
+																		)
+																		.describe('The name of the termination operator.')
+																})
+																.describe(
+																	'Options for external check terminator operator. Note that the check function must be provided separately.'
+																)
+														])
+													)
+													.optional()
+													.describe('List of terminators.'),
+												mode: zod
+													.enum(['all', 'any'])
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneTerminationFiveModeDefault
+													)
+													.describe('Whether to use logical AND or OR.')
+											})
+											.describe('Options for composite terminator operator.')
+									])
+									.describe('The termination operator options.'),
+								generator: zod
+									.union([
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorOneNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('LHSGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorOneNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Latin Hypercube Sampling (LHS) generator.'),
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorTwoNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('RandomBinaryGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorTwoNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Random Binary generator.'),
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorThreeNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('RandomGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorThreeNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Random generator.'),
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorFourNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('RandomIntegerGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorFourNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Random Integer generator.'),
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorFiveNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('RandomMixedIntegerGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneGeneratorFiveNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Random Mixed Integer generator.')
+									])
+									.describe('The population generator options.'),
+								repair: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('ClipRepair')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneRepairOneNameDefault
+													)
+													.describe('Clip the solutions to be within the variable bounds.'),
+												lower_bounds: zod
+													.union([zod.record(zod.string(), zod.number()), zod.null()])
+													.optional()
+													.describe(
+														'Lower bounds for the decision variables. If none, the lower bounds from the problem will be used.'
+													),
+												upper_bounds: zod
+													.union([zod.record(zod.string(), zod.number()), zod.null()])
+													.optional()
+													.describe(
+														'Upper bounds for the decision variables. If none, the upper bounds from the problem will be used.'
+													)
+											})
+											.describe('Options for Clip Repair.'),
+										zod
+											.object({
+												name: zod
+													.literal('NoRepair')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneRepairTwoNameDefault
+													)
+													.describe('Do not apply any repair to the solutions.')
+											})
+											.describe('Options for No Repair.')
+									])
+									.default(iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneRepairDefault)
+									.describe('The repair operator options.'),
+								use_archive: zod
+									.boolean()
+									.default(
+										iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneUseArchiveDefault
+									)
+									.describe('Whether to use an archive.'),
+								seed: zod
+									.number()
+									.default(iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneSeedDefault)
+									.describe('The seed for random number generation.'),
+								verbosity: zod
+									.number()
+									.default(iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneVerbosityDefault)
+									.describe('The verbosity level of the operators.'),
+								algorithm_name: zod.string().describe('The unique name of the algorithm.'),
+								name: zod
+									.literal('Template1')
+									.default(iterateMethodEmoIteratePostBodyTemplateOptionsOneItemOneNameDefault)
+									.describe('The name of the template.')
+							})
+							.describe(
+								'Options for template 1.\n\nTemplate 1 is used by methods such as NSGA-III and RVEA. See\n[template1][desdeo.emo.methods.templates.template1] for\nmore details.'
+							),
+						zod
+							.object({
+								crossover: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('SimulatedBinaryCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverProbabilityDefault
+													)
+													.describe('The SBX crossover probability.'),
+												xover_distribution: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverDistributionExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverOneXoverDistributionDefault
+													)
+													.describe('The SBX distribution index.')
+											})
+											.describe('Options for Simulated Binary Crossover (SBX).'),
+										zod
+											.object({
+												name: zod
+													.literal('SinglePointBinaryCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverTwoNameDefault
+													)
+													.describe('The name of the crossover operator.')
+											})
+											.describe('Options for Single Point Binary Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('UniformIntegerCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverThreeNameDefault
+													)
+													.describe('The name of the crossover operator.')
+											})
+											.describe('Options for Uniform Integer Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('UniformMixedIntegerCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFourNameDefault
+													)
+													.describe('The name of the crossover operator.')
+											})
+											.describe('Options for Uniform Mixed Integer Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('BlendAlphaCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												alpha: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveAlphaMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveAlphaDefault
+													)
+													.describe(
+														"Non-negative blending factor 'alpha' that controls the extent to which offspring may be sampled outside the interval defined by each pair of parent genes. alpha = 0 restricts children strictly within the parents range, larger alpha allows some outliers."
+													),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverFiveXoverProbabilityDefault
+													)
+											})
+											.describe('Options for Blend Alpha Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('SingleArithmeticCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSixNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSixXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSixXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSixXoverProbabilityDefault
+													)
+													.describe('The crossover probability.')
+											})
+											.describe('Options for Single Arithmetic Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('LocalCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSevenNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSevenXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSevenXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverSevenXoverProbabilityDefault
+													)
+													.describe('The crossover probability.')
+											})
+											.describe('Options for Local Crossover.'),
+										zod
+											.object({
+												name: zod
+													.literal('BoundedExponentialCrossover')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightNameDefault
+													)
+													.describe('The name of the crossover operator.'),
+												xover_probability: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightXoverProbabilityMin
+													)
+													.max(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightXoverProbabilityMax
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightXoverProbabilityDefault
+													)
+													.describe('The crossover probability.'),
+												lambda_: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightLambdaExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoCrossoverEightLambdaDefault
+													)
+													.describe('Positive scale λ for the exponential distribution.')
+											})
+											.describe('Options for Bounded Exponential Crossover.')
+									])
+									.describe('The crossover operator options.'),
+								mutation: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('BoundedPolynomialMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to\n1/<number of decision variables>.'
+													),
+												distribution_index: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneDistributionIndexExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationOneDistributionIndexDefault
+													)
+													.describe('The distribution index.')
+											})
+											.describe('Options for Bounded Polynomial Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('BinaryFlipMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationTwoNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationTwoMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationTwoMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													)
+											})
+											.describe('Options for Binary Flip Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('IntegerRandomMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationThreeNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationThreeMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationThreeMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													)
+											})
+											.describe('Options for Integer Random Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('MixedIntegerRandomMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFourNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFourMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFourMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													)
+											})
+											.describe('Options for Mixed Integer Random Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('MPTMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													),
+												mutation_exponent: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveMutationExponentMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationFiveMutationExponentDefault
+													)
+													.describe(
+														'Controls strength of small mutation (larger means smaller mutations).'
+													)
+											})
+											.describe('Options for MPT Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('NonUniformMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													),
+												max_generations: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixMaxGenerationsExclusiveMin
+													)
+													.describe(
+														'Maximum number of generations in the evolutionary run. Used to scale mutation decay.'
+													),
+												b: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixBMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSixBDefault
+													)
+													.describe(
+														'Non-uniform mutation decay parameter. Higher values causefaster reduction in mutation strength over generations.'
+													)
+											})
+											.describe('Options for Non-Uniform Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('SelfAdaptiveGaussianMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSevenNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSevenMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationSevenMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													)
+											})
+											.describe('Options for Self-Adaptive Gaussian Mutation.'),
+										zod
+											.object({
+												name: zod
+													.literal('PowerMutation')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightNameDefault
+													)
+													.describe('The name of the mutation operator.'),
+												mutation_probability: zod
+													.union([
+														zod
+															.number()
+															.min(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightMutationProbabilityOneMin
+															)
+															.max(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightMutationProbabilityOneMax
+															),
+														zod.null()
+													])
+													.optional()
+													.describe(
+														'The probability of mutation. Defaults to None, which sets the mutation probability to 1/<number of decision variables>.'
+													),
+												p: zod
+													.number()
+													.min(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightPMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMutationEightPDefault
+													)
+													.describe(
+														'Power distribution parameter. Controls the perturbation magnitude.'
+													)
+											})
+											.describe('Options for Power Mutation.')
+									])
+									.describe('The mutation operator options.'),
+								selection: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('RVEASelector')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneNameDefault
+													)
+													.describe('The name of the selection operator.'),
+												reference_vector_options: zod
+													.object({
+														adaptation_frequency: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsAdaptationFrequencyDefault
+															)
+															.describe(
+																'Number of generations between reference vector adaptation. If set to 0, no adaptation occurs. Defaults to 0.\nOnly used if no preference is provided.'
+															),
+														creation_type: zod
+															.enum(['simplex', 's_energy'])
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsCreationTypeDefault
+															)
+															.describe(
+																'The method for creating reference vectors. Defaults to \"simplex\".\nCurrently only \"simplex\" is implemented. Future versions will include \"s_energy\".\n\nIf set to \"simplex\", the reference vectors are created using the simplex lattice design method.\nThis method is generates distributions with specific numbers of reference vectors.\nCheck: https://www.itl.nist.gov/div898/handbook/pri/section5/pri542.htm for more information.\nIf set to \"s_energy\", the reference vectors are created using the Riesz s-energy criterion. This method is used to\ndistribute an arbitrary number of reference vectors in the objective space while minimizing the s-energy.\nCurrently not implemented.'
+															),
+														vector_type: zod
+															.enum(['spherical', 'planar'])
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsVectorTypeDefault
+															)
+															.describe(
+																'The method for normalizing the reference vectors. Defaults to \"spherical\".'
+															),
+														lattice_resolution: zod
+															.union([zod.number(), zod.null()])
+															.optional()
+															.describe(
+																'Number of divisions along an axis when creating the simplex lattice. This is not required/used for the \"s_energy\"\nmethod. If not specified, the lattice resolution is calculated based on the `number_of_vectors`. If \"spherical\" is \nselected as the `vector_type`, this value overrides the `number_of_vectors`.'
+															),
+														number_of_vectors: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsNumberOfVectorsDefault
+															)
+															.describe(
+																'Number of reference vectors to be created. If \"simplex\" is selected as the `creation_type`, then the closest\n`lattice_resolution` is calculated based on this value. If \"s_energy\" is selected, then this value is used directly.\nNote that if neither `lattice_resolution` nor `number_of_vectors` is specified, the number of vectors defaults to\n200. Overridden if \"spherical\" is selected as the `vector_type` and `lattice_resolution` is provided.'
+															),
+														adaptation_distance: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneReferenceVectorOptionsAdaptationDistanceDefault
+															)
+															.describe(
+																'Distance parameter for the interactive adaptation methods. Defaults to 0.2.'
+															),
+														reference_point: zod
+															.union([zod.record(zod.string(), zod.number()), zod.null()])
+															.optional()
+															.describe('The reference point for interactive adaptation.'),
+														preferred_solutions: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The preferred solutions for interactive adaptation.'),
+														non_preferred_solutions: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The non-preferred solutions for interactive adaptation.'),
+														preferred_ranges: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The preferred ranges for interactive adaptation.')
+													})
+													.optional()
+													.describe('Pydantic model for Reference Vector arguments.'),
+												parameter_adaptation_strategy: zod
+													.enum(['GENERATION_BASED', 'FUNCTION_EVALUATION_BASED', 'OTHER'])
+													.optional()
+													.describe('The parameter adaptation strategies for the RVEA selector.'),
+												alpha: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneAlphaExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionOneAlphaDefault
+													)
+													.describe('The alpha parameter in the angle penalized distance.')
+											})
+											.describe('Options for RVEA Selection.'),
+										zod
+											.object({
+												name: zod
+													.literal('NSGA3Selector')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoNameDefault
+													)
+													.describe('The name of the selection operator.'),
+												reference_vector_options: zod
+													.object({
+														adaptation_frequency: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsAdaptationFrequencyDefault
+															)
+															.describe(
+																'Number of generations between reference vector adaptation. If set to 0, no adaptation occurs. Defaults to 0.\nOnly used if no preference is provided.'
+															),
+														creation_type: zod
+															.enum(['simplex', 's_energy'])
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsCreationTypeDefault
+															)
+															.describe(
+																'The method for creating reference vectors. Defaults to \"simplex\".\nCurrently only \"simplex\" is implemented. Future versions will include \"s_energy\".\n\nIf set to \"simplex\", the reference vectors are created using the simplex lattice design method.\nThis method is generates distributions with specific numbers of reference vectors.\nCheck: https://www.itl.nist.gov/div898/handbook/pri/section5/pri542.htm for more information.\nIf set to \"s_energy\", the reference vectors are created using the Riesz s-energy criterion. This method is used to\ndistribute an arbitrary number of reference vectors in the objective space while minimizing the s-energy.\nCurrently not implemented.'
+															),
+														vector_type: zod
+															.enum(['spherical', 'planar'])
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsVectorTypeDefault
+															)
+															.describe(
+																'The method for normalizing the reference vectors. Defaults to \"spherical\".'
+															),
+														lattice_resolution: zod
+															.union([zod.number(), zod.null()])
+															.optional()
+															.describe(
+																'Number of divisions along an axis when creating the simplex lattice. This is not required/used for the \"s_energy\"\nmethod. If not specified, the lattice resolution is calculated based on the `number_of_vectors`. If \"spherical\" is \nselected as the `vector_type`, this value overrides the `number_of_vectors`.'
+															),
+														number_of_vectors: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsNumberOfVectorsDefault
+															)
+															.describe(
+																'Number of reference vectors to be created. If \"simplex\" is selected as the `creation_type`, then the closest\n`lattice_resolution` is calculated based on this value. If \"s_energy\" is selected, then this value is used directly.\nNote that if neither `lattice_resolution` nor `number_of_vectors` is specified, the number of vectors defaults to\n200. Overridden if \"spherical\" is selected as the `vector_type` and `lattice_resolution` is provided.'
+															),
+														adaptation_distance: zod
+															.number()
+															.default(
+																iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoReferenceVectorOptionsAdaptationDistanceDefault
+															)
+															.describe(
+																'Distance parameter for the interactive adaptation methods. Defaults to 0.2.'
+															),
+														reference_point: zod
+															.union([zod.record(zod.string(), zod.number()), zod.null()])
+															.optional()
+															.describe('The reference point for interactive adaptation.'),
+														preferred_solutions: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The preferred solutions for interactive adaptation.'),
+														non_preferred_solutions: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The non-preferred solutions for interactive adaptation.'),
+														preferred_ranges: zod
+															.union([
+																zod.record(zod.string(), zod.array(zod.number())),
+																zod.null()
+															])
+															.optional()
+															.describe('The preferred ranges for interactive adaptation.')
+													})
+													.optional()
+													.describe('Pydantic model for Reference Vector arguments.'),
+												invert_reference_vectors: zod
+													.boolean()
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionTwoInvertReferenceVectorsDefault
+													)
+													.describe('Whether to invert the reference vectors (inverted triangle).')
+											})
+											.describe('Options for NSGA-III Selection.'),
+										zod
+											.object({
+												name: zod
+													.literal('IBEASelector')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionThreeNameDefault
+													)
+													.describe('The name of the selection operator.'),
+												population_size: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionThreePopulationSizeExclusiveMin
+													)
+													.describe('The population size.'),
+												kappa: zod
+													.number()
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionThreeKappaDefault
+													)
+													.describe('The kappa parameter for IBEA.'),
+												binary_indicator: zod
+													.enum(['eps', 'hv'])
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSelectionThreeBinaryIndicatorDefault
+													)
+													.describe('The binary indicator for IBEA.')
+											})
+											.describe('Options for IBEA Selection.')
+									])
+									.describe('The selection operator options.'),
+								termination: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('MaxGenerationsTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationOneNameDefault
+													)
+													.describe('The name of the termination operator.'),
+												max_generations: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationOneMaxGenerationsExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationOneMaxGenerationsDefault
+													)
+													.describe('The maximum number of generations allowed.')
+											})
+											.describe('Options for max generations terminator operator.'),
+										zod
+											.object({
+												name: zod
+													.literal('MaxEvaluationsTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationTwoNameDefault
+													)
+													.describe('The name of the termination operator.'),
+												max_evaluations: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationTwoMaxEvaluationsExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationTwoMaxEvaluationsDefault
+													)
+													.describe('The maximum number of evaluations allowed.')
+											})
+											.describe('Options for max evaluations terminator operator.'),
+										zod
+											.object({
+												name: zod
+													.literal('MaxTimeTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationThreeNameDefault
+													)
+													.describe('The name of the termination operator.'),
+												max_time: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationThreeMaxTimeExclusiveMin
+													)
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationThreeMaxTimeDefault
+													)
+													.describe('The maximum time allowed (in seconds).')
+											})
+											.describe('Options for max time terminator operator.'),
+										zod
+											.object({
+												name: zod
+													.literal('ExternalCheckTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFourNameDefault
+													)
+													.describe('The name of the termination operator.')
+											})
+											.describe(
+												'Options for external check terminator operator. Note that the check function must be provided separately.'
+											),
+										zod
+											.object({
+												name: zod
+													.literal('CompositeTerminator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveNameDefault
+													)
+													.describe('The name of the termination operator.'),
+												terminators: zod
+													.array(
+														zod.union([
+															zod
+																.object({
+																	name: zod
+																		.literal('MaxEvaluationsTerminator')
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemOneNameDefault
+																		)
+																		.describe('The name of the termination operator.'),
+																	max_evaluations: zod
+																		.number()
+																		.gt(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemOneMaxEvaluationsExclusiveMin
+																		)
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemOneMaxEvaluationsDefault
+																		)
+																		.describe('The maximum number of evaluations allowed.')
+																})
+																.describe('Options for max evaluations terminator operator.'),
+															zod
+																.object({
+																	name: zod
+																		.literal('MaxGenerationsTerminator')
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemTwoNameDefault
+																		)
+																		.describe('The name of the termination operator.'),
+																	max_generations: zod
+																		.number()
+																		.gt(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemTwoMaxGenerationsExclusiveMin
+																		)
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemTwoMaxGenerationsDefault
+																		)
+																		.describe('The maximum number of generations allowed.')
+																})
+																.describe('Options for max generations terminator operator.'),
+															zod
+																.object({
+																	name: zod
+																		.literal('MaxTimeTerminator')
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemThreeNameDefault
+																		)
+																		.describe('The name of the termination operator.'),
+																	max_time: zod
+																		.number()
+																		.gt(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemThreeMaxTimeExclusiveMin
+																		)
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemThreeMaxTimeDefault
+																		)
+																		.describe('The maximum time allowed (in seconds).')
+																})
+																.describe('Options for max time terminator operator.'),
+															zod
+																.object({
+																	name: zod
+																		.literal('ExternalCheckTerminator')
+																		.default(
+																			iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveTerminatorsItemFourNameDefault
+																		)
+																		.describe('The name of the termination operator.')
+																})
+																.describe(
+																	'Options for external check terminator operator. Note that the check function must be provided separately.'
+																)
+														])
+													)
+													.optional()
+													.describe('List of terminators.'),
+												mode: zod
+													.enum(['all', 'any'])
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoTerminationFiveModeDefault
+													)
+													.describe('Whether to use logical AND or OR.')
+											})
+											.describe('Options for composite terminator operator.')
+									])
+									.describe('The termination operator options.'),
+								generator: zod
+									.union([
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorOneNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('LHSGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorOneNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Latin Hypercube Sampling (LHS) generator.'),
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorTwoNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('RandomBinaryGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorTwoNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Random Binary generator.'),
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorThreeNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('RandomGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorThreeNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Random generator.'),
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorFourNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('RandomIntegerGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorFourNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Random Integer generator.'),
+										zod
+											.object({
+												n_points: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorFiveNPointsExclusiveMin
+													)
+													.describe('The number of points to generate for the initial population.'),
+												name: zod
+													.literal('RandomMixedIntegerGenerator')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoGeneratorFiveNameDefault
+													)
+													.describe('The name of the generator.')
+											})
+											.describe('Options for Random Mixed Integer generator.')
+									])
+									.describe('The population generator options.'),
+								repair: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('ClipRepair')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoRepairOneNameDefault
+													)
+													.describe('Clip the solutions to be within the variable bounds.'),
+												lower_bounds: zod
+													.union([zod.record(zod.string(), zod.number()), zod.null()])
+													.optional()
+													.describe(
+														'Lower bounds for the decision variables. If none, the lower bounds from the problem will be used.'
+													),
+												upper_bounds: zod
+													.union([zod.record(zod.string(), zod.number()), zod.null()])
+													.optional()
+													.describe(
+														'Upper bounds for the decision variables. If none, the upper bounds from the problem will be used.'
+													)
+											})
+											.describe('Options for Clip Repair.'),
+										zod
+											.object({
+												name: zod
+													.literal('NoRepair')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoRepairTwoNameDefault
+													)
+													.describe('Do not apply any repair to the solutions.')
+											})
+											.describe('Options for No Repair.')
+									])
+									.default(iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoRepairDefault)
+									.describe('The repair operator options.'),
+								use_archive: zod
+									.boolean()
+									.default(
+										iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoUseArchiveDefault
+									)
+									.describe('Whether to use an archive.'),
+								seed: zod
+									.number()
+									.default(iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoSeedDefault)
+									.describe('The seed for random number generation.'),
+								verbosity: zod
+									.number()
+									.default(iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoVerbosityDefault)
+									.describe('The verbosity level of the operators.'),
+								algorithm_name: zod.string().describe('The unique name of the algorithm.'),
+								name: zod
+									.literal('Template2')
+									.default(iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoNameDefault)
+									.describe('The name of the template.'),
+								mate_selection: zod
+									.union([
+										zod
+											.object({
+												name: zod
+													.literal('TournamentSelection')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionOneNameDefault
+													)
+													.describe('The name of the scalar selection operator.'),
+												tournament_size: zod
+													.number()
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionOneTournamentSizeDefault
+													)
+													.describe('The number of individuals participating in the tournament.'),
+												winner_size: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionOneWinnerSizeExclusiveMin
+													)
+													.describe(
+														'The number of winners to select (equivalent to population size).'
+													)
+											})
+											.describe('Options for tournament selection operator.'),
+										zod
+											.object({
+												name: zod
+													.literal('RouletteWheelSelection')
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionTwoNameDefault
+													)
+													.describe('The name of the scalar selection operator.'),
+												tournament_size: zod
+													.number()
+													.default(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionTwoTournamentSizeDefault
+													)
+													.describe('The number of individuals participating in the tournament.'),
+												winner_size: zod
+													.number()
+													.gt(
+														iterateMethodEmoIteratePostBodyTemplateOptionsOneItemTwoMateSelectionTwoWinnerSizeExclusiveMin
+													)
+													.describe(
+														'The number of winners to select (equivalent to population size).'
+													)
+											})
+											.describe('Options for roulette wheel selection operator.')
+									])
+									.describe('The mate selection operator options.')
+							})
+							.describe(
+								'Options for template 2.\n\nTemplate 2 is used by methods such as IBEA. See\n[template2][desdeo.emo.methods.templates.template2] for\nmore details.'
+							)
+					])
+				),
+				zod.null()
+			])
+			.optional()
+			.describe(
+				'Options for the template to use. A list of options can be given if multiple templates are used in parallel.'
+			),
+		preference_options: zod
+			.union([
+				zod
+					.object({
+						name: zod
+							.literal('reference_point')
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsOneNameDefault)
+							.describe('The name of the reference point option.'),
+						preference: zod
+							.record(zod.string(), zod.number())
+							.describe(
+								'The reference point as a dictionary with objective function symbols as the keys.'
+							),
+						method: zod
+							.enum(['Hakanen', 'IOPIS'])
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsOneMethodDefault)
+							.describe('The method for handling the reference point.')
+					})
+					.describe('Options for providing a reference point for an EA.'),
+				zod
+					.object({
+						name: zod
+							.literal('preferred_ranges')
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsTwoNameDefault)
+							.describe('The name of the preferred ranges option.'),
+						aspiration_levels: zod
+							.record(zod.string(), zod.number())
+							.describe(
+								'The aspiration levels as a dictionary with objective function symbols as the keys.'
+							),
+						reservation_levels: zod
+							.record(zod.string(), zod.number())
+							.describe(
+								'The reservation levels as a dictionary with objective function symbols as the keys.'
+							),
+						method: zod
+							.enum(['Hakanen', 'DF transformation'])
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsTwoMethodDefault)
+							.describe('The method for handling the desirable ranges.'),
+						desirability_levels: zod
+							.tuple([zod.number(), zod.number()])
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsTwoDesirabilityLevelsDefault)
+							.describe(
+								'The desirability levels as a tuple (high, low). Used if method is DF transformation. If None, default levels (0.9, 0.1) are used.'
+							)
+					})
+					.describe('Options for providing desirable ranges for an EA.'),
+				zod
+					.object({
+						name: zod
+							.literal('preferred_solutions')
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsThreeNameDefault)
+							.describe('The name of the preferred solutions option.'),
+						preference: zod
+							.record(zod.string(), zod.array(zod.number()))
+							.describe(
+								'The preferred solutions as a dictionary with objective function symbols as the keys.'
+							),
+						method: zod
+							.literal('Hakanen')
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsThreeMethodDefault)
+							.describe('The method for handling the preferred solutions.')
+					})
+					.describe('Options for providing preferred solutions for an EA.'),
+				zod
+					.object({
+						name: zod
+							.literal('non_preferred_solutions')
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsFourNameDefault)
+							.describe('The name of the non-preferred solutions option.'),
+						preference: zod
+							.record(zod.string(), zod.array(zod.number()))
+							.describe(
+								'The non-preferred solutions as a dictionary with objective function symbols as the keys.'
+							),
+						method: zod
+							.literal('Hakanen')
+							.default(iterateMethodEmoIteratePostBodyPreferenceOptionsFourMethodDefault)
+							.describe('The method for handling the non-preferred solutions.')
+					})
+					.describe('Options for providing non-preferred solutions for an EA.'),
+				zod.null()
+			])
+			.optional()
+			.describe('Options for the preference handling.')
+	})
+	.describe('Model of the request to iterate an EMO method.');
+
+export const IterateMethodEmoIteratePostResponse = zod
+	.object({
+		method_ids: zod
+			.array(zod.string())
+			.describe('IDs of the EMO methods using websockets to get/send updates.'),
+		client_id: zod.string().describe('Client ID to use when connecting to the websockets.'),
+		state_id: zod.number().describe('The state ID of the newly created state.')
+	})
+	.describe('Model of the response to an EMO iterate request.');
+
+/**
+ * Fetches results from a completed EMO method.
+
+Args:
+    request (EMOFetchRequest): The request object containing parameters for fetching results.
+    user (Annotated[User, Depends]): The current user.
+    session (Annotated[Session, Depends]): The database session.
+
+Raises:
+    HTTPException: If the request is invalid or the EMO method has not completed.
+
+Returns:
+    StreamingResponse: A streaming response containing the results of the EMO method.
+ * @summary Fetch Results
+ */
+export const fetchResultsMethodEmoFetchPostBodyNumSolutionsDefault = 0;
+
+export const FetchResultsMethodEmoFetchPostBody = zod
+	.object({
+		problem_id: zod.number().describe('Database ID of the problem to solve.'),
+		session_id: zod.union([zod.number(), zod.null()]).optional(),
+		parent_state_id: zod
+			.union([zod.number(), zod.null()])
+			.optional()
+			.describe(
+				'State ID of the parent state, if any. Should be None if this is the first state in a session.'
+			),
+		num_solutions: zod
+			.number()
+			.default(fetchResultsMethodEmoFetchPostBodyNumSolutionsDefault)
+			.describe('Number of solutions to fetch. If 0, fetch all solutions.')
+	})
+	.describe('Model of the request to fetch solutions from an EMO method.');
+
+export const FetchResultsMethodEmoFetchPostResponse = zod.unknown();
+
+/**
+ * Fetches results from a completed EMO method.
+
+Args:
+    request (EMOFetchRequest): The request object containing parameters for fetching results and of the SCORE bands
+        visualization.
+    user (Annotated[User, Depends]): The current user.
+    session (Annotated[Session, Depends]): The database session.
+
+Raises:
+    HTTPException: If the request is invalid or the EMO method has not completed.
+
+Returns:
+    SCOREBandsResult: The results of the SCORE bands visualization.
+ * @summary Fetch Score Bands
+ */
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmOneNameDefault = `GMM`;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmOneScoringMethodDefault = `silhouette`;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmTwoNameDefault = `DBSCAN`;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmThreeNameDefault = `KMeans`;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmThreeNClustersDefault = 5;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmFourNameDefault = `DimensionCluster`;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmFourNClustersDefault = 5;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmFourKindDefault = `EqualWidth`;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmFiveNameDefault = `Custom`;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmDefault = {
+	name: 'DBSCAN'
+};
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneDistanceParameterDefault = 0.05;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneUseAbsoluteCorrelationsDefault = false;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneIncludeSolutionsDefault = false;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneIncludeMediansDefault = false;
+export const fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneIntervalSizeDefault = 0.95;
+
+export const FetchScoreBandsMethodEmoFetchScorePostBody = zod
+	.object({
+		problem_id: zod.number().describe('Database ID of the problem to solve.'),
+		session_id: zod.union([zod.number(), zod.null()]).optional(),
+		parent_state_id: zod
+			.union([zod.number(), zod.null()])
+			.optional()
+			.describe('State ID of the parent state, if any.'),
+		config: zod
+			.union([
+				zod
+					.object({
+						dimensions: zod
+							.union([zod.array(zod.string()), zod.null()])
+							.optional()
+							.describe(
+								'List of variable/objective names (i.e., column names in the data) to include in the visualization.\nIf None, all columns in the data are used. Defaults to None.'
+							),
+						axis_positions: zod
+							.union([zod.record(zod.string(), zod.number()), zod.null()])
+							.optional()
+							.describe(
+								'Dictionary mapping objective names to their positions on the axes in the SCORE bands visualization. The first\nobjective is at position 0.0, and the last objective is at position 1.0. Use this option if you want to\nmanually set the axis positions. If None, the axis positions are calculated automatically based on correlations.\nDefaults to None.'
+							),
+						clustering_algorithm: zod
+							.union([
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmOneNameDefault
+											)
+											.describe('Gaussian Mixture Model clustering algorithm.'),
+										scoring_method: zod
+											.enum(['BIC', 'silhouette'])
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmOneScoringMethodDefault
+											)
+											.describe(
+												'Scoring method to use for GMM. Either \"BIC\" or \"silhouette\". Defaults to \"silhouette\".\nThis option determines how the number of clusters is chosen.'
+											)
+									})
+									.describe('Options for Gaussian Mixture Model clustering algorithm.'),
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmTwoNameDefault
+											)
+											.describe('DBSCAN clustering algorithm.')
+									})
+									.describe('Options for DBSCAN clustering algorithm.'),
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmThreeNameDefault
+											)
+											.describe('KMeans clustering algorithm.'),
+										n_clusters: zod
+											.number()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmThreeNClustersDefault
+											)
+											.describe('Number of clusters to use. Defaults to 5.')
+									})
+									.describe('Options for KMeans clustering algorithm.'),
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmFourNameDefault
+											)
+											.describe('Clustering by one of the dimensions.'),
+										dimension_name: zod.string().describe('Dimension to use for clustering.'),
+										n_clusters: zod
+											.number()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmFourNClustersDefault
+											)
+											.describe('Number of clusters to use. Defaults to 5.'),
+										kind: zod
+											.enum(['EqualWidth', 'EqualFrequency'])
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmFourKindDefault
+											)
+											.describe(
+												'Kind of clustering to use. Either \"EqualWidth\", which divides the dimension range into equal width intervals,\nor \"EqualFrequency\", which divides the dimension values into intervals with equal number of solutions.\nDefaults to \"EqualWidth\".'
+											)
+									})
+									.describe('Options for clustering by one of the objectives/decision variables.'),
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmFiveNameDefault
+											)
+											.describe('Custom user-provided clusters.'),
+										clusters: zod
+											.array(zod.number())
+											.describe(
+												'List of cluster IDs (one for each solution) indicating the cluster to which each solution belongs.'
+											)
+									})
+									.describe('Options for custom clustering provided by the user.')
+							])
+							.default(
+								fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneClusteringAlgorithmDefault
+							)
+							.describe(
+								'Clustering algorithm to use. Currently supported options: \"GMM\", \"DBSCAN\",\n    and \"KMeans\". Defaults to \"DBSCAN\".'
+							),
+						distance_formula: zod
+							.union([zod.literal(1), zod.literal(2)])
+							.optional()
+							.describe('Distance formulas supported by SCORE bands. See the paper for details.'),
+						distance_parameter: zod
+							.number()
+							.default(fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneDistanceParameterDefault)
+							.describe(
+								'Change the relative distances between the objective axes. Increase this value if objectives are placed too close\ntogether. Decrease this value if the objectives are equidistant in a problem with objective clusters. Defaults\nto 0.05.'
+							),
+						use_absolute_correlations: zod
+							.boolean()
+							.default(
+								fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneUseAbsoluteCorrelationsDefault
+							)
+							.describe(
+								'Whether to use absolute value of the correlation to calculate the placement of axes. Defaults to False.'
+							),
+						include_solutions: zod
+							.boolean()
+							.default(fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneIncludeSolutionsDefault)
+							.describe(
+								'Whether to include individual solutions. Defaults to False. If True, the size of the resulting figure may be\nvery large for datasets with many solutions. Moreover, the individual traces are hidden by default, but can be\nviewed interactively in the figure.'
+							),
+						include_medians: zod
+							.boolean()
+							.default(fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneIncludeMediansDefault)
+							.describe(
+								'Whether to include cluster medians. Defaults to False. If True, the median traces are hidden by default, but\ncan be viewed interactively in the figure.'
+							),
+						interval_size: zod
+							.number()
+							.default(fetchScoreBandsMethodEmoFetchScorePostBodyConfigOneIntervalSizeDefault)
+							.describe(
+								'The size (as a fraction) of the interval to use for the bands. Defaults to 0.95, meaning that 95% of the\nmiddle solutions in a cluster will be included in the band. The rest will be considered outliers.'
+							),
+						scales: zod
+							.union([
+								zod.record(zod.string(), zod.tuple([zod.number(), zod.number()])),
+								zod.null()
+							])
+							.optional()
+							.describe(
+								'Optional dictionary specifying the min and max values for each objective. The keys should be the\nobjective names (i.e., column names in the data), and the values should be tuples of (min, max).\nIf not provided, the min and max will be calculated from the data.'
+							)
+					})
+					.describe('Configuration options for SCORE bands visualization.'),
+				zod.null()
+			])
+			.optional()
+			.describe('Configuration for the SCORE bands visualization.'),
+		solution_ids: zod.array(zod.number()).describe('List of solution IDs to score.')
+	})
+	.describe('Request model for getting SCORE bands visualization data from state.');
+
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmOneNameDefault = `GMM`;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmOneScoringMethodDefault = `silhouette`;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmTwoNameDefault = `DBSCAN`;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmThreeNameDefault = `KMeans`;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmThreeNClustersDefault = 5;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmFourNameDefault = `DimensionCluster`;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmFourNClustersDefault = 5;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmFourKindDefault = `EqualWidth`;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmFiveNameDefault = `Custom`;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmDefault =
+	{ name: 'DBSCAN' };
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsDistanceParameterDefault = 0.05;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsUseAbsoluteCorrelationsDefault = false;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsIncludeSolutionsDefault = false;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsIncludeMediansDefault = false;
+export const fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsIntervalSizeDefault = 0.95;
+
+export const FetchScoreBandsMethodEmoFetchScorePostResponse = zod
+	.object({
+		state_id: zod
+			.union([zod.number(), zod.null()])
+			.optional()
+			.describe('The state ID of the newly created state.'),
+		result: zod
+			.object({
+				options: zod
+					.object({
+						dimensions: zod
+							.union([zod.array(zod.string()), zod.null()])
+							.optional()
+							.describe(
+								'List of variable/objective names (i.e., column names in the data) to include in the visualization.\nIf None, all columns in the data are used. Defaults to None.'
+							),
+						axis_positions: zod
+							.union([zod.record(zod.string(), zod.number()), zod.null()])
+							.optional()
+							.describe(
+								'Dictionary mapping objective names to their positions on the axes in the SCORE bands visualization. The first\nobjective is at position 0.0, and the last objective is at position 1.0. Use this option if you want to\nmanually set the axis positions. If None, the axis positions are calculated automatically based on correlations.\nDefaults to None.'
+							),
+						clustering_algorithm: zod
+							.union([
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmOneNameDefault
+											)
+											.describe('Gaussian Mixture Model clustering algorithm.'),
+										scoring_method: zod
+											.enum(['BIC', 'silhouette'])
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmOneScoringMethodDefault
+											)
+											.describe(
+												'Scoring method to use for GMM. Either \"BIC\" or \"silhouette\". Defaults to \"silhouette\".\nThis option determines how the number of clusters is chosen.'
+											)
+									})
+									.describe('Options for Gaussian Mixture Model clustering algorithm.'),
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmTwoNameDefault
+											)
+											.describe('DBSCAN clustering algorithm.')
+									})
+									.describe('Options for DBSCAN clustering algorithm.'),
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmThreeNameDefault
+											)
+											.describe('KMeans clustering algorithm.'),
+										n_clusters: zod
+											.number()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmThreeNClustersDefault
+											)
+											.describe('Number of clusters to use. Defaults to 5.')
+									})
+									.describe('Options for KMeans clustering algorithm.'),
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmFourNameDefault
+											)
+											.describe('Clustering by one of the dimensions.'),
+										dimension_name: zod.string().describe('Dimension to use for clustering.'),
+										n_clusters: zod
+											.number()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmFourNClustersDefault
+											)
+											.describe('Number of clusters to use. Defaults to 5.'),
+										kind: zod
+											.enum(['EqualWidth', 'EqualFrequency'])
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmFourKindDefault
+											)
+											.describe(
+												'Kind of clustering to use. Either \"EqualWidth\", which divides the dimension range into equal width intervals,\nor \"EqualFrequency\", which divides the dimension values into intervals with equal number of solutions.\nDefaults to \"EqualWidth\".'
+											)
+									})
+									.describe('Options for clustering by one of the objectives/decision variables.'),
+								zod
+									.object({
+										name: zod
+											.string()
+											.default(
+												fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmFiveNameDefault
+											)
+											.describe('Custom user-provided clusters.'),
+										clusters: zod
+											.array(zod.number())
+											.describe(
+												'List of cluster IDs (one for each solution) indicating the cluster to which each solution belongs.'
+											)
+									})
+									.describe('Options for custom clustering provided by the user.')
+							])
+							.default(
+								fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsClusteringAlgorithmDefault
+							)
+							.describe(
+								'Clustering algorithm to use. Currently supported options: \"GMM\", \"DBSCAN\",\n    and \"KMeans\". Defaults to \"DBSCAN\".'
+							),
+						distance_formula: zod
+							.union([zod.literal(1), zod.literal(2)])
+							.optional()
+							.describe('Distance formulas supported by SCORE bands. See the paper for details.'),
+						distance_parameter: zod
+							.number()
+							.default(
+								fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsDistanceParameterDefault
+							)
+							.describe(
+								'Change the relative distances between the objective axes. Increase this value if objectives are placed too close\ntogether. Decrease this value if the objectives are equidistant in a problem with objective clusters. Defaults\nto 0.05.'
+							),
+						use_absolute_correlations: zod
+							.boolean()
+							.default(
+								fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsUseAbsoluteCorrelationsDefault
+							)
+							.describe(
+								'Whether to use absolute value of the correlation to calculate the placement of axes. Defaults to False.'
+							),
+						include_solutions: zod
+							.boolean()
+							.default(
+								fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsIncludeSolutionsDefault
+							)
+							.describe(
+								'Whether to include individual solutions. Defaults to False. If True, the size of the resulting figure may be\nvery large for datasets with many solutions. Moreover, the individual traces are hidden by default, but can be\nviewed interactively in the figure.'
+							),
+						include_medians: zod
+							.boolean()
+							.default(
+								fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsIncludeMediansDefault
+							)
+							.describe(
+								'Whether to include cluster medians. Defaults to False. If True, the median traces are hidden by default, but\ncan be viewed interactively in the figure.'
+							),
+						interval_size: zod
+							.number()
+							.default(
+								fetchScoreBandsMethodEmoFetchScorePostResponseResultOptionsIntervalSizeDefault
+							)
+							.describe(
+								'The size (as a fraction) of the interval to use for the bands. Defaults to 0.95, meaning that 95% of the\nmiddle solutions in a cluster will be included in the band. The rest will be considered outliers.'
+							),
+						scales: zod
+							.union([
+								zod.record(zod.string(), zod.tuple([zod.number(), zod.number()])),
+								zod.null()
+							])
+							.optional()
+							.describe(
+								'Optional dictionary specifying the min and max values for each objective. The keys should be the\nobjective names (i.e., column names in the data), and the values should be tuples of (min, max).\nIf not provided, the min and max will be calculated from the data.'
+							)
+					})
+					.describe('Configuration options for SCORE bands visualization.'),
+				ordered_dimensions: zod
+					.array(zod.string())
+					.describe(
+						'List of variable/objective names (i.e., column names in the data).\nOrdered according to their placement in the SCORE bands visualization.'
+					),
+				clusters: zod
+					.array(zod.number())
+					.describe(
+						'List of cluster IDs (one for each solution) indicating the cluster to which each solution belongs.'
+					),
+				axis_positions: zod
+					.record(zod.string(), zod.number())
+					.describe(
+						'Dictionary mapping objective names to their positions on the axes in the SCORE bands visualization. The first\nobjective is at position 0.0, and the last objective is at position 1.0.'
+					),
+				bands: zod
+					.record(zod.string(), zod.record(zod.string(), zod.tuple([zod.number(), zod.number()])))
+					.describe(
+						'Dictionary mapping cluster IDs to dictionaries of objective names and their corresponding band\nextremes (min, max).'
+					),
+				medians: zod
+					.record(zod.string(), zod.record(zod.string(), zod.number()))
+					.describe(
+						'Dictionary mapping cluster IDs to dictionaries of objective names and their corresponding median values.'
+					),
+				cardinalities: zod
+					.record(zod.string(), zod.number())
+					.describe('Dictionary mapping cluster IDs to the number of solutions in each cluster.')
+			})
+			.describe('Pydantic/JSON model for representing SCORE Bands.')
+	})
+	.describe('Model of the response to an EMO score request.');
 
 /**
  * Solve intermediate solutions between given two solutions.
@@ -4144,8 +6810,8 @@ export const SolveIntermediateMethodGenericIntermediatePostBody = zod
 			.default(solveIntermediateMethodGenericIntermediatePostBodyNumDesiredDefault),
 		reference_solution_1: zod
 			.object({
-				state_id: zod.number().describe('State of the desired solution.'),
-				solution_index: zod.number().describe('Index of the desired solution.'),
+				state_id: zod.number(),
+				solution_index: zod.number(),
 				name: zod
 					.union([zod.string(), zod.null()])
 					.optional()
@@ -4156,8 +6822,8 @@ export const SolveIntermediateMethodGenericIntermediatePostBody = zod
 			),
 		reference_solution_2: zod
 			.object({
-				state_id: zod.number().describe('State of the desired solution.'),
-				solution_index: zod.number().describe('Index of the desired solution.'),
+				state_id: zod.number(),
+				solution_index: zod.number(),
 				name: zod
 					.union([zod.string(), zod.null()])
 					.optional()
@@ -4174,7 +6840,7 @@ export const SolveIntermediateMethodGenericIntermediatePostResponse = zod
 		state_id: zod.union([zod.number(), zod.null()]).describe('The newly created state id'),
 		reference_solution_1: zod
 			.object({
-				name: zod.union([zod.string(), zod.null()]).optional(),
+				name: zod.union([zod.string(), zod.null()]),
 				solution_index: zod.union([zod.number(), zod.null()]),
 				state_id: zod.number(),
 				objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -4204,7 +6870,7 @@ export const SolveIntermediateMethodGenericIntermediatePostResponse = zod
 			),
 		reference_solution_2: zod
 			.object({
-				name: zod.union([zod.string(), zod.null()]).optional(),
+				name: zod.union([zod.string(), zod.null()]),
 				solution_index: zod.union([zod.number(), zod.null()]),
 				state_id: zod.number(),
 				objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -4236,7 +6902,7 @@ export const SolveIntermediateMethodGenericIntermediatePostResponse = zod
 			.array(
 				zod
 					.object({
-						name: zod.union([zod.string(), zod.null()]).optional(),
+						name: zod.union([zod.string(), zod.null()]),
 						solution_index: zod.union([zod.number(), zod.null()]),
 						state_id: zod.number(),
 						objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
@@ -4271,59 +6937,47 @@ export const SolveIntermediateMethodGenericIntermediatePostResponse = zod
 
 /**
  * Calculate SCORE bands parameters from objective data.
- * @summary Calculate Score Bands From Objective Data
+ * @summary Calculate Score Bands
  */
-export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyDistParameterDefault = 0.05;
-export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyUseAbsoluteCorrDefault = false;
-export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyDistanceFormulaDefault = 1;
-export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyFlipAxesDefault = true;
-export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyClusteringAlgorithmDefault = `DBSCAN`;
-export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyClusteringScoreDefault = `silhoutte`;
+export const calculateScoreBandsMethodGenericScoreBandsPostBodyDistParameterDefault = 0.05;
+export const calculateScoreBandsMethodGenericScoreBandsPostBodyUseAbsoluteCorrDefault = false;
+export const calculateScoreBandsMethodGenericScoreBandsPostBodyDistanceFormulaDefault = 1;
+export const calculateScoreBandsMethodGenericScoreBandsPostBodyFlipAxesDefault = true;
+export const calculateScoreBandsMethodGenericScoreBandsPostBodyClusteringAlgorithmDefault = `DBSCAN`;
+export const calculateScoreBandsMethodGenericScoreBandsPostBodyClusteringScoreDefault = `silhoutte`;
 
-export const CalculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBody = zod
+export const CalculateScoreBandsMethodGenericScoreBandsPostBody = zod
 	.object({
 		data: zod.array(zod.array(zod.number())).describe('Matrix of objective values'),
 		objs: zod.array(zod.string()).describe('Array of objective names for each column'),
 		dist_parameter: zod
 			.number()
-			.default(
-				calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyDistParameterDefault
-			)
+			.default(calculateScoreBandsMethodGenericScoreBandsPostBodyDistParameterDefault)
 			.describe('Distance parameter for axis positioning'),
 		use_absolute_corr: zod
 			.boolean()
-			.default(
-				calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyUseAbsoluteCorrDefault
-			)
+			.default(calculateScoreBandsMethodGenericScoreBandsPostBodyUseAbsoluteCorrDefault)
 			.describe('Use absolute correlation values'),
 		distance_formula: zod
 			.number()
-			.default(
-				calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyDistanceFormulaDefault
-			)
+			.default(calculateScoreBandsMethodGenericScoreBandsPostBodyDistanceFormulaDefault)
 			.describe('Distance formula (1 or 2)'),
 		flip_axes: zod
 			.boolean()
-			.default(
-				calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyFlipAxesDefault
-			)
+			.default(calculateScoreBandsMethodGenericScoreBandsPostBodyFlipAxesDefault)
 			.describe('Whether to flip axes based on correlation signs'),
 		clustering_algorithm: zod
 			.string()
-			.default(
-				calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyClusteringAlgorithmDefault
-			)
+			.default(calculateScoreBandsMethodGenericScoreBandsPostBodyClusteringAlgorithmDefault)
 			.describe('Clustering algorithm (DBSCAN or GMM)'),
 		clustering_score: zod
 			.string()
-			.default(
-				calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostBodyClusteringScoreDefault
-			)
+			.default(calculateScoreBandsMethodGenericScoreBandsPostBodyClusteringScoreDefault)
 			.describe('Clustering score metric')
 	})
 	.describe('Model of the request to calculate SCORE bands parameters.');
 
-export const CalculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataPostResponse = zod
+export const CalculateScoreBandsMethodGenericScoreBandsPostResponse = zod
 	.object({
 		groups: zod.array(zod.number()).describe('Cluster group assignments for each data point'),
 		axis_dist: zod.array(zod.number()).describe('Normalized axis positions'),
@@ -4353,8 +7007,8 @@ export const GetUtopiaDataUtopiaPostBody = zod
 		problem_id: zod.number().describe('Problem for which the map is generated'),
 		solution: zod
 			.object({
-				state_id: zod.number().describe('State of the desired solution.'),
-				solution_index: zod.number().describe('Index of the desired solution.'),
+				state_id: zod.number(),
+				solution_index: zod.number(),
 				name: zod
 					.union([zod.string(), zod.null()])
 					.optional()
@@ -4392,7 +7046,7 @@ Args:
     session (Annotated[Session, Depends(get_session)]): the database session.
 
 Returns:
-    JSONResponse: Acknowledgement that the group was created
+    JSONResponse: Aknowledgement that the gourp was created
 
 Raises:
     HTTPException
@@ -4416,7 +7070,7 @@ Args:
     session (Annotated[Session, Depends(get_session)]): The database session
 
 Returns:
-    JSONResponse: Acknowledgement of the deletion
+    JSONResponse: Aknowledgement of the deletion
 
 Raises:
     HTTPException: Insufficient authorization etc.
@@ -4523,8 +7177,6 @@ export const GnimbusInitializeGnimbusInitializePostResponse = zod.unknown();
 /**
  * Get the latest results from group iteration.
 
-(OBSOLETE AND OUT OF DATE!)
-
 Args:
     request (GroupInfoRequest): essentially just the ID of the group
     user (Annotated[User, Depends(get_current_user)]): Current user
@@ -4562,7 +7214,7 @@ export const GetLatestResultsGnimbusGetLatestResultsPostResponse = zod
 						),
 					set_preferences: zod.record(zod.string(), zod.number())
 				})
-				.describe('A structure for storing voting preferences.'),
+				.describe('Voting preferences.'),
 			zod
 				.object({
 					method: zod
@@ -4587,7 +7239,9 @@ export const GetLatestResultsGnimbusGetLatestResultsPostResponse = zod
 							.describe('Model for representing a reference point type of preference.')
 					)
 				})
-				.describe('A structure for storing optimization preferences. See GNIMBUS for details.')
+				.describe(
+					'An optimization preference class. As for the method and phase, see GNIMBUS for details.'
+				)
 		]),
 		common_results: zod.array(
 			zod
@@ -4611,8 +7265,6 @@ export const GetLatestResultsGnimbusGetLatestResultsPostResponse = zod
 							state_id: zod.union([zod.number(), zod.null()]).optional()
 						})
 						.describe('State holder with a single relationship to the base State.'),
-					state_id: zod.number(),
-					num_solutions: zod.number(),
 					objective_values_all: zod.array(zod.record(zod.string(), zod.number())),
 					variable_values_all: zod.array(
 						zod.record(
@@ -4635,27 +7287,15 @@ export const GetLatestResultsGnimbusGetLatestResultsPostResponse = zod
 					),
 					objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
 					variable_values: zod.union([
-						zod.record(
-							zod.string(),
-							zod.union([
-								zod.number(),
-								zod.number(),
-								zod.boolean(),
-								zod.union([
-									zod.array(zod.unknown()),
-									zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
-									zod.number(),
-									zod.number(),
-									zod.boolean(),
-									zod.literal('List'),
-									zod.null()
-								])
-							])
-						),
+						zod.record(zod.string(), zod.union([zod.number(), zod.number(), zod.boolean()])),
 						zod.null()
-					])
+					]),
+					state_id: zod.number(),
+					num_solutions: zod.number()
 				})
-				.describe('A full solution reference with objectives and variables.')
+				.describe(
+					'A model that functions as a reference to solutions existing in the database.\n\nReferenced solutions are not necessarily solutions that the user has saved explicitly. For\nreferencing those, see `SavedSolutionReference`.'
+				)
 		),
 		user_results: zod.array(
 			zod
@@ -4679,8 +7319,6 @@ export const GetLatestResultsGnimbusGetLatestResultsPostResponse = zod
 							state_id: zod.union([zod.number(), zod.null()]).optional()
 						})
 						.describe('State holder with a single relationship to the base State.'),
-					state_id: zod.number(),
-					num_solutions: zod.number(),
 					objective_values_all: zod.array(zod.record(zod.string(), zod.number())),
 					variable_values_all: zod.array(
 						zod.record(
@@ -4703,31 +7341,19 @@ export const GetLatestResultsGnimbusGetLatestResultsPostResponse = zod
 					),
 					objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
 					variable_values: zod.union([
-						zod.record(
-							zod.string(),
-							zod.union([
-								zod.number(),
-								zod.number(),
-								zod.boolean(),
-								zod.union([
-									zod.array(zod.unknown()),
-									zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
-									zod.number(),
-									zod.number(),
-									zod.boolean(),
-									zod.literal('List'),
-									zod.null()
-								])
-							])
-						),
+						zod.record(zod.string(), zod.union([zod.number(), zod.number(), zod.boolean()])),
 						zod.null()
-					])
+					]),
+					state_id: zod.number(),
+					num_solutions: zod.number()
 				})
-				.describe('A full solution reference with objectives and variables.')
+				.describe(
+					'A model that functions as a reference to solutions existing in the database.\n\nReferenced solutions are not necessarily solutions that the user has saved explicitly. For\nreferencing those, see `SavedSolutionReference`.'
+				)
 		),
 		personal_result_index: zod.union([zod.number(), zod.null()])
 	})
-	.describe('The response for getting GNIMBUS results. NOTE: OBSOLETE!');
+	.describe('The response for getting GNIMBUS results.');
 
 /**
  * Get all results from all iterations of the group.
@@ -4763,209 +7389,287 @@ export const FullIterationGnimbusAllIterationsPostResponse = zod
 		all_full_iterations: zod.array(
 			zod
 				.object({
-					phase: zod.string().describe('The phase of the iteration.'),
-					optimization_preferences: zod
-						.union([
-							zod
-								.object({
-									method: zod
-										.string()
-										.default(
-											fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemOptimizationPreferencesOneMethodDefault
-										),
-									phase: zod
-										.string()
-										.default(
-											fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemOptimizationPreferencesOnePhaseDefault
-										),
-									set_preferences: zod.record(
+					phase: zod.string(),
+					optimization_preferences: zod.union([
+						zod
+							.object({
+								method: zod
+									.string()
+									.default(
+										fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemOptimizationPreferencesOneMethodDefault
+									),
+								phase: zod
+									.string()
+									.default(
+										fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemOptimizationPreferencesOnePhaseDefault
+									),
+								set_preferences: zod.record(
+									zod.string(),
+									zod
+										.object({
+											preference_type: zod
+												.literal('reference_point')
+												.default(
+													fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemOptimizationPreferencesOneSetPreferencesPreferenceTypeDefault
+												),
+											aspiration_levels: zod.record(zod.string(), zod.number())
+										})
+										.describe('Model for representing a reference point type of preference.')
+								)
+							})
+							.describe(
+								'An optimization preference class. As for the method and phase, see GNIMBUS for details.'
+							),
+						zod.null()
+					]),
+					voting_preferences: zod.union([
+						zod
+							.object({
+								method: zod
+									.string()
+									.default(
+										fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemVotingPreferencesOneMethodDefault
+									),
+								set_preferences: zod.record(zod.string(), zod.number())
+							})
+							.describe('Voting preferences.'),
+						zod
+							.object({
+								method: zod
+									.string()
+									.default(
+										fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemVotingPreferencesTwoMethodDefault
+									),
+								success: zod.union([zod.boolean(), zod.null()]),
+								set_preferences: zod.record(zod.string(), zod.boolean())
+							})
+							.describe(
+								'A model for determining if everyone is happy with current solution so we can end the process.'
+							),
+						zod.null()
+					]),
+					starting_result: zod.union([
+						zod
+							.object({
+								name: zod
+									.union([zod.string(), zod.null()])
+									.optional()
+									.describe('Optional name to help identify the solution if, e.g., saved.'),
+								solution_index: zod
+									.union([zod.number(), zod.null()])
+									.optional()
+									.describe(
+										'The index of the referenced solution, if multiple solutions exist in the reference state.'
+									),
+								state: zod
+									.object({
+										id: zod.union([zod.number(), zod.null()]).optional(),
+										problem_id: zod.union([zod.number(), zod.null()]).optional(),
+										session_id: zod.union([zod.number(), zod.null()]).optional(),
+										parent_id: zod.union([zod.number(), zod.null()]).optional(),
+										state_id: zod.union([zod.number(), zod.null()]).optional()
+									})
+									.describe('State holder with a single relationship to the base State.'),
+								objective_values_all: zod.array(zod.record(zod.string(), zod.number())),
+								variable_values_all: zod.array(
+									zod.record(
 										zod.string(),
-										zod
-											.object({
-												preference_type: zod
-													.literal('reference_point')
-													.default(
-														fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemOptimizationPreferencesOneSetPreferencesPreferenceTypeDefault
-													),
-												aspiration_levels: zod.record(zod.string(), zod.number())
-											})
-											.describe('Model for representing a reference point type of preference.')
+										zod.union([
+											zod.number(),
+											zod.number(),
+											zod.boolean(),
+											zod.union([
+												zod.array(zod.unknown()),
+												zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
+												zod.number(),
+												zod.number(),
+												zod.boolean(),
+												zod.literal('List'),
+												zod.null()
+											])
+										])
 									)
-								})
-								.describe(
-									'A structure for storing optimization preferences. See GNIMBUS for details.'
 								),
-							zod.null()
-						])
-						.describe('The preferences related to the optimization stage of the full iteration.'),
-					voting_preferences: zod
-						.union([
-							zod
-								.object({
-									method: zod
-										.string()
-										.default(
-											fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemVotingPreferencesOneMethodDefault
-										),
-									set_preferences: zod.record(zod.string(), zod.number())
-								})
-								.describe('A structure for storing voting preferences.'),
-							zod
-								.object({
-									method: zod
-										.string()
-										.default(
-											fullIterationGnimbusAllIterationsPostResponseAllFullIterationsItemVotingPreferencesTwoMethodDefault
-										),
-									success: zod.union([zod.boolean(), zod.null()]),
-									set_preferences: zod.record(zod.string(), zod.boolean())
-								})
-								.describe(
-									'A structure for storing info on whether everyone is happy to end the gnimbus process.'
+								objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
+								variable_values: zod.union([
+									zod.record(zod.string(), zod.union([zod.number(), zod.number(), zod.boolean()])),
+									zod.null()
+								]),
+								state_id: zod.number(),
+								num_solutions: zod.number()
+							})
+							.describe(
+								'A model that functions as a reference to solutions existing in the database.\n\nReferenced solutions are not necessarily solutions that the user has saved explicitly. For\nreferencing those, see `SavedSolutionReference`.'
+							),
+						zod.null()
+					]),
+					common_results: zod.array(
+						zod
+							.object({
+								name: zod
+									.union([zod.string(), zod.null()])
+									.optional()
+									.describe('Optional name to help identify the solution if, e.g., saved.'),
+								solution_index: zod
+									.union([zod.number(), zod.null()])
+									.optional()
+									.describe(
+										'The index of the referenced solution, if multiple solutions exist in the reference state.'
+									),
+								state: zod
+									.object({
+										id: zod.union([zod.number(), zod.null()]).optional(),
+										problem_id: zod.union([zod.number(), zod.null()]).optional(),
+										session_id: zod.union([zod.number(), zod.null()]).optional(),
+										parent_id: zod.union([zod.number(), zod.null()]).optional(),
+										state_id: zod.union([zod.number(), zod.null()]).optional()
+									})
+									.describe('State holder with a single relationship to the base State.'),
+								objective_values_all: zod.array(zod.record(zod.string(), zod.number())),
+								variable_values_all: zod.array(
+									zod.record(
+										zod.string(),
+										zod.union([
+											zod.number(),
+											zod.number(),
+											zod.boolean(),
+											zod.union([
+												zod.array(zod.unknown()),
+												zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
+												zod.number(),
+												zod.number(),
+												zod.boolean(),
+												zod.literal('List'),
+												zod.null()
+											])
+										])
+									)
 								),
-							zod.null()
-						])
-						.describe(
-							'The preferences related to the voting phase of the iteration.             either actual votes or a vote to see whether to just continue.'
-						),
-					starting_result: zod
-						.union([
-							zod
-								.object({
-									name: zod
-										.union([zod.string(), zod.null()])
-										.optional()
-										.describe('Optional name to help identify the solution if, e.g., saved.'),
-									solution_index: zod
-										.union([zod.number(), zod.null()])
-										.optional()
-										.describe(
-											'The index of the referenced solution, if multiple solutions exist in the reference state.'
-										),
-									state: zod
-										.object({
-											id: zod.union([zod.number(), zod.null()]).optional(),
-											problem_id: zod.union([zod.number(), zod.null()]).optional(),
-											session_id: zod.union([zod.number(), zod.null()]).optional(),
-											parent_id: zod.union([zod.number(), zod.null()]).optional(),
-											state_id: zod.union([zod.number(), zod.null()]).optional()
-										})
-										.describe('State holder with a single relationship to the base State.'),
-									state_id: zod.number(),
-									num_solutions: zod.number(),
-									objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()])
-								})
-								.describe(
-									'The same as SolutionReference, but without decision variables for more efficient transport over the internet.'
+								objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
+								variable_values: zod.union([
+									zod.record(zod.string(), zod.union([zod.number(), zod.number(), zod.boolean()])),
+									zod.null()
+								]),
+								state_id: zod.number(),
+								num_solutions: zod.number()
+							})
+							.describe(
+								'A model that functions as a reference to solutions existing in the database.\n\nReferenced solutions are not necessarily solutions that the user has saved explicitly. For\nreferencing those, see `SavedSolutionReference`.'
+							)
+					),
+					user_results: zod.array(
+						zod
+							.object({
+								name: zod
+									.union([zod.string(), zod.null()])
+									.optional()
+									.describe('Optional name to help identify the solution if, e.g., saved.'),
+								solution_index: zod
+									.union([zod.number(), zod.null()])
+									.optional()
+									.describe(
+										'The index of the referenced solution, if multiple solutions exist in the reference state.'
+									),
+								state: zod
+									.object({
+										id: zod.union([zod.number(), zod.null()]).optional(),
+										problem_id: zod.union([zod.number(), zod.null()]).optional(),
+										session_id: zod.union([zod.number(), zod.null()]).optional(),
+										parent_id: zod.union([zod.number(), zod.null()]).optional(),
+										state_id: zod.union([zod.number(), zod.null()]).optional()
+									})
+									.describe('State holder with a single relationship to the base State.'),
+								objective_values_all: zod.array(zod.record(zod.string(), zod.number())),
+								variable_values_all: zod.array(
+									zod.record(
+										zod.string(),
+										zod.union([
+											zod.number(),
+											zod.number(),
+											zod.boolean(),
+											zod.union([
+												zod.array(zod.unknown()),
+												zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
+												zod.number(),
+												zod.number(),
+												zod.boolean(),
+												zod.literal('List'),
+												zod.null()
+											])
+										])
+									)
 								),
-							zod.null()
-						])
-						.describe(
-							"The starting result of the optimization process. Fetched from the previous             iteration's final result."
-						),
-					common_results: zod
-						.array(
-							zod
-								.object({
-									name: zod
-										.union([zod.string(), zod.null()])
-										.optional()
-										.describe('Optional name to help identify the solution if, e.g., saved.'),
-									solution_index: zod
-										.union([zod.number(), zod.null()])
-										.optional()
-										.describe(
-											'The index of the referenced solution, if multiple solutions exist in the reference state.'
-										),
-									state: zod
-										.object({
-											id: zod.union([zod.number(), zod.null()]).optional(),
-											problem_id: zod.union([zod.number(), zod.null()]).optional(),
-											session_id: zod.union([zod.number(), zod.null()]).optional(),
-											parent_id: zod.union([zod.number(), zod.null()]).optional(),
-											state_id: zod.union([zod.number(), zod.null()]).optional()
-										})
-										.describe('State holder with a single relationship to the base State.'),
-									state_id: zod.number(),
-									num_solutions: zod.number(),
-									objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()])
-								})
-								.describe(
-									'The same as SolutionReference, but without decision variables for more efficient transport over the internet.'
-								)
-						)
-						.describe('The common results (1 to 4) generated by gnimbus.'),
-					user_results: zod
-						.array(
-							zod
-								.object({
-									name: zod
-										.union([zod.string(), zod.null()])
-										.optional()
-										.describe('Optional name to help identify the solution if, e.g., saved.'),
-									solution_index: zod
-										.union([zod.number(), zod.null()])
-										.optional()
-										.describe(
-											'The index of the referenced solution, if multiple solutions exist in the reference state.'
-										),
-									state: zod
-										.object({
-											id: zod.union([zod.number(), zod.null()]).optional(),
-											problem_id: zod.union([zod.number(), zod.null()]).optional(),
-											session_id: zod.union([zod.number(), zod.null()]).optional(),
-											parent_id: zod.union([zod.number(), zod.null()]).optional(),
-											state_id: zod.union([zod.number(), zod.null()]).optional()
-										})
-										.describe('State holder with a single relationship to the base State.'),
-									state_id: zod.number(),
-									num_solutions: zod.number(),
-									objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()])
-								})
-								.describe(
-									'The same as SolutionReference, but without decision variables for more efficient transport over the internet.'
-								)
-						)
-						.describe('The user specific results generated by gnimbus in phases learning and crp.'),
-					personal_result_index: zod
-						.union([zod.number(), zod.null()])
-						.describe('The user result index of requester.'),
-					final_result: zod
-						.union([
-							zod
-								.object({
-									name: zod
-										.union([zod.string(), zod.null()])
-										.optional()
-										.describe('Optional name to help identify the solution if, e.g., saved.'),
-									solution_index: zod
-										.union([zod.number(), zod.null()])
-										.optional()
-										.describe(
-											'The index of the referenced solution, if multiple solutions exist in the reference state.'
-										),
-									state: zod
-										.object({
-											id: zod.union([zod.number(), zod.null()]).optional(),
-											problem_id: zod.union([zod.number(), zod.null()]).optional(),
-											session_id: zod.union([zod.number(), zod.null()]).optional(),
-											parent_id: zod.union([zod.number(), zod.null()]).optional(),
-											state_id: zod.union([zod.number(), zod.null()]).optional()
-										})
-										.describe('State holder with a single relationship to the base State.'),
-									state_id: zod.number(),
-									num_solutions: zod.number(),
-									objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()])
-								})
-								.describe(
-									'The same as SolutionReference, but without decision variables for more efficient transport over the internet.'
+								objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
+								variable_values: zod.union([
+									zod.record(zod.string(), zod.union([zod.number(), zod.number(), zod.boolean()])),
+									zod.null()
+								]),
+								state_id: zod.number(),
+								num_solutions: zod.number()
+							})
+							.describe(
+								'A model that functions as a reference to solutions existing in the database.\n\nReferenced solutions are not necessarily solutions that the user has saved explicitly. For\nreferencing those, see `SavedSolutionReference`.'
+							)
+					),
+					personal_result_index: zod.union([zod.number(), zod.null()]),
+					final_result: zod.union([
+						zod
+							.object({
+								name: zod
+									.union([zod.string(), zod.null()])
+									.optional()
+									.describe('Optional name to help identify the solution if, e.g., saved.'),
+								solution_index: zod
+									.union([zod.number(), zod.null()])
+									.optional()
+									.describe(
+										'The index of the referenced solution, if multiple solutions exist in the reference state.'
+									),
+								state: zod
+									.object({
+										id: zod.union([zod.number(), zod.null()]).optional(),
+										problem_id: zod.union([zod.number(), zod.null()]).optional(),
+										session_id: zod.union([zod.number(), zod.null()]).optional(),
+										parent_id: zod.union([zod.number(), zod.null()]).optional(),
+										state_id: zod.union([zod.number(), zod.null()]).optional()
+									})
+									.describe('State holder with a single relationship to the base State.'),
+								objective_values_all: zod.array(zod.record(zod.string(), zod.number())),
+								variable_values_all: zod.array(
+									zod.record(
+										zod.string(),
+										zod.union([
+											zod.number(),
+											zod.number(),
+											zod.boolean(),
+											zod.union([
+												zod.array(zod.unknown()),
+												zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
+												zod.number(),
+												zod.number(),
+												zod.boolean(),
+												zod.literal('List'),
+												zod.null()
+											])
+										])
+									)
 								),
-							zod.null()
-						])
-						.describe('The final result after voting.')
+								objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
+								variable_values: zod.union([
+									zod.record(zod.string(), zod.union([zod.number(), zod.number(), zod.boolean()])),
+									zod.null()
+								]),
+								state_id: zod.number(),
+								num_solutions: zod.number()
+							})
+							.describe(
+								'A model that functions as a reference to solutions existing in the database.\n\nReferenced solutions are not necessarily solutions that the user has saved explicitly. For\nreferencing those, see `SavedSolutionReference`.'
+							),
+						zod.null()
+					])
 				})
 				.describe(
-					'A full iteration item containing results from a complete or incomplete iteration.\n\nThis is a format to send information to the user interface.'
+					'A full iteration item containing results from a complete or incomplete iteration.'
 				)
 		)
 	})
@@ -5002,35 +7706,7 @@ export const GetPhaseGnimbusGetPhasePostBody = zod
 export const GetPhaseGnimbusGetPhasePostResponse = zod.unknown();
 
 /**
- * Changes the starting solution of an iteration so in case of emergency the group owner can just change it.
-
-Args:
-    request (GNIMBUSChangeStartingSolutionRequest): The request containing necessary details to fulfill the change.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): The database session.
-
-Raises:
-    HTTPException
-
-Returns:
-    JSONResponse: Response that acknowledges the changes.
- * @summary Revert Iteration
- */
-export const RevertIterationGnimbusRevertIterationPostBody = zod
-	.object({
-		group_id: zod.number().describe('The ID of the group we wish to revert.'),
-		state_id: zod
-			.number()
-			.describe(
-				"The state's ID to which we want to revert to. Corresponds to state_id in GroupIteration."
-			)
-	})
-	.describe('Class for requesting reverting to certain iteration.');
-
-export const RevertIterationGnimbusRevertIterationPostResponse = zod.unknown();
-
-/**
- * Steps the E-NAUTILUS method.
+ * .
  * @summary Step
  */
 export const StepMethodEnautilusStepPostBody = zod
@@ -5038,15 +7714,13 @@ export const StepMethodEnautilusStepPostBody = zod
 		problem_id: zod.number(),
 		session_id: zod.union([zod.number(), zod.null()]).optional(),
 		parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
-		representative_solutions_id: zod
-			.number()
-			.describe('The id of the representative solutions to be used.'),
+		representative_solutions_id: zod.union([zod.number(), zod.null()]).optional(),
 		current_iteration: zod.number().describe('The number of the current iteration.'),
 		iterations_left: zod.number().describe('The number of iterations left.'),
 		selected_point: zod
-			.union([zod.record(zod.string(), zod.number()), zod.null()])
+			.record(zod.string(), zod.number())
 			.describe(
-				'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+				'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point.'
 			),
 		reachable_point_indices: zod
 			.array(zod.number())
@@ -5061,73 +7735,15 @@ export const StepMethodEnautilusStepPostBody = zod
 
 export const StepMethodEnautilusStepPostResponse = zod
 	.object({
-		state_id: zod
-			.union([zod.number(), zod.null()])
-			.describe('The id of the state created by the request that generated this response'),
-		current_iteration: zod.number().describe('Number of the current iteration.'),
-		iterations_left: zod.number().describe('Number of iterations left.'),
-		intermediate_points: zod
-			.array(zod.record(zod.string(), zod.number()))
-			.describe('New intermediate points'),
-		reachable_best_bounds: zod
-			.array(zod.record(zod.string(), zod.number()))
-			.describe(
-				'Best bounds of the objective function values reachable from each intermediate point.'
-			),
-		reachable_worst_bounds: zod
-			.array(zod.record(zod.string(), zod.number()))
-			.describe(
-				'Worst bounds of the objective function values reachable from each intermediate point.'
-			),
-		closeness_measures: zod
-			.array(zod.number())
-			.describe('Closeness measures of each intermediate point.'),
-		reachable_point_indices: zod
-			.array(zod.array(zod.number()))
-			.describe('Indices of the reachable points from each intermediate point.')
-	})
-	.describe('The response from E-NAUTILUS step endpoint.');
-
-/**
- * Fetch a previous state of the the E-NAUTILUS method.
- * @summary Get State
- */
-export const GetStateMethodEnautilusGetStateStateIdGetParams = zod.object({
-	state_id: zod.number()
-});
-
-export const GetStateMethodEnautilusGetStateStateIdGetResponse = zod
-	.object({
-		request: zod
+		id: zod.union([zod.number(), zod.null()]).optional(),
+		non_dominated_solutions_id: zod.union([zod.number(), zod.null()]).optional(),
+		current_iteration: zod.number(),
+		iterations_left: zod.number(),
+		selected_point: zod.union([zod.record(zod.string(), zod.number()), zod.null()]).optional(),
+		reachable_point_indices: zod.array(zod.number()).optional(),
+		number_of_intermediate_points: zod.number(),
+		enautilus_results: zod
 			.object({
-				problem_id: zod.number(),
-				session_id: zod.union([zod.number(), zod.null()]).optional(),
-				parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
-				representative_solutions_id: zod
-					.number()
-					.describe('The id of the representative solutions to be used.'),
-				current_iteration: zod.number().describe('The number of the current iteration.'),
-				iterations_left: zod.number().describe('The number of iterations left.'),
-				selected_point: zod
-					.union([zod.record(zod.string(), zod.number()), zod.null()])
-					.describe(
-						'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
-					),
-				reachable_point_indices: zod
-					.array(zod.number())
-					.describe(
-						'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
-					),
-				number_of_intermediate_points: zod
-					.number()
-					.describe('The number of intermediate points to be generated.')
-			})
-			.describe('Model of the request to the E-NAUTILUS method.'),
-		response: zod
-			.object({
-				state_id: zod
-					.union([zod.number(), zod.null()])
-					.describe('The id of the state created by the request that generated this response'),
 				current_iteration: zod.number().describe('Number of the current iteration.'),
 				iterations_left: zod.number().describe('Number of iterations left.'),
 				intermediate_points: zod
@@ -5150,934 +7766,111 @@ export const GetStateMethodEnautilusGetStateStateIdGetResponse = zod
 					.array(zod.array(zod.number()))
 					.describe('Indices of the reachable points from each intermediate point.')
 			})
-			.describe('The response from E-NAUTILUS step endpoint.')
+			.describe('The result of an iteration of the E-NAUTILUS method.')
 	})
-	.describe('The response model when requesting a state in E-NAUTILUS.');
+	.describe('E-NAUTILUS: one stepping iteration.');
 
 /**
- * Computes the representative solutions that are closest to the intermediate solutions computed by E-NAUTILUS.
-
-This endpoint should be used to get the actual solution from the
-non-dominated representation used in the E-NAUTILUS method's last iteration
-(when number of iterations left is 0).
-
-Args:
-    state_id (int): id of the `StateDB` with information on the intermediate
-        points for which the representative solutions should be computed.
-    db_session (Annotated[Session, Depends): the database session.
-
-Raises:
-    HTTPException: 404 when a `StateDB`, `ProblemDB`, or
-        `RepresentativeNonDominatedSolutions` instance cannot be found. 406 when
-        the substate of the references `StateDB` is not an instance of
-        `ENautilusState`.
-
-Returns:
-    ENautilusRepresentativeSolutionsResponse: the information on the representative solutions.
- * @summary Get Representative
+ * Initialize NAUTILUS Navigator.
+ * @summary Initialize
  */
-export const GetRepresentativeMethodEnautilusGetRepresentativeStateIdGetParams = zod.object({
-	state_id: zod.number()
-});
+export const initializeMethodNautilusNavigatorInitializePostBodySessionIdDefault = null;
+export const initializeMethodNautilusNavigatorInitializePostBodyParentStateIdDefault = null;
+export const initializeMethodNautilusNavigatorInitializePostBodyTotalStepsDefault = 100;
 
-export const GetRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse = zod
+export const InitializeMethodNautilusNavigatorInitializePostBody = zod
 	.object({
-		solutions: zod
-			.array(
-				zod
-					.object({
-						optimal_variables: zod
-							.record(
-								zod.string(),
-								zod.union([zod.number(), zod.number(), zod.array(zod.unknown())])
-							)
-							.describe('The optimal decision variables found.'),
-						optimal_objectives: zod
-							.record(zod.string(), zod.union([zod.number(), zod.array(zod.number())]))
-							.describe(
-								'The objective function values corresponding to the optimal decision variables found.'
-							),
-						constraint_values: zod
-							.union([
-								zod.record(
-									zod.string(),
-									zod.union([
-										zod.number(),
-										zod.number(),
-										zod.array(zod.number()),
-										zod.array(zod.unknown())
-									])
-								),
-								zod.unknown(),
-								zod.null()
-							])
-							.optional()
-							.describe(
-								'The constraint values of the problem. A negative value means the constraint is respected, a positive one means it has been breached.'
-							),
-						extra_func_values: zod
-							.union([
-								zod.record(zod.string(), zod.union([zod.number(), zod.array(zod.number())])),
-								zod.null()
-							])
-							.optional()
-							.describe('The extra function values of the problem.'),
-						scalarization_values: zod
-							.union([
-								zod.record(zod.string(), zod.union([zod.number(), zod.array(zod.number())])),
-								zod.null()
-							])
-							.optional()
-							.describe('The scalarization function values of the problem.'),
-						success: zod
-							.boolean()
-							.describe(
-								'A boolean flag indicating whether the optimization was successful or not.'
-							),
-						message: zod.string().describe('Description of the cause of termination.')
-					})
-					.describe('Defines a schema for a dataclass to store the results of a solver.')
-			)
-			.describe('The solutions on the non-dominated front closest to the intermediate points.')
-	})
-	.describe('Model of the response when requesting representative solutions from E-NAUTILUS.');
-
-/**
- * Vote for a band using this endpoint.
-
-Args:
-    request (GDMScoreBandsVoteRequest): A container for the group id and the vote.
-    user (Annotated[User, Depends): the current user.
-    session (Annotated[Session, Depends): database session
-
-Raises:
-    HTTPException: If something goes wrong. It hopefully let's you know what went wrong.
-
-Returns:
-    JSONResponse: A quick confirmation that vote went through.
- * @summary Vote For A Band
- */
-export const VoteForABandGdmScoreBandsVotePostBody = zod
-	.object({
-		group_id: zod.number().describe('ID of the group in question'),
-		vote: zod.number().describe('The vote. Vaalisalaisuus.')
-	})
-	.describe('Request for voting for a band.');
-
-export const VoteForABandGdmScoreBandsVotePostResponse = zod.unknown();
-
-/**
- * Confim the vote. If all confirm, the clustering and new iteration begins.
-
-Args:
-    request (GroupInfoRequest): Simple request to get the group ID.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): Database session.
-
-Raises:
-    HTTPException: If something goes awry. It should let you know what went wrong, though.
-
-Returns:
-    JSONResponse: A simple confirmation that everything went ok and that vote went in.
- * @summary Confirm Vote
- */
-export const ConfirmVoteGdmScoreBandsConfirmPostBody = zod
-	.object({
-		group_id: zod.number()
-	})
-	.describe('Class for requesting group information.');
-
-export const ConfirmVoteGdmScoreBandsConfirmPostResponse = zod.unknown();
-
-/**
- * An endpoint for two things: Initializing the GDM Score Bands things and Fetching results.
-
-If a group hasn't been initialized, initialize and then return initial clustering information.
-If it has been initialized, just fetch the latest iteration's information (clustering, etc.)
-
-Args:
-    request (GDMScoreBandsInitializationRequest): Request that contains necessary information for initialization.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): Database session.
-
-Raises:
-    HTTPException: It'll let you know.
-
-Returns:
-    GDMSCOREBandsResponse: A response containing Group id, group iter id and ScoreBandsResponse.
- * @summary Get Or Initialize
- */
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmOneNameDefault = `GMM`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmOneScoringMethodDefault = `silhouette`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmTwoNameDefault = `DBSCAN`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmThreeNameDefault = `KMeans`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmThreeNClustersDefault = 5;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmFourNameDefault = `DimensionCluster`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmFourNClustersDefault = 5;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmFourKindDefault = `EqualWidth`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmFiveNameDefault = `Custom`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmDefault =
-	{ name: 'DBSCAN' };
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigDistanceParameterDefault = 0.05;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigUseAbsoluteCorrelationsDefault = false;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigIncludeSolutionsDefault = false;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigIncludeMediansDefault = false;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigIntervalSizeDefault = 0.95;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigMinimumVotesDefault = 1;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigMinimumVotesExclusiveMin = 0;
-
-export const GetOrInitializeGdmScoreBandsGetOrInitializePostBody = zod
-	.object({
-		group_id: zod.number().describe('The group to be initialized.'),
-		score_bands_config: zod
-			.object({
-				score_bands_config: zod
-					.object({
-						dimensions: zod
-							.union([zod.array(zod.string()), zod.null()])
-							.optional()
-							.describe(
-								'List of variable/objective names (i.e., column names in the data) to include in the visualization.\nIf None, all columns in the data are used. Defaults to None.'
-							),
-						descriptive_names: zod
-							.union([zod.record(zod.string(), zod.string()), zod.null()])
-							.optional()
-							.describe(
-								'Optional dictionary mapping dimensions to descriptive names for display in the visualization.\nIf None, the original dimension names are used. Defaults to None.'
-							),
-						units: zod
-							.union([zod.record(zod.string(), zod.string()), zod.null()])
-							.optional()
-							.describe(
-								'Optional dictionary mapping dimensions to their units for display in the visualization.\nIf None, no units are displayed. Defaults to None.'
-							),
-						axis_positions: zod
-							.union([zod.record(zod.string(), zod.number()), zod.null()])
-							.optional()
-							.describe(
-								'Dictionary mapping objective names to their positions on the axes in the SCORE bands visualization. The first\nobjective is at position 0.0, and the last objective is at position 1.0. Use this option if you want to\nmanually set the axis positions. If None, the axis positions are calculated automatically based on correlations.\nDefaults to None.'
-							),
-						clustering_algorithm: zod
-							.union([
-								zod
-									.object({
-										name: zod
-											.string()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmOneNameDefault
-											)
-											.describe('Gaussian Mixture Model clustering algorithm.'),
-										scoring_method: zod
-											.enum(['BIC', 'silhouette'])
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmOneScoringMethodDefault
-											)
-											.describe(
-												'Scoring method to use for GMM. Either \"BIC\" or \"silhouette\". Defaults to \"silhouette\".\nThis option determines how the number of clusters is chosen.'
-											)
-									})
-									.describe('Options for Gaussian Mixture Model clustering algorithm.'),
-								zod
-									.object({
-										name: zod
-											.string()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmTwoNameDefault
-											)
-											.describe('DBSCAN clustering algorithm.')
-									})
-									.describe('Options for DBSCAN clustering algorithm.'),
-								zod
-									.object({
-										name: zod
-											.string()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmThreeNameDefault
-											)
-											.describe('KMeans clustering algorithm.'),
-										n_clusters: zod
-											.number()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmThreeNClustersDefault
-											)
-											.describe('Number of clusters to use. Defaults to 5.')
-									})
-									.describe('Options for KMeans clustering algorithm.'),
-								zod
-									.object({
-										name: zod
-											.string()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmFourNameDefault
-											)
-											.describe('Clustering by one of the dimensions.'),
-										dimension_name: zod.string().describe('Dimension to use for clustering.'),
-										n_clusters: zod
-											.number()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmFourNClustersDefault
-											)
-											.describe('Number of clusters to use. Defaults to 5.'),
-										kind: zod
-											.enum(['EqualWidth', 'EqualFrequency'])
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmFourKindDefault
-											)
-											.describe(
-												'Kind of clustering to use. Either \"EqualWidth\", which divides the dimension range into equal width intervals,\nor \"EqualFrequency\", which divides the dimension values into intervals with equal number of solutions.\nDefaults to \"EqualWidth\".'
-											)
-									})
-									.describe('Options for clustering by one of the objectives/decision variables.'),
-								zod
-									.object({
-										name: zod
-											.string()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmFiveNameDefault
-											)
-											.describe('Custom user-provided clusters.'),
-										clusters: zod
-											.array(zod.number())
-											.describe(
-												'List of cluster IDs (one for each solution) indicating the cluster to which each solution belongs.'
-											)
-									})
-									.describe('Options for custom clustering provided by the user.')
-							])
-							.default(
-								getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigClusteringAlgorithmDefault
-							)
-							.describe(
-								'Clustering algorithm to use. Currently supported options: \"GMM\", \"DBSCAN\",\n    and \"KMeans\". Defaults to \"DBSCAN\".'
-							),
-						distance_formula: zod
-							.union([zod.literal(1), zod.literal(2)])
-							.optional()
-							.describe('Distance formulas supported by SCORE bands. See the paper for details.'),
-						distance_parameter: zod
-							.number()
-							.default(
-								getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigDistanceParameterDefault
-							)
-							.describe(
-								'Change the relative distances between the objective axes. Increase this value if objectives are placed too close\ntogether. Decrease this value if the objectives are equidistant in a problem with objective clusters. Defaults\nto 0.05.'
-							),
-						use_absolute_correlations: zod
-							.boolean()
-							.default(
-								getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigUseAbsoluteCorrelationsDefault
-							)
-							.describe(
-								'Whether to use absolute value of the correlation to calculate the placement of axes. Defaults to False.'
-							),
-						include_solutions: zod
-							.boolean()
-							.default(
-								getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigIncludeSolutionsDefault
-							)
-							.describe(
-								'Whether to include individual solutions. Defaults to False. If True, the size of the resulting figure may be\nvery large for datasets with many solutions. Moreover, the individual traces are hidden by default, but can be\nviewed interactively in the figure.'
-							),
-						include_medians: zod
-							.boolean()
-							.default(
-								getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigIncludeMediansDefault
-							)
-							.describe(
-								'Whether to include cluster medians. Defaults to False. If True, the median traces are hidden by default, but\ncan be viewed interactively in the figure.'
-							),
-						interval_size: zod
-							.number()
-							.default(
-								getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigScoreBandsConfigIntervalSizeDefault
-							)
-							.describe(
-								'The size (as a fraction) of the interval to use for the bands. Defaults to 0.95, meaning that 95% of the\nmiddle solutions in a cluster will be included in the band. The rest will be considered outliers.'
-							),
-						scales: zod
-							.union([
-								zod.record(zod.string(), zod.tuple([zod.number(), zod.number()])),
-								zod.null()
-							])
-							.optional()
-							.describe(
-								'Optional dictionary specifying the min and max values for each objective. The keys should be the\nobjective names (i.e., column names in the data), and the values should be tuples of (min, max).\nIf not provided, the min and max will be calculated from the data.'
-							)
-					})
-					.optional()
-					.describe('Configuration options for SCORE bands visualization.'),
-				minimum_votes: zod
-					.number()
-					.gt(
-						getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigMinimumVotesExclusiveMin
-					)
-					.default(
-						getOrInitializeGdmScoreBandsGetOrInitializePostBodyScoreBandsConfigMinimumVotesDefault
-					),
-				from_iteration: zod.union([zod.number(), zod.null()])
-			})
-			.describe('Configuration for the SCORE bands based GDM.')
-	})
-	.describe('Request class for initialization of score bands.');
-
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneMethodDefault = `gdm-score-bands`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmOneNameDefault = `GMM`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmOneScoringMethodDefault = `silhouette`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmTwoNameDefault = `DBSCAN`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmThreeNameDefault = `KMeans`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmThreeNClustersDefault = 5;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmFourNameDefault = `DimensionCluster`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmFourNClustersDefault = 5;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmFourKindDefault = `EqualWidth`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmFiveNameDefault = `Custom`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmDefault =
-	{ name: 'DBSCAN' };
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsDistanceParameterDefault = 0.05;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsUseAbsoluteCorrelationsDefault = false;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsIncludeSolutionsDefault = false;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsIncludeMediansDefault = false;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsIntervalSizeDefault = 0.95;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemTwoMethodDefault = `gdm-score-bands-final`;
-export const getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemTwoResultMethodDefault = `gdm-score-bands-final`;
-
-export const GetOrInitializeGdmScoreBandsGetOrInitializePostResponse = zod
-	.object({
-		history: zod.array(
-			zod.union([
-				zod
-					.object({
-						method: zod
-							.string()
-							.default(
-								getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneMethodDefault
-							),
-						group_id: zod.number().describe('The group in question.'),
-						group_iter_id: zod.number().describe('ID of the latest group iteration.'),
-						latest_iteration: zod
-							.number()
-							.describe('The latest GDM iteration number. Different from Group Iteration id.'),
-						result: zod
-							.object({
-								options: zod
-									.object({
-										dimensions: zod
-											.union([zod.array(zod.string()), zod.null()])
-											.optional()
-											.describe(
-												'List of variable/objective names (i.e., column names in the data) to include in the visualization.\nIf None, all columns in the data are used. Defaults to None.'
-											),
-										descriptive_names: zod
-											.union([zod.record(zod.string(), zod.string()), zod.null()])
-											.optional()
-											.describe(
-												'Optional dictionary mapping dimensions to descriptive names for display in the visualization.\nIf None, the original dimension names are used. Defaults to None.'
-											),
-										units: zod
-											.union([zod.record(zod.string(), zod.string()), zod.null()])
-											.optional()
-											.describe(
-												'Optional dictionary mapping dimensions to their units for display in the visualization.\nIf None, no units are displayed. Defaults to None.'
-											),
-										axis_positions: zod
-											.union([zod.record(zod.string(), zod.number()), zod.null()])
-											.optional()
-											.describe(
-												'Dictionary mapping objective names to their positions on the axes in the SCORE bands visualization. The first\nobjective is at position 0.0, and the last objective is at position 1.0. Use this option if you want to\nmanually set the axis positions. If None, the axis positions are calculated automatically based on correlations.\nDefaults to None.'
-											),
-										clustering_algorithm: zod
-											.union([
-												zod
-													.object({
-														name: zod
-															.string()
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmOneNameDefault
-															)
-															.describe('Gaussian Mixture Model clustering algorithm.'),
-														scoring_method: zod
-															.enum(['BIC', 'silhouette'])
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmOneScoringMethodDefault
-															)
-															.describe(
-																'Scoring method to use for GMM. Either \"BIC\" or \"silhouette\". Defaults to \"silhouette\".\nThis option determines how the number of clusters is chosen.'
-															)
-													})
-													.describe('Options for Gaussian Mixture Model clustering algorithm.'),
-												zod
-													.object({
-														name: zod
-															.string()
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmTwoNameDefault
-															)
-															.describe('DBSCAN clustering algorithm.')
-													})
-													.describe('Options for DBSCAN clustering algorithm.'),
-												zod
-													.object({
-														name: zod
-															.string()
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmThreeNameDefault
-															)
-															.describe('KMeans clustering algorithm.'),
-														n_clusters: zod
-															.number()
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmThreeNClustersDefault
-															)
-															.describe('Number of clusters to use. Defaults to 5.')
-													})
-													.describe('Options for KMeans clustering algorithm.'),
-												zod
-													.object({
-														name: zod
-															.string()
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmFourNameDefault
-															)
-															.describe('Clustering by one of the dimensions.'),
-														dimension_name: zod
-															.string()
-															.describe('Dimension to use for clustering.'),
-														n_clusters: zod
-															.number()
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmFourNClustersDefault
-															)
-															.describe('Number of clusters to use. Defaults to 5.'),
-														kind: zod
-															.enum(['EqualWidth', 'EqualFrequency'])
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmFourKindDefault
-															)
-															.describe(
-																'Kind of clustering to use. Either \"EqualWidth\", which divides the dimension range into equal width intervals,\nor \"EqualFrequency\", which divides the dimension values into intervals with equal number of solutions.\nDefaults to \"EqualWidth\".'
-															)
-													})
-													.describe(
-														'Options for clustering by one of the objectives/decision variables.'
-													),
-												zod
-													.object({
-														name: zod
-															.string()
-															.default(
-																getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmFiveNameDefault
-															)
-															.describe('Custom user-provided clusters.'),
-														clusters: zod
-															.array(zod.number())
-															.describe(
-																'List of cluster IDs (one for each solution) indicating the cluster to which each solution belongs.'
-															)
-													})
-													.describe('Options for custom clustering provided by the user.')
-											])
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsClusteringAlgorithmDefault
-											)
-											.describe(
-												'Clustering algorithm to use. Currently supported options: \"GMM\", \"DBSCAN\",\n    and \"KMeans\". Defaults to \"DBSCAN\".'
-											),
-										distance_formula: zod
-											.union([zod.literal(1), zod.literal(2)])
-											.optional()
-											.describe(
-												'Distance formulas supported by SCORE bands. See the paper for details.'
-											),
-										distance_parameter: zod
-											.number()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsDistanceParameterDefault
-											)
-											.describe(
-												'Change the relative distances between the objective axes. Increase this value if objectives are placed too close\ntogether. Decrease this value if the objectives are equidistant in a problem with objective clusters. Defaults\nto 0.05.'
-											),
-										use_absolute_correlations: zod
-											.boolean()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsUseAbsoluteCorrelationsDefault
-											)
-											.describe(
-												'Whether to use absolute value of the correlation to calculate the placement of axes. Defaults to False.'
-											),
-										include_solutions: zod
-											.boolean()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsIncludeSolutionsDefault
-											)
-											.describe(
-												'Whether to include individual solutions. Defaults to False. If True, the size of the resulting figure may be\nvery large for datasets with many solutions. Moreover, the individual traces are hidden by default, but can be\nviewed interactively in the figure.'
-											),
-										include_medians: zod
-											.boolean()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsIncludeMediansDefault
-											)
-											.describe(
-												'Whether to include cluster medians. Defaults to False. If True, the median traces are hidden by default, but\ncan be viewed interactively in the figure.'
-											),
-										interval_size: zod
-											.number()
-											.default(
-												getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemOneResultOptionsIntervalSizeDefault
-											)
-											.describe(
-												'The size (as a fraction) of the interval to use for the bands. Defaults to 0.95, meaning that 95% of the\nmiddle solutions in a cluster will be included in the band. The rest will be considered outliers.'
-											),
-										scales: zod
-											.union([
-												zod.record(zod.string(), zod.tuple([zod.number(), zod.number()])),
-												zod.null()
-											])
-											.optional()
-											.describe(
-												'Optional dictionary specifying the min and max values for each objective. The keys should be the\nobjective names (i.e., column names in the data), and the values should be tuples of (min, max).\nIf not provided, the min and max will be calculated from the data.'
-											)
-									})
-									.describe('Configuration options for SCORE bands visualization.'),
-								ordered_dimensions: zod
-									.array(zod.string())
-									.describe(
-										'List of variable/objective names (i.e., column names in the data).\nOrdered according to their placement in the SCORE bands visualization.'
-									),
-								clusters: zod
-									.array(zod.number())
-									.describe(
-										'List of cluster IDs (one for each solution) indicating the cluster to which each solution belongs.'
-									),
-								axis_positions: zod
-									.record(zod.string(), zod.number())
-									.describe(
-										'Dictionary mapping objective names to their positions on the axes in the SCORE bands visualization. The first\nobjective is at position 0.0, and the last objective is at position 1.0.'
-									),
-								bands: zod
-									.record(
-										zod.string(),
-										zod.record(zod.string(), zod.tuple([zod.number(), zod.number()]))
-									)
-									.describe(
-										'Dictionary mapping cluster IDs to dictionaries of objective names and their corresponding band\nextremes (min, max).'
-									),
-								medians: zod
-									.record(zod.string(), zod.record(zod.string(), zod.number()))
-									.describe(
-										'Dictionary mapping cluster IDs to dictionaries of objective names and their corresponding median values.'
-									),
-								cardinalities: zod
-									.record(zod.string(), zod.number())
-									.describe(
-										'Dictionary mapping cluster IDs to the number of solutions in each cluster.'
-									)
-							})
-							.describe('Pydantic/JSON model for representing SCORE Bands.')
-					})
-					.describe('Response class for GDMSCOREBands, whether it is initialization or not.'),
-				zod
-					.object({
-						method: zod
-							.string()
-							.default(
-								getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemTwoMethodDefault
-							),
-						group_id: zod.number().describe('The group in question.'),
-						group_iter_id: zod.number().describe('ID of the latest group iteration.'),
-						result: zod
-							.object({
-								method: zod
-									.string()
-									.default(
-										getOrInitializeGdmScoreBandsGetOrInitializePostResponseHistoryItemTwoResultMethodDefault
-									),
-								user_votes: zod.record(zod.string(), zod.number()).describe('Dictionary of votes.'),
-								user_confirms: zod
-									.array(zod.number())
-									.describe('List of users who want to move on.'),
-								solution_variables: zod.record(
-									zod.string(),
-									zod.array(zod.union([zod.number(), zod.number(), zod.boolean()]))
-								),
-								solution_objectives: zod.record(zod.string(), zod.array(zod.number())),
-								winner_solution_variables: zod.record(
-									zod.string(),
-									zod.union([zod.number(), zod.number(), zod.boolean()])
-								),
-								winner_solution_objectives: zod.record(zod.string(), zod.number())
-							})
-							.describe(
-								'Class for containing the final 10 or less solutions, the final solution and the votes that led to it.'
-							)
-					})
-					.describe(
-						'Response class for gdm score bands that includes the last 10 or less solutions.'
-					)
-			])
-		)
-	})
-	.describe('Response class for all history. Allows for going to a previous iteration.');
-
-/**
- * Returns the current status of votes and confirmations in current iteration.
-
-Args:
-    request (GroupInfoRequest): The group we'd like the info on.
-    user (Annotated[User, Depends): The user that requests the data.
-    session (Annotated[Session, Depends): The database session.
-
-Raises:
-    HTTPException: If group doesn't exists etc errors.
-
-Returns:
-    JSONResponse: A response containing the votes and confirmations.
- * @summary Get Votes And Confirms
- */
-export const GetVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostBody = zod
-	.object({
-		group_id: zod.number()
-	})
-	.describe('Class for requesting group information.');
-
-export const GetVotesAndConfirmsGdmScoreBandsGetVotesAndConfirmsPostResponse = zod.unknown();
-
-/**
- * Revert to a previous iteration. Usable only by the analyst.
-
-This implies that we're gonna need to see ALL previous iterations I'd say.
-
-Args:
-    request (GDMSCOREBandsRevertRequest): The request containing group id and iteration number.
-    user (Annotated[User, Depends): The current user.
-    session (Annotated[Session, Depends): The database session.
-
-Returns:
-    JSONResponse: Acknowledgement of the revert.
- * @summary Revert
- */
-export const RevertGdmScoreBandsRevertPostBody = zod
-	.object({
-		group_id: zod.number().describe('Group ID.'),
-		iteration_number: zod
+		problem_id: zod.number(),
+		session_id: zod
+			.union([zod.number(), zod.null()])
+			.default(initializeMethodNautilusNavigatorInitializePostBodySessionIdDefault),
+		parent_state_id: zod
+			.union([zod.number(), zod.null()])
+			.default(initializeMethodNautilusNavigatorInitializePostBodyParentStateIdDefault),
+		total_steps: zod
 			.number()
-			.describe('The number of the iteration that we want to revert to.')
+			.default(initializeMethodNautilusNavigatorInitializePostBodyTotalStepsDefault)
+			.describe('Total steps for the whole navigation horizon.')
 	})
-	.describe('Request for reverting to a previous setup.');
+	.describe('Request to initialize the NAUTILUS Navigator.');
 
-export const RevertGdmScoreBandsRevertPostResponse = zod.unknown();
+export const initializeMethodNautilusNavigatorInitializePostResponseSessionIdDefault = null;
+export const initializeMethodNautilusNavigatorInitializePostResponseNavigationPointsDefault = null;
+export const initializeMethodNautilusNavigatorInitializePostResponseDistanceDefault = null;
+
+export const InitializeMethodNautilusNavigatorInitializePostResponse = zod
+	.object({
+		state_id: zod.union([zod.number(), zod.null()]).describe('StateDB id created for this action.'),
+		session_id: zod
+			.union([zod.number(), zod.null()])
+			.default(initializeMethodNautilusNavigatorInitializePostResponseSessionIdDefault),
+		total_steps: zod.number(),
+		segment_start_step: zod.number(),
+		segment_steps: zod.number(),
+		objective_symbols: zod.array(zod.string()),
+		lower_bounds: zod.record(zod.string(), zod.array(zod.number())),
+		upper_bounds: zod.record(zod.string(), zod.array(zod.number())),
+		navigation_points: zod
+			.union([zod.record(zod.string(), zod.array(zod.number())), zod.null()])
+			.default(initializeMethodNautilusNavigatorInitializePostResponseNavigationPointsDefault),
+		distance: zod
+			.union([zod.array(zod.number()), zod.null()])
+			.default(initializeMethodNautilusNavigatorInitializePostResponseDistanceDefault)
+	})
+	.describe('Response model for an initialized or recomputed NAUTILUS Navigator segment.');
 
 /**
- * Configure the SCORE Bands settings.
-
-Args:
-    config (SCOREBandsGDMConfig): The configuration object
-    group_id (int): group id
-    user (Annotated[User, Depends): The user doing the request
-    session (Annotated[Session, Depends): The database session.
-
-Returns:
-    JSONResponse: Acknowledgement that yeah ok reconfigured.
- * @summary Configure Gdm
+ * Recompute a NAUTILUS Navigator segment after a DM action.
+ * @summary Recompute
  */
-export const ConfigureGdmGdmScoreBandsConfigurePostQueryParams = zod.object({
-	group_id: zod.number()
-});
+export const recomputeMethodNautilusNavigatorRecomputePostBodySessionIdDefault = null;
+export const recomputeMethodNautilusNavigatorRecomputePostBodyParentStateIdDefault = null;
+export const recomputeMethodNautilusNavigatorRecomputePostBodyGoBackStepDefault = 0;
+export const recomputeMethodNautilusNavigatorRecomputePostBodyStepsDefault = 20;
+export const recomputeMethodNautilusNavigatorRecomputePostBodyBoundsDefault = null;
 
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmOneNameDefault = `GMM`;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmOneScoringMethodDefault = `silhouette`;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmTwoNameDefault = `DBSCAN`;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmThreeNameDefault = `KMeans`;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmThreeNClustersDefault = 5;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmFourNameDefault = `DimensionCluster`;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmFourNClustersDefault = 5;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmFourKindDefault = `EqualWidth`;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmFiveNameDefault = `Custom`;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmDefault =
-	{ name: 'DBSCAN' };
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigDistanceParameterDefault = 0.05;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigUseAbsoluteCorrelationsDefault = false;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigIncludeSolutionsDefault = false;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigIncludeMediansDefault = false;
-export const configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigIntervalSizeDefault = 0.95;
-export const configureGdmGdmScoreBandsConfigurePostBodyMinimumVotesDefault = 1;
-export const configureGdmGdmScoreBandsConfigurePostBodyMinimumVotesExclusiveMin = 0;
-
-export const ConfigureGdmGdmScoreBandsConfigurePostBody = zod
+export const RecomputeMethodNautilusNavigatorRecomputePostBody = zod
 	.object({
-		score_bands_config: zod
-			.object({
-				dimensions: zod
-					.union([zod.array(zod.string()), zod.null()])
-					.optional()
-					.describe(
-						'List of variable/objective names (i.e., column names in the data) to include in the visualization.\nIf None, all columns in the data are used. Defaults to None.'
-					),
-				descriptive_names: zod
-					.union([zod.record(zod.string(), zod.string()), zod.null()])
-					.optional()
-					.describe(
-						'Optional dictionary mapping dimensions to descriptive names for display in the visualization.\nIf None, the original dimension names are used. Defaults to None.'
-					),
-				units: zod
-					.union([zod.record(zod.string(), zod.string()), zod.null()])
-					.optional()
-					.describe(
-						'Optional dictionary mapping dimensions to their units for display in the visualization.\nIf None, no units are displayed. Defaults to None.'
-					),
-				axis_positions: zod
-					.union([zod.record(zod.string(), zod.number()), zod.null()])
-					.optional()
-					.describe(
-						'Dictionary mapping objective names to their positions on the axes in the SCORE bands visualization. The first\nobjective is at position 0.0, and the last objective is at position 1.0. Use this option if you want to\nmanually set the axis positions. If None, the axis positions are calculated automatically based on correlations.\nDefaults to None.'
-					),
-				clustering_algorithm: zod
-					.union([
-						zod
-							.object({
-								name: zod
-									.string()
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmOneNameDefault
-									)
-									.describe('Gaussian Mixture Model clustering algorithm.'),
-								scoring_method: zod
-									.enum(['BIC', 'silhouette'])
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmOneScoringMethodDefault
-									)
-									.describe(
-										'Scoring method to use for GMM. Either \"BIC\" or \"silhouette\". Defaults to \"silhouette\".\nThis option determines how the number of clusters is chosen.'
-									)
-							})
-							.describe('Options for Gaussian Mixture Model clustering algorithm.'),
-						zod
-							.object({
-								name: zod
-									.string()
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmTwoNameDefault
-									)
-									.describe('DBSCAN clustering algorithm.')
-							})
-							.describe('Options for DBSCAN clustering algorithm.'),
-						zod
-							.object({
-								name: zod
-									.string()
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmThreeNameDefault
-									)
-									.describe('KMeans clustering algorithm.'),
-								n_clusters: zod
-									.number()
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmThreeNClustersDefault
-									)
-									.describe('Number of clusters to use. Defaults to 5.')
-							})
-							.describe('Options for KMeans clustering algorithm.'),
-						zod
-							.object({
-								name: zod
-									.string()
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmFourNameDefault
-									)
-									.describe('Clustering by one of the dimensions.'),
-								dimension_name: zod.string().describe('Dimension to use for clustering.'),
-								n_clusters: zod
-									.number()
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmFourNClustersDefault
-									)
-									.describe('Number of clusters to use. Defaults to 5.'),
-								kind: zod
-									.enum(['EqualWidth', 'EqualFrequency'])
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmFourKindDefault
-									)
-									.describe(
-										'Kind of clustering to use. Either \"EqualWidth\", which divides the dimension range into equal width intervals,\nor \"EqualFrequency\", which divides the dimension values into intervals with equal number of solutions.\nDefaults to \"EqualWidth\".'
-									)
-							})
-							.describe('Options for clustering by one of the objectives/decision variables.'),
-						zod
-							.object({
-								name: zod
-									.string()
-									.default(
-										configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmFiveNameDefault
-									)
-									.describe('Custom user-provided clusters.'),
-								clusters: zod
-									.array(zod.number())
-									.describe(
-										'List of cluster IDs (one for each solution) indicating the cluster to which each solution belongs.'
-									)
-							})
-							.describe('Options for custom clustering provided by the user.')
-					])
-					.default(
-						configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigClusteringAlgorithmDefault
-					)
-					.describe(
-						'Clustering algorithm to use. Currently supported options: \"GMM\", \"DBSCAN\",\n    and \"KMeans\". Defaults to \"DBSCAN\".'
-					),
-				distance_formula: zod
-					.union([zod.literal(1), zod.literal(2)])
-					.optional()
-					.describe('Distance formulas supported by SCORE bands. See the paper for details.'),
-				distance_parameter: zod
-					.number()
-					.default(
-						configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigDistanceParameterDefault
-					)
-					.describe(
-						'Change the relative distances between the objective axes. Increase this value if objectives are placed too close\ntogether. Decrease this value if the objectives are equidistant in a problem with objective clusters. Defaults\nto 0.05.'
-					),
-				use_absolute_correlations: zod
-					.boolean()
-					.default(
-						configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigUseAbsoluteCorrelationsDefault
-					)
-					.describe(
-						'Whether to use absolute value of the correlation to calculate the placement of axes. Defaults to False.'
-					),
-				include_solutions: zod
-					.boolean()
-					.default(
-						configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigIncludeSolutionsDefault
-					)
-					.describe(
-						'Whether to include individual solutions. Defaults to False. If True, the size of the resulting figure may be\nvery large for datasets with many solutions. Moreover, the individual traces are hidden by default, but can be\nviewed interactively in the figure.'
-					),
-				include_medians: zod
-					.boolean()
-					.default(configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigIncludeMediansDefault)
-					.describe(
-						'Whether to include cluster medians. Defaults to False. If True, the median traces are hidden by default, but\ncan be viewed interactively in the figure.'
-					),
-				interval_size: zod
-					.number()
-					.default(configureGdmGdmScoreBandsConfigurePostBodyScoreBandsConfigIntervalSizeDefault)
-					.describe(
-						'The size (as a fraction) of the interval to use for the bands. Defaults to 0.95, meaning that 95% of the\nmiddle solutions in a cluster will be included in the band. The rest will be considered outliers.'
-					),
-				scales: zod
-					.union([zod.record(zod.string(), zod.tuple([zod.number(), zod.number()])), zod.null()])
-					.optional()
-					.describe(
-						'Optional dictionary specifying the min and max values for each objective. The keys should be the\nobjective names (i.e., column names in the data), and the values should be tuples of (min, max).\nIf not provided, the min and max will be calculated from the data.'
-					)
-			})
-			.optional()
-			.describe('Configuration options for SCORE bands visualization.'),
-		minimum_votes: zod
-			.number()
-			.gt(configureGdmGdmScoreBandsConfigurePostBodyMinimumVotesExclusiveMin)
-			.default(configureGdmGdmScoreBandsConfigurePostBodyMinimumVotesDefault),
-		from_iteration: zod.union([zod.number(), zod.null()])
+		problem_id: zod.number(),
+		session_id: zod
+			.union([zod.number(), zod.null()])
+			.default(recomputeMethodNautilusNavigatorRecomputePostBodySessionIdDefault),
+		parent_state_id: zod
+			.union([zod.number(), zod.null()])
+			.default(recomputeMethodNautilusNavigatorRecomputePostBodyParentStateIdDefault),
+		go_back_step: zod.number().describe('Step index to rewind to within the active path.'),
+		steps: zod.number().describe('How many steps to compute forward from go_back_step.'),
+		reference_point: zod
+			.record(zod.string(), zod.number())
+			.describe('Aspiration levels per objective symbol.'),
+		bounds: zod
+			.union([zod.record(zod.string(), zod.union([zod.number(), zod.null()])), zod.null()])
+			.default(recomputeMethodNautilusNavigatorRecomputePostBodyBoundsDefault)
+			.describe('Optional bounds per objective symbol.')
 	})
-	.describe('Configuration for the SCORE bands based GDM.');
+	.describe('Request to recompute a NAUTILUS Navigator segment.');
 
-export const ConfigureGdmGdmScoreBandsConfigurePostResponse = zod.unknown();
+export const recomputeMethodNautilusNavigatorRecomputePostResponseSessionIdDefault = null;
+export const recomputeMethodNautilusNavigatorRecomputePostResponseNavigationPointsDefault = null;
+export const recomputeMethodNautilusNavigatorRecomputePostResponseDistanceDefault = null;
+
+export const RecomputeMethodNautilusNavigatorRecomputePostResponse = zod
+	.object({
+		state_id: zod.union([zod.number(), zod.null()]).describe('StateDB id created for this action.'),
+		session_id: zod
+			.union([zod.number(), zod.null()])
+			.default(recomputeMethodNautilusNavigatorRecomputePostResponseSessionIdDefault),
+		total_steps: zod.number(),
+		segment_start_step: zod.number(),
+		segment_steps: zod.number(),
+		objective_symbols: zod.array(zod.string()),
+		lower_bounds: zod.record(zod.string(), zod.array(zod.number())),
+		upper_bounds: zod.record(zod.string(), zod.array(zod.number())),
+		navigation_points: zod
+			.union([zod.record(zod.string(), zod.array(zod.number())), zod.null()])
+			.default(recomputeMethodNautilusNavigatorRecomputePostResponseNavigationPointsDefault),
+		distance: zod
+			.union([zod.array(zod.number()), zod.null()])
+			.default(recomputeMethodNautilusNavigatorRecomputePostResponseDistanceDefault)
+	})
+	.describe('Response model for an initialized or recomputed NAUTILUS Navigator segment.');

@@ -5,6 +5,7 @@
  * A rest API for the DESDEO framework.
  * OpenAPI spec version: 0.1.0
  */
+import type { ReferencePoint } from './ReferencePoint';
 import type { SolutionInfo } from './SolutionInfo';
 
 /**
@@ -15,4 +16,5 @@ export interface NIMBUSFinalizeRequest {
 	session_id?: number | null;
 	parent_state_id?: number | null;
 	solution_info: SolutionInfo;
+	preferences: ReferencePoint;
 }

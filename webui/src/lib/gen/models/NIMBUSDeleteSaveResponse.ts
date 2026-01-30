@@ -10,6 +10,5 @@
  * Response of NIMBUS save deletion.
  */
 export interface NIMBUSDeleteSaveResponse {
-	response_type?: string;
 	message: string | null;
 }

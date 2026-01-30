@@ -5,8 +5,5 @@
  * A rest API for the DESDEO framework.
  * OpenAPI spec version: 0.1.0
  */
-import type { Tensor } from './Tensor';
 
-export type SolutionReferenceVariableValues = {
-	[key: string]: number | number | boolean | Tensor;
-} | null;
+export type SolutionReferenceVariableValues = { [key: string]: number | number | boolean } | null;

@@ -12,7 +12,10 @@ import type { SolutionReferenceVariableValuesAllItem } from './SolutionReference
 import type { StateDB } from './StateDB';
 
 /**
- * A full solution reference with objectives and variables.
+ * A model that functions as a reference to solutions existing in the database.
+
+Referenced solutions are not necessarily solutions that the user has saved explicitly. For
+referencing those, see `SavedSolutionReference`.
  */
 export interface SolutionReference {
 	/** Optional name to help identify the solution if, e.g., saved. */
@@ -21,10 +24,10 @@ export interface SolutionReference {
 	solution_index?: number | null;
 	/** The reference state with the solution information. */
 	state: StateDB;
-	readonly state_id: number;
-	readonly num_solutions: number;
 	readonly objective_values_all: readonly SolutionReferenceObjectiveValuesAllItem[];
 	readonly variable_values_all: readonly SolutionReferenceVariableValuesAllItem[];
 	readonly objective_values: SolutionReferenceObjectiveValues;
 	readonly variable_values: SolutionReferenceVariableValues;
+	readonly state_id: number;
+	readonly num_solutions: number;
 }

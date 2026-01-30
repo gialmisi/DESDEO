@@ -10,9 +10,7 @@
  * Used when we wish to reference a solution in some `StateDB` stored in the database.
  */
 export interface SolutionInfo {
-	/** State of the desired solution. */
 	state_id: number;
-	/** Index of the desired solution. */
 	solution_index: number;
 	/** Name to be given to the solution. Optional. */
 	name?: string | null;

@@ -13,7 +13,6 @@ import type { SolutionReferenceResponse } from './SolutionReferenceResponse';
  * The response from NIMBUS classification endpoint.
  */
 export interface NIMBUSIntermediateSolutionResponse {
-	response_type?: 'nimbus.intermediate';
 	/** The newly created state id */
 	state_id: number | null;
 	/** The first solution used when computing intermediate points. */

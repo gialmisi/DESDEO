@@ -79,6 +79,12 @@
 			preferencesType: ['reference point']
 		},
 		{
+			name: 'NAUTILUS Navigator',
+			path: '/interactive_methods/NAUTILUS-Navigator',
+			description: 'Trade-off-free navigation from nadir toward Pareto front, using reachable ranges.',
+			preferencesType: ['reference point']
+		},
+		{
 			name: 'Evolutionary method',
 			path: '/interactive_methods/EMO',
 			description: 'Interactive evolutionary method for MOO.',

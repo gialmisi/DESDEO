@@ -10,7 +10,6 @@
  * The response from NIMBUS save endpoint.
  */
 export interface NIMBUSSaveResponse {
-	response_type?: 'nimbus.save';
 	/** The id of the newest state */
 	state_id: number | null;
 }
