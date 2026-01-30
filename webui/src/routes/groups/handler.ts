@@ -4,7 +4,7 @@ import {
 	getGroupInfoGdmGetGroupInfoPost,
 	getProblemProblemGetPost
 } from '$lib/gen/endpoints/DESDEOFastAPI';
-import { appContext } from '$stores/appContext';
+import { appContext } from '../../stores/appContext';
 import { bootstrapUser } from '$lib/bootstrap';
 import { handleAuthFailure } from '$lib/handlers/auth';
 

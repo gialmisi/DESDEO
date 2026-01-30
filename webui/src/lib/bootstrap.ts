@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { appContext, type AppContextStore } from '$stores/appContext';
+import { appContext, type AppContextStore } from '../stores/appContext';
 import { getCurrentUserInfoUserInfoGet } from '$lib/gen/endpoints/DESDEOFastAPI';
 import { handleAuthFailure } from '$lib/handlers/auth';
 

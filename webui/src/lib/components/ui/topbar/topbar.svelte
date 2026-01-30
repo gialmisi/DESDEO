@@ -25,7 +25,7 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { goto } from '$app/navigation';
 	import { derived } from 'svelte/store';
-	import { appContext } from '$stores/appContext';
+	import { appContext } from '../../../../stores/appContext';
 	import { logoutLogoutPost } from '$lib/gen/endpoints/DESDEOFastAPI';
 	import desdeo_logo from '$lib/assets/desdeo_logo.svg';
 
