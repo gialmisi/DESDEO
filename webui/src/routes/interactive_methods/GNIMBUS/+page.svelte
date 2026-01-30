@@ -51,7 +51,7 @@
 	 */
 	// Layout and core components
 	import { BaseLayout } from '$lib/components/custom/method_layout/index.js';
-	import { auth } from '../../../stores/auth';
+	import { appContext } from '../../../stores/appContext';
 	import { onMount } from 'svelte';
 
 	// UI Components
@@ -100,7 +100,7 @@
 	import SolutionDisplay from './components/SolutionDisplay.svelte';
 	import EndStateView from './components/EndStateView.svelte';
 
-	let userId = $auth.user?.id;
+	let userId = $appContext.user?.id;
 	// State for NIMBUS iteration management
 	let current_state: Response = $state({} as Response);
 	let full_iterations: AllIterations = $state({} as AllIterations);

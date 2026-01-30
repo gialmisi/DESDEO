@@ -23,7 +23,7 @@
 	 * - Tabs, Table, Dialog: UI components.
 	 * - MathExpressionRenderer: Renders math expressions.
 	 * - OpenAPI-generated ProblemInfo type.
-	 * - methodSelection: Svelte store for the currently selected problem and method.
+	 * - appContext: Svelte store for the currently selected problem and method.
 	 */
 
 	import * as Tabs from '$lib/components/ui/tabs';
@@ -31,21 +31,10 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { buttonVariants } from '$lib/components/ui/button';
-	import type { components } from '$lib/api/client-types';
-	import { methodSelection } from '../../stores/methodSelection';
-	import { auth } from '../../stores/auth';
+	import type { GroupPublic, ProblemInfo } from '$lib/gen/models';
+	import { appContext } from '../../stores/appContext';
 	import { goto } from '$app/navigation';
 	import Play from '@lucide/svelte/icons/play';
-
-	type ProblemInfo = components['schemas']['ProblemInfo'];
-
-	type GroupInfo = {
-		id: number;
-		name: string;
-		owner_id: number;
-		user_ids: number[];
-		problem_id: number;
-	};
 
 	import type { PageProps } from './$types';
 	import MathExpressionRenderer from '$lib/components/ui/MathExpressionRenderer/MathExpressionRenderer.svelte';
@@ -53,14 +42,14 @@
 	let { data }: PageProps = $props();
 	let problemList = data.problemList;
 	let groupList = data.groupList;
-	let selectedGroup = $state<GroupInfo | undefined>(undefined);
+	let selectedGroup = $state<GroupPublic | undefined>(undefined);
 	let selectedProblem = $state<ProblemInfo | undefined>(undefined);
 
-	function findProblemForGroup(group: GroupInfo): ProblemInfo | undefined {
+	function findProblemForGroup(group: GroupPublic): ProblemInfo | undefined {
 		return problemList.find((p) => p.id === group.problem_id);
 	}
 
-	function getUserRole(group: GroupInfo, userId: number | undefined): string {
+	function getUserRole(group: GroupPublic, userId: number | undefined): string {
 		if (!userId) return '';
 
 		const isOwner = userId === group.owner_id;
@@ -113,7 +102,9 @@
 							>
 								<Table.Cell class="text-justify">{group.name}</Table.Cell>
 								<Table.Cell class="text-justify">{problem?.name ?? '—'}</Table.Cell>
-								<Table.Cell class="text-justify">{getUserRole(group, $auth?.user?.id)}</Table.Cell>
+							<Table.Cell class="text-justify">
+								{getUserRole(group, $appContext?.user?.id)}
+							</Table.Cell>
 								<Table.Cell class="text-justify">{group.user_ids.length} members</Table.Cell>
 								<Table.Cell>
 									<Tooltip.Provider>
@@ -129,7 +120,7 @@
 													selectedGroup = group;
 													selectedProblem = problem;
 													if (problem) {
-														methodSelection.setProblem(problem.id ?? null);
+											appContext.setProblem(problem.id ?? null);
 													}
 													await goto(`/methods/initialize?group=${group.id}`);
 												}}

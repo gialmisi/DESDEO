@@ -28,7 +28,7 @@
 	 * - Tabs, Table, Dialog: UI components.
 	 * - MathExpressionRenderer: Renders math expressions.
 	 * - OpenAPI-generated ProblemInfo type.
-	 * - methodSelection: Svelte store for the currently selected problem and method.
+	 * - appContext: Svelte store for the currently selected problem and method.
 	 *
 	 * @notes
 	 * - TODO: Add functionality to create, edit, and delete problems.
@@ -36,7 +36,7 @@
 	 * - isConvex, isLinear, isTwice differentiable are empty for all the problems available.
 	 * - Properties isSurrogateAvailable, constraint.simulated, and constraint.expensive (or equivalents) are missing in the problem type.
 	 * - There is no way to know if the problem was defined by the user or is a pre-defined problem.
-	 * - The "Solve" button updates the methodSelection store with the selected problem ID, but it is not updating the name selected method.
+	 * - The "Solve" button updates the appContext store with the selected problem ID, but it is not updating the name selected method.
 	 */
 
 	import DataTable from '$lib/components/custom/problems-data-table/data-table.svelte';
@@ -45,7 +45,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { buttonVariants } from '$lib/components/ui/button';
 	import type { components } from '$lib/api/client-types';
-	import { methodSelection } from '../../stores/methodSelection';
+	import { appContext } from '../../stores/appContext';
 
 	type ProblemInfo = components['schemas']['ProblemInfo'];
 
@@ -80,7 +80,7 @@
 					onClickSolve={(e: ProblemInfo) => {
 						selectedProblem = e;
 						console.log('Selected problem:', selectedProblem.id);
-						methodSelection.setProblem(selectedProblem?.id ?? null);
+						appContext.setProblem(selectedProblem?.id ?? null);
 					}}
 				/>
 			</div>

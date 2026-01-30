@@ -42,12 +42,12 @@
 	 * - Button: UI component for actions like finishing.
 	 * - ConfirmationDialog: For confirming actions.
 	 * - InputDialog: For renaming saved solutions.
-	 * - methodSelection: Svelte store for the currently selected problem.
+	 * - appContext: Svelte store for the currently selected problem.
 	 * - LoadingSpinner: For showing a loading state during long operations.
 	 * - Alert: For displaying dismissible error messages.
 	 *
 	 * @notes
-	 * - The selected problem is determined from the methodSelection store.
+	 * - The selected problem is determined from the appContext store.
 	 * - Maps are only displayed for problems with utopia metadata.
 	 * - Helper functions are imported from 'helper-functions.ts' for common operations.
 	 * - State is managed using Svelte's reactive $state and $derived declarations.
@@ -71,7 +71,7 @@
 	 */
 	// Layout and core components
 	import { BaseLayout } from '$lib/components/custom/method_layout/index.js';
-	import { methodSelection } from '../../../stores/methodSelection';
+	import { appContext } from '../../../stores/appContext';
 	import { errorMessage, isLoading } from '../../../stores/uiState';
 	import { onMount } from 'svelte';
 	import LoadingSpinner from '$lib/components/custom/notifications/loading-spinner.svelte';
@@ -550,9 +550,9 @@
 	}
 
 	onMount(async () => {
-		if ($methodSelection.selectedProblemId) {
+		if ($appContext.selectedProblemId) {
 			problem = problem_list.find(
-				(p: ProblemInfo) => String(p.id) === String($methodSelection.selectedProblemId)
+				(p: ProblemInfo) => String(p.id) === String($appContext.selectedProblemId)
 			);
 
 			if (problem) {

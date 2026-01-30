@@ -41,7 +41,7 @@
 	import { BaseLayout } from '$lib/components/custom/method_layout/index.js';
 	import AppSidebar from '$lib/components/custom/preferences-bar/preferences-sidebar.svelte';
 	import AdvancedSidebar from '$lib/components/custom/preferences-bar/advanced-sidebar.svelte';
-	import { methodSelection } from '../../../stores/methodSelection';
+	import { appContext } from '../../../stores/appContext';
 	import type { components } from '$lib/api/client-types';
 	import { onMount } from 'svelte';
 	import { Combobox } from '$lib/components/ui/combobox';
@@ -531,10 +531,10 @@
 	 * Loads the selected problem from the method selection store
 	 */
 	onMount(() => {
-		if ($methodSelection.selectedProblemId) {
+		if ($appContext.selectedProblemId) {
 			// Find the problem that matches the selected ID
 			problem = problem_list.find(
-				(p: ProblemInfo) => String(p.id) === String($methodSelection.selectedProblemId)
+					(p: ProblemInfo) => String(p.id) === String($appContext.selectedProblemId)
 			);
 
 			if (problem) {
@@ -544,7 +544,7 @@
 					objectives: problem.objectives.length
 				});
 			} else {
-				console.warn('Problem not found for ID:', $methodSelection.selectedProblemId);
+				console.warn('Problem not found for ID:', $appContext.selectedProblemId);
 			}
 		}
 	});

@@ -3,7 +3,7 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Toaster } from 'svelte-sonner';
 	import { toast } from 'svelte-sonner';
-	import { methodSelection } from '../../../stores/methodSelection';
+	import { appContext } from '../../../stores/appContext';
 	import { goto } from '$app/navigation';
 
 	let { data }: PageProps = $props(); // from load in page.ts
@@ -16,10 +16,10 @@
 
 	function startMethod() {
 		// set stores
-		methodSelection.set(localSelectedProblemId, localSelectedMethod);
+		appContext.set(localSelectedProblemId, localSelectedMethod);
 
 		toast.success(
-			`Starting method: ${$methodSelection.selectedMethod} with problem ID ${$methodSelection.selectedProblemId}
+			`Starting method: ${$appContext.selectedMethod} with problem ID ${$appContext.selectedProblemId}
             Not really, this is a TODO.
             Remember to drink water!`
 		);
