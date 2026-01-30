@@ -21,7 +21,6 @@
 	import Problem from '@lucide/svelte/icons/puzzle';
 	import Archive from '@lucide/svelte/icons/archive';
 	import HelpCircle from '@lucide/svelte/icons/circle-help';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { goto } from '$app/navigation';
 	import { derived } from 'svelte/store';
