@@ -9,8 +9,6 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, Securit
 from fastapi.responses import JSONResponse
 from fastapi.security import (
     APIKeyCookie,
-    HTTPAuthorizationCredentials,
-    HTTPBearer,
     OAuth2PasswordBearer,
     OAuth2PasswordRequestForm,
 )
@@ -119,7 +117,8 @@ def get_current_user(
     This function is a dependency for other functions that need to get the current user.
 
     Args:
-        token (Annotated[str, Depends(oauth2_scheme)]): The authentication token.
+        header_token (Annotated[str, Depends(oauth2_scheme)]): The authentication token as part of the request header.
+        cookie_token (Annotated[str, Depends(cookie_scheme)]): The authentication token as part of request cookie.
         session (Annotated[Session, Depends(get_db)]): A database session.
 
     Returns:
@@ -447,8 +446,31 @@ def refresh_access_token(
 
     # Generate a new access token for the user
     access_token = create_access_token({"id": user.id, "sub": user.username})
+    response = JSONResponse(content={"access_token": access_token})
 
-    return {"access_token": access_token}
+    if AuthConfig.cookie_domain == "":
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=AuthConfig.authjwt_access_token_expires * 60,
+            path="/",
+        )
+    else:
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=AuthConfig.authjwt_access_token_expires * 60,
+            path="/",
+            domain=AuthConfig.cookie_domain,
+        )
+
+    return response
 
 
 @router.post("/add_new_dm")
@@ -502,7 +524,7 @@ def add_new_analyst(
 
     """
     # Check if the user who tries to create the user is either an analyst or an admin.
-    if not (user.role == UserRole.analyst or user.role == UserRole.admin):
+    if user.role not in (UserRole.analyst, UserRole.admin):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Logged in user has insufficient rights.",

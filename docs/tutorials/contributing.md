@@ -49,7 +49,7 @@ we can visit [GitHub](https://github.com/) to setup a new account.
 Here, we assume to be operating in a __powershell__ environment. The first step
 is to install Python on the system, unless it is already installed. To check
 which version of Python are supported, check the section
-[Requirements](../index.md#installation-instructions). If utilizing the `.exe`
+[Requirements](../index.md#installation-instructions-core-logic). If utilizing the `.exe`
 installer for installing Python, we should ensure that the installer also sets the
 necessary `Path` environment variables. There should be a check-box for this
 during the installation. Python binaries for Windows platforms can be found [on
@@ -757,6 +757,17 @@ $ git commit --no-verify
 This should be used sparingly. Contributors should expect that automated checks
 are also executed in continuous integration, and any issues must be
 addressed before a pull request can be merged.
+
+#### Which hooks are available and where?
+
+The configuration of the hooks is set in the file `.pre-commit-config.yaml`,
+which lists all the installed hooks. This is the source
+of the most up-to-date information on the hooks.
+
+As of February 5th, the pre-commit hooks will check modified `.py` files
+using ruff. `.yaml`, and `.toml` (and their derivatives) are also checked
+for their syntax. We also run `nbstripout` on notebooks stripping them
+of their outputs.
 
 ### Typechecking
 

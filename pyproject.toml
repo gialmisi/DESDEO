@@ -1,6 +1,6 @@
 [project]
 name = "desdeo"
-version = "2.1.1"
+version = "2.2.0"
 description = "DESDEO is a modular and open source framework for interactive multiobjective optimization."
 authors = [
     { name = "Giovanni Misitano", email = "giovanni.a.misitano@jyu.fi" },
@@ -145,6 +145,8 @@ lint.select = [
 ]
 lint.ignore = [
     "COM812",  # Enforcing trailing commas is too annoying.
+    "FBT001",  # "boolean typed pos arg"
+    "FBT002",  # "boolean default pos"
     "PLR0911", # "too many return statements (>6)"
     "PLR0912", # "too many branches"
     "PLR0913", # "too many function args"
