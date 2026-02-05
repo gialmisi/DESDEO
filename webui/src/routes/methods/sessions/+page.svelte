@@ -10,7 +10,7 @@
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 
 	import { goto } from '$app/navigation';
-	import { methodSelection } from '../../../stores/methodSelection';
+	import { appContext } from '../../../stores/appContext';
 	import Check from '@lucide/svelte/icons/check';
 
 	import { create_session, delete_session, fetch_sessions } from './handler';
@@ -70,8 +70,8 @@
 				return;
 			}
 
-			if ($methodSelection.selectedSessionId === sessionId) {
-				methodSelection.clearSession();
+			if ($appContext.selectedSessionId === sessionId) {
+				appContext.clearSession();
 			}
 
 			sessions = sessions.filter((s) => s.id !== sessionId);
@@ -108,7 +108,7 @@
 				variant="outline"
 				size="sm"
 				onclick={() => {
-					methodSelection.clearSession();
+					appContext.clearSession();
 					goto('/methods/initialize');
 				}}
 			>
@@ -167,9 +167,9 @@
 											variant="ghost"
 											size="icon"
 											onclick={() => {
-												methodSelection.setSession(s.id, s.info ?? null);
-												goto('/methods/initialize');
-											}}
+							appContext.setSession(s.id, s.info ?? null);
+							goto('/methods/initialize');
+						}}
 											title="Select session"
 										>
 											<Check class="size-4" />

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { methodSelection } from '../../../stores/methodSelection';
-	import type { MethodSelectionState } from '../../../stores/methodSelection';
+	import { appContext } from '../../../stores/appContext';
+	import type { AppContextState } from '../../../stores/appContext';
 	import { type ENautilusRepresentativeSolutionsResponse} from '$lib/gen/models';
 	import { isLoading, errorMessage } from '../../../stores/uiState';
 
@@ -32,7 +32,12 @@
 	let representative = $state<ENautilusRepresentativeSolutionsResponse | null>(null);
 	let final_selected_index = $state<number>(0);
 
-	let selection = $state<MethodSelectionState>({ selectedProblemId: null, selectedMethod: null, selectedSessionId: null, selectedSessionInfo: null
+	let selection = $state<AppContextState>({
+		selectedProblemId: null,
+		selectedMethod: null,
+		selectedSessionId: null,
+		selectedSessionInfo: null,
+		user: null
 	});
 	let problem_info = $state<ProblemInfo | null>(null);
 	let previous_request = $state<ENautilusStepRequest | null>(null);
@@ -122,7 +127,7 @@
 	});
 
 	onMount(() => {
-		const unsubscribe = methodSelection.subscribe((v) => (selection = v));
+		const unsubscribe = appContext.subscribe((v) => (selection = v));
 
 		(async () => {
 			if (selection.selectedProblemId === null) {
@@ -342,12 +347,12 @@
 
 <h1 class="mt-10 text-center text-2xl font-semibold">E-NAUTILUS method</h1>
 <p class="mb-4 text-center text-sm text-gray-600">
-	Selected problem id: {$methodSelection.selectedProblemId}; method: {$methodSelection.selectedMethod};
+	Selected problem id: {$appContext.selectedProblemId}; method: {$appContext.selectedMethod};
 	session:
-	{#if $methodSelection.selectedSessionId != null}
-		{$methodSelection.selectedSessionId}
-		{#if $methodSelection.selectedSessionInfo}
-			({$methodSelection.selectedSessionInfo})
+	{#if $appContext.selectedSessionId != null}
+		{$appContext.selectedSessionId}
+		{#if $appContext.selectedSessionInfo}
+			({$appContext.selectedSessionInfo})
 		{/if}
 	{:else}
 		none

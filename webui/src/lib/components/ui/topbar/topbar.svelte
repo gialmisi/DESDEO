@@ -21,31 +21,27 @@
 	import Problem from '@lucide/svelte/icons/puzzle';
 	import Archive from '@lucide/svelte/icons/archive';
 	import HelpCircle from '@lucide/svelte/icons/circle-help';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { goto } from '$app/navigation';
-	import { auth } from '../../../../stores/auth';
 	import { derived } from 'svelte/store';
+	import { appContext } from '../../../../stores/appContext';
+	import { logoutLogoutPost } from '$lib/gen/endpoints/DESDEOFastAPI';
 	import desdeo_logo from '$lib/assets/desdeo_logo.svg';
 
 	async function logout() {
 		try {
-			await fetch(`${import.meta.env.VITE_API_URL}/logout`, {
-				method: 'POST',
-				credentials: 'include' // ensure cookies are sent
-			});
+			await logoutLogoutPost();
 		} catch (error) {
 			console.warn('Logout request failed', error);
 		}
 
-		auth.clearAuth();
-		localStorage.removeItem('authState');
+		appContext.clearAll();
 		goto('/home');
 	}
 
-	const userDisplay = derived(auth, ($auth) => {
-		if ($auth.user) {
-			return `${$auth.user.username} (${$auth.user.role})`;
+	const userDisplay = derived(appContext, ($appContext) => {
+		if ($appContext.user) {
+			return `${$appContext.user.username} (${$appContext.user.role})`;
 		}
 		return '';
 	});

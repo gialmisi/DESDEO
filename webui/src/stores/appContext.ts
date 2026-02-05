@@ -1,29 +1,49 @@
 import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
+import type { UserPublic } from '$lib/gen/models';
 
-export interface MethodSelectionState {
+export interface AppContextState {
 	selectedProblemId: number | null;
 	selectedMethod: string | null;
-
 	selectedSessionId: number | null;
 	selectedSessionInfo: string | null;
+	user: UserPublic | null;
 }
 
-const storageKey = 'methodSelection';
+const storageKey = 'appContext';
+const legacyStorageKey = 'methodSelection';
 
-const defaultState: MethodSelectionState = {
+const defaultState: AppContextState = {
 	selectedProblemId: null,
 	selectedMethod: null,
 	selectedSessionId: null,
-	selectedSessionInfo: null
+	selectedSessionInfo: null,
+	user: null
 };
 
-const initialState: MethodSelectionState =
-	browser && localStorage.getItem(storageKey)
-		? { ...defaultState, ...JSON.parse(localStorage.getItem(storageKey)!) }
-		: defaultState;
+const loadInitialState = (): AppContextState => {
+	if (!browser) {
+		return defaultState;
+	}
 
-const store = writable<MethodSelectionState>(initialState);
+	const stored = localStorage.getItem(storageKey);
+	if (stored) {
+		return { ...defaultState, ...JSON.parse(stored) };
+	}
+
+	const legacy = localStorage.getItem(legacyStorageKey);
+	if (legacy) {
+		const legacyState = JSON.parse(legacy);
+		const migrated = { ...defaultState, ...legacyState };
+		localStorage.setItem(storageKey, JSON.stringify(migrated));
+		localStorage.removeItem(legacyStorageKey);
+		return migrated;
+	}
+
+	return defaultState;
+};
+
+const store = writable<AppContextState>(loadInitialState());
 
 if (browser) {
 	store.subscribe((value) => {
@@ -35,7 +55,6 @@ function setProblem(problemId: number | null) {
 	store.update((s) => ({
 		...s,
 		selectedProblemId: problemId,
-		// problem drives downstream choices
 		selectedMethod: null,
 		selectedSessionId: null,
 		selectedSessionInfo: null
@@ -43,7 +62,10 @@ function setProblem(problemId: number | null) {
 }
 
 function setMethod(method: string | null) {
-	store.update((s) => ({ ...s, selectedMethod: method }));
+	store.update((s) => ({
+		...s,
+		selectedMethod: method
+	}));
 }
 
 function setSession(sessionId: number | null, sessionInfo: string | null = null) {
@@ -58,21 +80,30 @@ function clearSession() {
 	setSession(null, null);
 }
 
+function setUser(user: UserPublic | null) {
+	store.update((s) => ({ ...s, user }));
+}
+
+function clearUser() {
+	setUser(null);
+}
+
 function clearAll() {
 	store.set(defaultState);
 }
 
-export const methodSelection = {
+export const appContext = {
 	subscribe: store.subscribe,
 	setProblem,
 	setMethod,
 	setSession,
 	clearSession,
+	setUser,
+	clearUser,
 	clearAll,
 
 	// pre-orval API (keep temporarily to avoid breakage)
 	set: (problemId: number | null, method: string | null) => {
-		// Keep behaviour consistent: setting a problem should clear dependent state
 		store.set({
 			...defaultState,
 			selectedProblemId: problemId,
@@ -81,3 +112,5 @@ export const methodSelection = {
 	},
 	clear: clearAll
 };
+
+export type AppContextStore = typeof appContext;

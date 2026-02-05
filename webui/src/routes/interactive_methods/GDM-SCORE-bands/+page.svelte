@@ -69,8 +69,8 @@
 	import HistoryBrowser from './history-browser.svelte';
 	import ConfigPanel from './config-panel.svelte';
 	import { onMount, onDestroy } from 'svelte';
-	import type { components } from '$lib/api/client-types';
-	import { auth } from '../../../stores/auth';
+	import type { GroupPublic, ProblemInfo } from '$lib/gen/models';
+	import { appContext } from '../../../stores/appContext';
 	import { errorMessage } from '../../../stores/uiState';
 	import Alert from '$lib/components/custom/notifications/alert.svelte';
 	import { createObjectiveDimensions } from '$lib/helpers/visualization-data-transform';
@@ -84,18 +84,13 @@
 		generate_cluster_colors,
 		calculateScales
 	} from './helper-functions';
-	import { json } from 'd3';
 
 	const { data } = $props<{
-		data: {
-			refreshToken: string;
-			group: components['schemas']['GroupPublic'];
-			problem: components['schemas']['ProblemInfo'];
-		};
+		data: { refreshToken: string; group: GroupPublic; problem: ProblemInfo };
 	}>();
 
 	// User authentication
-	let userId = $auth.user?.id;
+	let userId = $appContext.user?.id;
 	let isOwner = $state(false);
 	let isDecisionMaker = $state(false);
 

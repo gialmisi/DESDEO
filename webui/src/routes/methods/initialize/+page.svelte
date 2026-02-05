@@ -8,7 +8,7 @@
 	 *
 	 * @description
 	 * This page displays a list of available optimization methods in DESDEO and allows the user to select a method for a specific problem.
-	 * If a problem is selected (via the problemId from the methodSelection store), the page highlights methods suitable for that problem.
+	 * If a problem is selected (via the problemId from the appContext store), the page highlights methods suitable for that problem.
 	 * Each method card shows its name, description, preference types, and problem types.
 	 * The "Use" button is enabled only if a problem is selected.
 	 *
@@ -26,19 +26,19 @@
 	 * - Card, Button: UI components.
 	 * - Play, Settings: Lucide icons.
 	 * - ProblemInfo: OpenAPI-generated type.
-	 * - methodSelection: Svelte store for the currently selected problem.
+	 * - appContext: Svelte store for the currently selected problem.
 	 *
 	 * @notes
-	 * - The page expects the selected problemId to be set in the methodSelection store.
+	 * - The page expects the selected problemId to be set in the appContext store.
 	 * - If the problemId does not match any problem, the user is prompted to select a problem.
 	 * - The method list can be extended by modifying the `methods` array.
-	 * - The page does not use the $page store; instead, it relies on the methodSelection store for the selected problem.
+	 * - The page does not use the $page store; instead, it relies on the appContext store for the selected problem.
 	 * - TODO: Update the methods list dynamically from the server in the future.
 	 * - TODO: Add variants for each method, similar to : https://github.com/giomara-larraga/DESDEO/blob/temp/webui/src/routes/(app)/method/%2Bpage.svelte
 	 * - TODO: Fetch the methods that are suitable for the selected problem from the server (based on the properties of the problem).
 	 * - TODO: Enable the settings button to configure method.
 	 */
-	import { methodSelection } from '../../../stores/methodSelection';
+	import { appContext } from '../../../stores/appContext';
 	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card/index.js';
@@ -132,7 +132,7 @@
 				groupId?: string // This exists only in GDM when user comes to this page through group selecting page.
 			} 
 		}>();
-	let problemList = data.problems ?? [];
+	let problemList = $derived.by(() => data.problems ?? []);
 
 	const preferenceTypes = [...new Set(baseMethods.flatMap((m) => m.preferencesType))];
 
@@ -172,9 +172,9 @@
 	};
 
 	onMount(() => {
-		problemId = $methodSelection.selectedProblemId;
-		selectedSessionId = $methodSelection.selectedSessionId;
-		selectedSessionInfo = $methodSelection.selectedSessionInfo;
+		problemId = $appContext.selectedProblemId;
+		selectedSessionId = $appContext.selectedSessionId;
+		selectedSessionInfo = $appContext.selectedSessionInfo;
 
 		if (problemId) {
 			problem = problemList.find((p: ProblemInfo) => String(p.id) === String(problemId));
@@ -287,7 +287,7 @@
 							size="sm"
 							disabled={!isMethodEnabled(method)}
 							href={`${method.path}`}
-							onclick={() => methodSelection.setMethod(method.name)}
+							onclick={() => appContext.setMethod(method.name)}
 							class={!isMethodEnabled(method) ? 'opacity-50' : 'hover:bg-secondary/90'}
 						>
 							<Play class="mr-2 size-4" />
@@ -333,7 +333,7 @@
 							variant="default"
 							disabled={!isMethodEnabled(method)}
 							href={`${method.path}`}
-							onclick={() => methodSelection.setMethod(method.name)}
+							onclick={() => appContext.setMethod(method.name)}
 							class="w-full justify-center {!isMethodEnabled(method) ? 'opacity-50' : 'hover:bg-primary/90'}"
 						>
 							<Play class="mr-2" size={18} />
