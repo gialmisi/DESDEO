@@ -773,6 +773,7 @@ def test_achievement_sf_diff():
 @pytest.mark.scalarization
 @pytest.mark.nimbus
 @pytest.mark.slow
+@pytest.mark.githubskip
 def test_nimbus_sf_nondiff_solve():
     """Check that the non-differentiable NIMBUS scalarization finds Pareto optimal solutions."""
     n_variables = 3
