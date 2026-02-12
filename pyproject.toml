@@ -41,6 +41,7 @@ dependencies = [
     "moocore >= 0.1.7",
     "websockets>=15.0.1",
     "coco-experiment>=2.8.2",
+    "typer>=0.15",
 ]
 
 [project.urls]
@@ -48,6 +49,9 @@ homepage = "https://github.com/industrial-optimization-group/DESDEO"
 repository = "https://github.com/industrial-optimization-group/DESDEO"
 documentation = "https://desdeo.readthedocs.io/en/latest/"
 "Bug tracker" = "https://github.com/industrial-optimization-group/DESDEO/issues"
+
+[project.scripts]
+desdeo-setup = "desdeo.cli:app"
 
 [dependency-groups]
 dev = [
@@ -204,6 +208,15 @@ max-complexity = 15
     "ARG",     # Unused function args -> fixtures nevertheless are functionally relevant...
     "FBT",     # Don't care about booleans as positional arguments in tests, e.g. via @pytest.mark.parametrize()
     "PLR2004", # Magic value used in comparison, ...
+]
+# CLI code uses subprocess, lazy imports, shell=True (for nvm sourcing), etc.
+"desdeo/cli/**/*.py" = [
+    "S",       # security audit rules relaxed for CLI (subprocess, tarfile, urlretrieve)
+    "PLC0415", # lazy imports to avoid circular deps and heavy startup
+    "PLW1510", # subprocess.run without check= (we check returncode manually)
+    "PLR2004", # magic values (version numbers)
+    "T20",     # print statements (Rich console)
+    "D",       # relaxed docstring enforcement for CLI
 ]
 
 [tool.ruff.format]
