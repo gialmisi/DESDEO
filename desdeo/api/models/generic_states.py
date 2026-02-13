@@ -33,6 +33,7 @@ from .state import (
     NIMBUSInitializationState,
     NIMBUSSaveState,
     RPMState,
+    ScenarioRPMState,
 )
 from .user import User
 
@@ -64,6 +65,7 @@ class StateKind(str, Enum):
     GENERIC_INTERMEDIATE = "generic.solve_intermediate"
     ENAUTILUS_STEP = "e-nautilus.stepping"
     ENAUTILUS_FINAL = "e-nautilus.final"
+    SCENARIO_RPM_SOLVE = "scenario_rpm.solve_candidates"
 
 
 class State(SQLModel, table=True):
@@ -194,6 +196,7 @@ KIND_TO_TABLE: dict[StateKind, SQLModel] = {
     StateKind.GENERIC_INTERMEDIATE: IntermediateSolutionState,
     StateKind.ENAUTILUS_STEP: ENautilusState,
     StateKind.ENAUTILUS_FINAL: ENautilusFinalState,
+    StateKind.SCENARIO_RPM_SOLVE: ScenarioRPMState,
 }
 
 SUBSTATE_TO_KIND: dict[SQLModel, StateKind] = {
@@ -212,6 +215,7 @@ SUBSTATE_TO_KIND: dict[SQLModel, StateKind] = {
     IntermediateSolutionState: StateKind.GENERIC_INTERMEDIATE,
     ENautilusState: StateKind.ENAUTILUS_STEP,
     ENautilusFinalState: StateKind.ENAUTILUS_FINAL,
+    ScenarioRPMState: StateKind.SCENARIO_RPM_SOLVE,
 }
 
 

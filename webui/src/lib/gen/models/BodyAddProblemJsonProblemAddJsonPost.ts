@@ -5,7 +5,19 @@
  * A rest API for the DESDEO framework.
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateSessionRequest } from './CreateSessionRequest';
+import type { ENautilusStepRequest } from './ENautilusStepRequest';
+import type { RepresentativeSolutionSetRequest } from './RepresentativeSolutionSetRequest';
+import type { RPMSolveRequest } from './RPMSolveRequest';
+import type { ScenarioRPMSolveRequest } from './ScenarioRPMSolveRequest';
 
 export interface BodyAddProblemJsonProblemAddJsonPost {
 	json_file: Blob;
+	request?:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| ScenarioRPMSolveRequest
+		| null;
 }

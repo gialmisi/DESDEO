@@ -66,6 +66,11 @@ __all__ = [  # noqa: RUF022
     "RepresentativeNonDominatedSolutions",
     "RPMSolveRequest",
     "RPMState",
+    "ScenarioComparisonRequest",
+    "ScenarioComparisonResponse",
+    "ScenarioRPMSolveRequest",
+    "ScenarioRPMState",
+    "ClusterComparison",
     "SavedSolutionReference",
     "ScalarizationFunctionDB",
     "SimulatorDB",
@@ -252,6 +257,12 @@ from .problem import (
     VariableDB,
 )
 from .reference_point_method import RPMSolveRequest
+from .scenario_rpm import (
+    ClusterComparison,
+    ScenarioComparisonRequest,
+    ScenarioComparisonResponse,
+    ScenarioRPMSolveRequest,
+)
 from .session import (
     CreateSessionRequest,
     GetSessionRequest,
@@ -273,6 +284,7 @@ from .state import (
     NIMBUSInitializationState,
     NIMBUSSaveState,
     RPMState,
+    ScenarioRPMState,
 )
 from .user import User, UserBase, UserPublic, UserRole
 from .utopia import UtopiaRequest, UtopiaResponse

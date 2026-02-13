@@ -57,10 +57,12 @@ import type {
 	RPMSolveRequest,
 	RPMState,
 	RepresentativeNonDominatedSolutions,
-	RepresentativeSolutionSetFull,
-	RepresentativeSolutionSetInfo,
 	RepresentativeSolutionSetRequest,
 	SCOREBandsGDMConfig,
+	ScenarioComparisonRequest,
+	ScenarioComparisonResponse,
+	ScenarioRPMSolveRequest,
+	ScenarioRPMState,
 	ScoreBandsRequest,
 	ScoreBandsResponse,
 	SolverSelectionMetadata,
@@ -566,21 +568,43 @@ export type addProblemProblemAddPostResponse200 = {
 	status: 200;
 };
 
+export type addProblemProblemAddPostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
 export type addProblemProblemAddPostResponseSuccess = addProblemProblemAddPostResponse200 & {
 	headers: Headers;
 };
-export type addProblemProblemAddPostResponse = addProblemProblemAddPostResponseSuccess;
+export type addProblemProblemAddPostResponseError = addProblemProblemAddPostResponse422 & {
+	headers: Headers;
+};
+
+export type addProblemProblemAddPostResponse =
+	| addProblemProblemAddPostResponseSuccess
+	| addProblemProblemAddPostResponseError;
 
 export const getAddProblemProblemAddPostUrl = () => {
 	return `http://localhost:8000/problem/add`;
 };
 
 export const addProblemProblemAddPost = async (
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| ScenarioRPMSolveRequest
+		| null,
 	options?: RequestInit
 ): Promise<addProblemProblemAddPostResponse> => {
 	return customFetch<addProblemProblemAddPostResponse>(getAddProblemProblemAddPostUrl(), {
 		...options,
-		method: 'POST'
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...options?.headers },
+		body: JSON.stringify(
+			rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull
+		)
 	});
 };
 
@@ -632,6 +656,12 @@ export const addProblemJsonProblemAddJsonPost = async (
 ): Promise<addProblemJsonProblemAddJsonPostResponse> => {
 	const formData = new FormData();
 	formData.append(`json_file`, bodyAddProblemJsonProblemAddJsonPost.json_file);
+	if (
+		bodyAddProblemJsonProblemAddJsonPost.request !== undefined &&
+		bodyAddProblemJsonProblemAddJsonPost.request !== null
+	) {
+		formData.append(`request`, bodyAddProblemJsonProblemAddJsonPost.request);
+	}
 
 	return customFetch<addProblemJsonProblemAddJsonPostResponse>(
 		getAddProblemJsonProblemAddJsonPostUrl(),
@@ -806,7 +836,7 @@ Returns:
  * @summary Add Representative Solution Set
  */
 export type addRepresentativeSolutionSetProblemAddRepresentativeSolutionSetPostResponse200 = {
-	data: RepresentativeSolutionSetInfo;
+	data: unknown;
 	status: 200;
 };
 
@@ -855,7 +885,7 @@ Returns only name, description, ideal, and nadir for each set.
  */
 export type getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponse200 =
 	{
-		data: RepresentativeSolutionSetInfo[];
+		data: unknown;
 		status: 200;
 	};
 
@@ -887,6 +917,13 @@ export const getGetAllRepresentativeSolutionSetsProblemAllRepresentativeSolution
 export const getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGet =
 	async (
 		problemId: number,
+		rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull:
+			| RPMSolveRequest
+			| ENautilusStepRequest
+			| RepresentativeSolutionSetRequest
+			| CreateSessionRequest
+			| ScenarioRPMSolveRequest
+			| null,
 		options?: RequestInit
 	): Promise<getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponse> => {
 		return customFetch<getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponse>(
@@ -895,17 +932,21 @@ export const getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSet
 			),
 			{
 				...options,
-				method: 'GET'
+				method: 'GET',
+				headers: { 'Content-Type': 'application/json', ...options?.headers },
+				body: JSON.stringify(
+					rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull
+				)
 			}
 		);
 	};
 
 /**
- * Fetch full information of a single representative solution by its ID.
+ * Fetch full information of a single representative solution set by its ID.
  * @summary Get Representative Solution Set
  */
 export type getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetResponse200 = {
-	data: RepresentativeSolutionSetFull;
+	data: unknown;
 	status: 200;
 };
 
@@ -935,13 +976,24 @@ export const getGetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetI
 
 export const getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGet = async (
 	setId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| ScenarioRPMSolveRequest
+		| null,
 	options?: RequestInit
 ): Promise<getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetResponse> => {
 	return customFetch<getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetResponse>(
 		getGetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetUrl(setId),
 		{
 			...options,
-			method: 'GET'
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull
+			)
 		}
 	);
 };
@@ -983,13 +1035,24 @@ export const getDeleteRepresentativeSolutionSetProblemRepresentativeSolutionSetS
 
 export const deleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDelete = async (
 	setId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| ScenarioRPMSolveRequest
+		| null,
 	options?: RequestInit
 ): Promise<deleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteResponse> => {
 	return customFetch<deleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteResponse>(
 		getDeleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteUrl(setId),
 		{
 			...options,
-			method: 'DELETE'
+			method: 'DELETE',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull
+			)
 		}
 	);
 };
@@ -1027,13 +1090,24 @@ export const getDeleteProblemProblemProblemIdDeleteUrl = (problemId: number) => 
 
 export const deleteProblemProblemProblemIdDelete = async (
 	problemId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| ScenarioRPMSolveRequest
+		| null,
 	options?: RequestInit
 ): Promise<deleteProblemProblemProblemIdDeleteResponse> => {
 	return customFetch<deleteProblemProblemProblemIdDeleteResponse>(
 		getDeleteProblemProblemProblemIdDeleteUrl(problemId),
 		{
 			...options,
-			method: 'DELETE'
+			method: 'DELETE',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull
+			)
 		}
 	);
 };
@@ -1071,13 +1145,24 @@ export const getGetProblemJsonProblemProblemIdJsonGetUrl = (problemId: number) =
 
 export const getProblemJsonProblemProblemIdJsonGet = async (
 	problemId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| ScenarioRPMSolveRequest
+		| null,
 	options?: RequestInit
 ): Promise<getProblemJsonProblemProblemIdJsonGetResponse> => {
 	return customFetch<getProblemJsonProblemProblemIdJsonGetResponse>(
 		getGetProblemJsonProblemProblemIdJsonGetUrl(problemId),
 		{
 			...options,
-			method: 'GET'
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull
+			)
 		}
 	);
 };
@@ -1536,7 +1621,7 @@ export const getOrInitializeMethodNimbusGetOrInitializePost = async (
 
 Args:
     request (NIMBUSFinalizeRequest): The request containing the final solution, etc.
-    context (Annotated[User, get_session_context): The current context.
+    context (Annotated[SessionContext, SessionContextGuard): The current context.
 
 Raises:
     HTTPException
@@ -1746,7 +1831,7 @@ export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataP
 Args:
     request (UtopiaRequest): the set of decision variables and problem for which the utopia forest map is requested
         for.
-    context (Annotated[SessionContext, Depends(get_session_context)]): the current session context
+    context (Annotated[SessionContext, Depends(SessionContextGuard)]): the current session context
 
 Raises:
     HTTPException:
@@ -2594,7 +2679,7 @@ decision events capturing what the DM chose at each transition.
 
 Args:
     session_id: The interactive session ID.
-    db_session: The database session.
+    context: The context of the query.
 
 Returns:
     ENautilusSessionTreeResponse with nodes, edges, root_ids, and decision_events.
@@ -2629,10 +2714,161 @@ export const getGetSessionTreeMethodEnautilusSessionTreeSessionIdGetUrl = (sessi
 
 export const getSessionTreeMethodEnautilusSessionTreeSessionIdGet = async (
 	sessionId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| ScenarioRPMSolveRequest
+		| null,
 	options?: RequestInit
 ): Promise<getSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse> => {
 	return customFetch<getSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse>(
 		getGetSessionTreeMethodEnautilusSessionTreeSessionIdGetUrl(sessionId),
+		{
+			...options,
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestScenarioRPMSolveRequestNull
+			)
+		}
+	);
+};
+
+/**
+ * Solve one scenario of the problem using the reference point method.
+ * @summary Solve
+ */
+export type solveMethodScenarioRpmSolvePostResponse200 = {
+	data: ScenarioRPMState;
+	status: 200;
+};
+
+export type solveMethodScenarioRpmSolvePostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type solveMethodScenarioRpmSolvePostResponseSuccess =
+	solveMethodScenarioRpmSolvePostResponse200 & {
+		headers: Headers;
+	};
+export type solveMethodScenarioRpmSolvePostResponseError =
+	solveMethodScenarioRpmSolvePostResponse422 & {
+		headers: Headers;
+	};
+
+export type solveMethodScenarioRpmSolvePostResponse =
+	| solveMethodScenarioRpmSolvePostResponseSuccess
+	| solveMethodScenarioRpmSolvePostResponseError;
+
+export const getSolveMethodScenarioRpmSolvePostUrl = () => {
+	return `http://localhost:8000/method/scenario-rpm/solve`;
+};
+
+export const solveMethodScenarioRpmSolvePost = async (
+	scenarioRPMSolveRequest: ScenarioRPMSolveRequest,
+	options?: RequestInit
+): Promise<solveMethodScenarioRpmSolvePostResponse> => {
+	return customFetch<solveMethodScenarioRpmSolvePostResponse>(
+		getSolveMethodScenarioRpmSolvePostUrl(),
+		{
+			...options,
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(scenarioRPMSolveRequest)
+		}
+	);
+};
+
+/**
+ * Compare supervisor's solution against all owners at the cluster level.
+
+For each owner, evaluates the supervisor's decision variables on the
+owner's scenario sub-problem to get the supervisor's cluster-level
+objective values, then compares with the owner's solved objectives.
+ * @summary Compare
+ */
+export type compareMethodScenarioRpmComparePostResponse200 = {
+	data: ScenarioComparisonResponse;
+	status: 200;
+};
+
+export type compareMethodScenarioRpmComparePostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type compareMethodScenarioRpmComparePostResponseSuccess =
+	compareMethodScenarioRpmComparePostResponse200 & {
+		headers: Headers;
+	};
+export type compareMethodScenarioRpmComparePostResponseError =
+	compareMethodScenarioRpmComparePostResponse422 & {
+		headers: Headers;
+	};
+
+export type compareMethodScenarioRpmComparePostResponse =
+	| compareMethodScenarioRpmComparePostResponseSuccess
+	| compareMethodScenarioRpmComparePostResponseError;
+
+export const getCompareMethodScenarioRpmComparePostUrl = () => {
+	return `http://localhost:8000/method/scenario-rpm/compare`;
+};
+
+export const compareMethodScenarioRpmComparePost = async (
+	scenarioComparisonRequest: ScenarioComparisonRequest,
+	options?: RequestInit
+): Promise<compareMethodScenarioRpmComparePostResponse> => {
+	return customFetch<compareMethodScenarioRpmComparePostResponse>(
+		getCompareMethodScenarioRpmComparePostUrl(),
+		{
+			...options,
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(scenarioComparisonRequest)
+		}
+	);
+};
+
+/**
+ * Retrieve a stored ScenarioRPMState.
+ * @summary Get State
+ */
+export type getStateMethodScenarioRpmGetStateStateIdGetResponse200 = {
+	data: ScenarioRPMState;
+	status: 200;
+};
+
+export type getStateMethodScenarioRpmGetStateStateIdGetResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type getStateMethodScenarioRpmGetStateStateIdGetResponseSuccess =
+	getStateMethodScenarioRpmGetStateStateIdGetResponse200 & {
+		headers: Headers;
+	};
+export type getStateMethodScenarioRpmGetStateStateIdGetResponseError =
+	getStateMethodScenarioRpmGetStateStateIdGetResponse422 & {
+		headers: Headers;
+	};
+
+export type getStateMethodScenarioRpmGetStateStateIdGetResponse =
+	| getStateMethodScenarioRpmGetStateStateIdGetResponseSuccess
+	| getStateMethodScenarioRpmGetStateStateIdGetResponseError;
+
+export const getGetStateMethodScenarioRpmGetStateStateIdGetUrl = (stateId: number) => {
+	return `http://localhost:8000/method/scenario-rpm/get-state/${stateId}`;
+};
+
+export const getStateMethodScenarioRpmGetStateStateIdGet = async (
+	stateId: number,
+	options?: RequestInit
+): Promise<getStateMethodScenarioRpmGetStateStateIdGetResponse> => {
+	return customFetch<getStateMethodScenarioRpmGetStateStateIdGetResponse>(
+		getGetStateMethodScenarioRpmGetStateStateIdGetUrl(stateId),
 		{
 			...options,
 			method: 'GET'

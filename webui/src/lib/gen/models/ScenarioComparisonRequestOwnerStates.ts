@@ -7,6 +7,6 @@
  */
 
 /**
- * The objective values of the referenced solution. None if not applicable.
+ * Mapping of owner scenario key to state ID, e.g. {'owner_1': 5, 'owner_2': 7}.
  */
-export type SolutionReferenceObjectiveValues = { [key: string]: number } | null;
+export type ScenarioComparisonRequestOwnerStates = { [key: string]: number };

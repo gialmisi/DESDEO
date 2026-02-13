@@ -9,6 +9,7 @@ __all__ = [  # noqa: RUF022
     "dtlz2",
     "forest_problem",
     "forest_problem_discrete",
+    "forest_scenario_problem",
     "mcwb_equilateral_tbeam_problem",
     "mcwb_hollow_rectangular_problem",
     "mcwb_ragsdell1976_problem",
@@ -52,6 +53,7 @@ from .cake_problem import best_cake_problem
 from .dmitry_forest_problem_discrete import dmitry_forest_problem_disc
 from .dtlz2_problem import dtlz2
 from .forest_problem import forest_problem, forest_problem_discrete
+from .forest_scenario_problem import forest_scenario_problem
 from .knapsack_problem import simple_knapsack, simple_knapsack_vectors
 from .mcwb_problem import (
     mcwb_equilateral_tbeam_problem,

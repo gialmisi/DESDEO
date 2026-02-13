@@ -5,12 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from desdeo.api.config import AuthConfig
 from desdeo.api.routers import (
-    emo,
     enautilus,
     generic,
     nimbus,
     problem,
     reference_point_method,
+    scenario_rpm,
     session,
     user_authentication,
     utopia,
@@ -37,6 +37,7 @@ app.include_router(gdm_base.router)
 app.include_router(gdm_aggregate.router)
 app.include_router(gnimbus_routers.router)
 app.include_router(enautilus.router)
+app.include_router(scenario_rpm.router)
 app.include_router(gdm_score_bands_routers.router)
 
 origins = AuthConfig.cors_origins

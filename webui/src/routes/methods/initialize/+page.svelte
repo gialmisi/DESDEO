@@ -104,6 +104,12 @@
 			preferencesType: ['preferred ranges'],
 			supportsGroups: true
 		},
+		{
+			name: 'Scenario RPM',
+			path: '/interactive_methods/ScenarioRPM',
+			description: 'Forest management with multiple stakeholders using reference point method.',
+			preferencesType: ['reference point']
+		},
 	];
 
 	// Add group parameter to paths when needed
@@ -173,6 +179,8 @@
 			return false;
 		} else if (method.name === 'E-NAUTILUS' && !hasRepresentativeSets) {
 			return false;
+		} else if (method.name === 'Scenario RPM' && !problem.scenario_keys?.length) {
+			return false;
 		} else {
 			return true;
 		}
@@ -182,6 +190,9 @@
 		if (!problem) return null;
 		if (method.name === 'E-NAUTILUS' && !hasRepresentativeSets) {
 			return 'Requires representative solution sets';
+		}
+		if (method.name === 'Scenario RPM' && !problem.scenario_keys?.length) {
+			return 'Requires a problem with scenario keys';
 		}
 		return null;
 	};
