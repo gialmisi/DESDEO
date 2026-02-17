@@ -59,6 +59,10 @@ from .termination import (
     TerminatorOptions,
     terminator_constructor,
 )
+from .xlemoo_selection import (
+    XLEMOOSelectorOptions,
+    xlemoo_instantiator_constructor,
+)
 
 __all__ = [  # noqa: RUF022
     "BinaryFlipMutationOptions",
@@ -109,4 +113,6 @@ __all__ = [  # noqa: RUF022
     "RepairOptions",
     "repair_constructor",
     "SeededHybridGeneratorOptions",
+    "XLEMOOSelectorOptions",
+    "xlemoo_instantiator_constructor",
 ]

@@ -1,8 +1,5 @@
 """Define popular MOEAs as Pydantic models."""
 
-from collections.abc import Callable
-from functools import partial
-
 from desdeo.emo.options.crossover import SimulatedBinaryCrossoverOptions, UniformMixedIntegerCrossoverOptions
 from desdeo.emo.options.generator import LHSGeneratorOptions, RandomMixedIntegerGeneratorOptions
 from desdeo.emo.options.mutation import BoundedPolynomialMutationOptions, MixedIntegerRandomMutationOptions
@@ -17,15 +14,13 @@ from desdeo.emo.options.selection import (
     RVEASelectorOptions,
 )
 from desdeo.emo.options.templates import (
-    ConstructorExtras,
     EMOOptions,
-    EMOResult,
     Template1Options,
     Template2Options,
-    emo_constructor,
+    Template3Options,
 )
 from desdeo.emo.options.termination import MaxGenerationsTerminatorOptions
-from desdeo.problem import Problem
+from desdeo.emo.options.xlemoo_selection import XLEMOOSelectorOptions
 
 
 def rvea_options() -> EMOOptions:
@@ -406,6 +401,143 @@ def ibea_mixed_integer_options() -> EMOOptions:
     )
 
 
+def xlemoo_rvea_options() -> EMOOptions:
+    """Get default XLEMOO options with RVEA as the Darwinian mode selector.
+
+    Uses RVEA for Darwinian mode, DecisionTreeClassifier for learning mode,
+    10 Darwinian iterations per cycle, 1 learning iteration per cycle,
+    and naive_sum as the fitness indicator.
+
+    References:
+        Misitano, G. (2024). Towards Explainable Multiobjective Optimization:
+        XLEMOO. ACM Trans. Evol. Learn. Optim., 4(1).
+        https://doi.org/10.1145/3626104
+
+    Returns:
+        EMOOptions: The default XLEMOO-RVEA options as a Pydantic model.
+    """
+    return EMOOptions(
+        preference=None,
+        template=Template3Options(
+            algorithm_name="XLEMOO_RVEA",
+            crossover=SimulatedBinaryCrossoverOptions(
+                name="SimulatedBinaryCrossover",
+                xover_distribution=30,
+                xover_probability=1.0,
+            ),
+            mutation=BoundedPolynomialMutationOptions(
+                name="BoundedPolynomialMutation",
+                distribution_index=20,
+                mutation_probability=None,
+            ),
+            selection=RVEASelectorOptions(
+                name="RVEASelector",
+                alpha=2,
+                parameter_adaptation_strategy=ParameterAdaptationStrategy.GENERATION_BASED,
+                reference_vector_options=ReferenceVectorOptions(
+                    adaptation_frequency=100,
+                    creation_type="simplex",
+                    vector_type="spherical",
+                    lattice_resolution=None,
+                    number_of_vectors=100,
+                    adaptation_distance=0.2,
+                ),
+            ),
+            learning_selection=XLEMOOSelectorOptions(
+                name="XLEMOOSelector",
+                ml_model_type="DecisionTree",
+                h_split=0.1,
+                l_split=0.1,
+                instantiation_factor=2.0,
+                generation_lookback=0,
+                ancestral_recall=0,
+                unique_only=False,
+                fitness_indicator="naive_sum",
+            ),
+            darwin_iterations_per_cycle=10,
+            learning_iterations_per_cycle=1,
+            generator=LHSGeneratorOptions(
+                name="LHSGenerator",
+                n_points=100,
+            ),
+            repair=NoRepairOptions(
+                name="NoRepair",
+            ),
+            termination=MaxGenerationsTerminatorOptions(
+                name="MaxGenerationsTerminator",
+                max_generations=100,
+            ),
+            use_archive=True,
+            verbosity=2,
+            seed=42,
+        ),
+    )
+
+
+def xlemoo_nsga2_options() -> EMOOptions:
+    """Get default XLEMOO options with NSGA-II as the Darwinian mode selector.
+
+    Uses NSGA-II for Darwinian mode, DecisionTreeClassifier for learning mode,
+    10 Darwinian iterations per cycle, 1 learning iteration per cycle,
+    and naive_sum as the fitness indicator.
+
+    References:
+        Misitano, G. (2024). Towards Explainable Multiobjective Optimization:
+        XLEMOO. ACM Trans. Evol. Learn. Optim., 4(1).
+        https://doi.org/10.1145/3626104
+
+    Returns:
+        EMOOptions: The default XLEMOO-NSGA2 options as a Pydantic model.
+    """
+    return EMOOptions(
+        preference=None,
+        template=Template3Options(
+            algorithm_name="XLEMOO_NSGA2",
+            crossover=SimulatedBinaryCrossoverOptions(
+                name="SimulatedBinaryCrossover",
+                xover_distribution=20,
+                xover_probability=0.9,
+            ),
+            mutation=BoundedPolynomialMutationOptions(
+                name="BoundedPolynomialMutation",
+                distribution_index=20,
+                mutation_probability=None,
+            ),
+            selection=NSGA2SelectorOptions(
+                name="NSGA2Selector",
+                population_size=100,
+            ),
+            learning_selection=XLEMOOSelectorOptions(
+                name="XLEMOOSelector",
+                ml_model_type="DecisionTree",
+                h_split=0.1,
+                l_split=0.1,
+                instantiation_factor=2.0,
+                generation_lookback=0,
+                ancestral_recall=0,
+                unique_only=False,
+                fitness_indicator="naive_sum",
+            ),
+            darwin_iterations_per_cycle=10,
+            learning_iterations_per_cycle=1,
+            generator=LHSGeneratorOptions(
+                name="LHSGenerator",
+                n_points=100,
+            ),
+            repair=NoRepairOptions(
+                name="NoRepair",
+            ),
+            termination=MaxGenerationsTerminatorOptions(
+                name="MaxGenerationsTerminator",
+                max_generations=100,
+            ),
+            use_archive=True,
+            verbosity=2,
+            seed=42,
+        ),
+    )
+
+
 if __name__ == "__main__":
     import json
     from pathlib import Path
@@ -431,5 +563,5 @@ if __name__ == "__main__":
             json.dump(algo().model_dump(), f, indent=4)
 
     # Also dump the schema
-    with Path.open(json_dump_path / f"emoOptionsSchema.json", "w") as f:
+    with Path.open(json_dump_path / "emoOptionsSchema.json", "w") as f:
         json.dump(EMOOptions.model_json_schema(), f, indent=4)

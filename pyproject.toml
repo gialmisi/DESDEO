@@ -41,6 +41,8 @@ dependencies = [
     "moocore >= 0.1.7",
     "websockets>=15.0.1",
     "coco-experiment>=2.8.2",
+    "scikit-learn>=1.5",
+    "imodels>=1.4",
 ]
 
 [project.urls]

@@ -694,7 +694,7 @@ wheels = [
 
 [[package]]
 name = "desdeo"
-version = "2.2.1"
+version = "2.2.2"
 source = { editable = "." }
 dependencies = [
     { name = "bayesian-optimization" },
@@ -702,6 +702,7 @@ dependencies = [
     { name = "cvxpy", extra = ["scip"] },
     { name = "greenlet" },
     { name = "gurobipy" },
+    { name = "imodels" },
     { name = "moocore" },
     { name = "nevergrad" },
     { name = "numba" },
@@ -715,6 +716,7 @@ dependencies = [
     { name = "pyomo" },
     { name = "pyparsing" },
     { name = "requests" },
+    { name = "scikit-learn" },
     { name = "scipy" },
     { name = "shap" },
     { name = "sympy" },
@@ -819,6 +821,7 @@ requires-dist = [
     { name = "cvxpy", extras = ["scip"], specifier = ">=1.6.4" },
     { name = "greenlet", specifier = ">=3.1.1" },
     { name = "gurobipy", specifier = ">=12.0.0" },
+    { name = "imodels", specifier = ">=1.4" },
     { name = "moocore", specifier = ">=0.1.7" },
     { name = "nevergrad", specifier = ">=1.0.12" },
     { name = "numba", specifier = ">=0.61.0" },
@@ -832,6 +835,7 @@ requires-dist = [
     { name = "pyomo", specifier = ">=6.8" },
     { name = "pyparsing", specifier = ">=3.0" },
     { name = "requests", specifier = ">=2.32.0" },
+    { name = "scikit-learn", specifier = ">=1.5" },
     { name = "scipy", specifier = ">=1.11.4" },
     { name = "shap", specifier = ">=0.47.0" },
     { name = "sympy", specifier = ">=1.0" },
@@ -1267,6 +1271,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/6f/6d/0703ccc57f3a7233505399edb88de3cbd678da106337b9fcde432b65ed60/idna-3.11.tar.gz", hash = "sha256:795dafcc9c04ed0c1fb032c2aa73654d8e8c5023a7df64a53f39190ada629902", size = 194582, upload-time = "2025-10-12T14:55:20.501Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl", hash = "sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea", size = 71008, upload-time = "2025-10-12T14:55:18.883Z" },
+]
+
+[[package]]
+name = "imodels"
+version = "2.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "mlxtend" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "requests" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d3/32/e5a0f5df56bd4a82bce1e2f2b8c46cbc07e9a904cc125b24dcc67a8c3c23/imodels-2.0.4.tar.gz", hash = "sha256:6aadab17ff176033022264a70c3571fa300bd2584590aec80bbf0254d91f58ab", size = 238986, upload-time = "2025-11-25T16:27:24.942Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/10/530b51352d3dcbce5f242e9d9c07a4ece5a983af5d4cceb8c6fad4e8e087/imodels-2.0.4-py3-none-any.whl", hash = "sha256:ec9038de1017ff6596038ac994ecec1625fdec3a6ba96b88304d1e94e4247767", size = 274517, upload-time = "2025-11-25T16:27:23.373Z" },
 ]
 
 [[package]]
@@ -2156,6 +2179,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/24/75/d30af27a2906f00eb90143470272376d728521997800f5dce5b340ba35bc/mkdocstrings_python-2.0.1.tar.gz", hash = "sha256:843a562221e6a471fefdd4b45cc6c22d2607ccbad632879234fa9692e9cf7732", size = 199345, upload-time = "2025-12-03T14:26:11.755Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/06/c5f8deba7d2cbdfa7967a716ae801aa9ca5f734b8f54fd473ef77a088dbe/mkdocstrings_python-2.0.1-py3-none-any.whl", hash = "sha256:66ecff45c5f8b71bf174e11d49afc845c2dfc7fc0ab17a86b6b337e0f24d8d90", size = 105055, upload-time = "2025-12-03T14:26:10.184Z" },
+]
+
+[[package]]
+name = "mlxtend"
+version = "0.24.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5d/70/e46748def930f1797c27b6670d36f5d1e044cd8961508960acb303cf730f/mlxtend-0.24.0.tar.gz", hash = "sha256:594f124539d84c3a86951715e16656abfc3005f5da7d3a56b53c77d28d5263f8", size = 1284845, upload-time = "2025-12-13T22:33:16.784Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a9/f9/f62b6c3bd08e1269d9bca9aabe0d990a7c3ffbfbcc495135ad0b59ce860b/mlxtend-0.24.0-py3-none-any.whl", hash = "sha256:2cd15e94360f0c693c8c042a98698d18b03557ab47a7549524c2b354dd8e17d1", size = 1353329, upload-time = "2025-12-13T22:33:15.279Z" },
 ]
 
 [[package]]

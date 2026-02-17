@@ -9,8 +9,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from desdeo.emo.hooks.archivers import NonDominatedArchive
-from desdeo.emo.methods.templates import EMOResult, template1, template2
+from desdeo.emo.hooks.archivers import Archive, NonDominatedArchive
+from desdeo.emo.methods.templates import EMOResult, template1, template2, template3
 from desdeo.emo.operators.evaluator import EMOEvaluator
 from desdeo.emo.options.crossover import (
     CrossoverOptions,
@@ -38,6 +38,7 @@ from .termination import (
     TerminatorOptions,
     terminator_constructor,
 )
+from .xlemoo_selection import XLEMOOSelectorOptions, xlemoo_instantiator_constructor
 
 
 class InvalidTemplateError(Exception):
@@ -96,7 +97,33 @@ class Template2Options(BaseTemplateOptions):
     mate_selection: ScalarSelectionOptions = Field(description="The mate selection operator options.")
 
 
-TemplateOptions = Template1Options | Template2Options
+class Template3Options(BaseTemplateOptions):
+    """Options for template 3 (XLEMOO).
+
+    Template 3 alternates between Darwinian mode (standard EA) and Learning mode
+    (ML-based rule extraction and instantiation). See
+    [template3][desdeo.emo.methods.templates.template3] for more details.
+    """
+
+    name: Literal["Template3"] = Field(default="Template3", frozen=True, description="The name of the template.")
+    """The name of the template."""
+    learning_selection: XLEMOOSelectorOptions
+    """Options for the learning mode selector."""
+    darwin_iterations_per_cycle: int = Field(
+        default=10,
+        gt=0,
+        description="Number of Darwinian iterations per cycle.",
+    )
+    """Number of Darwinian iterations per cycle."""
+    learning_iterations_per_cycle: int = Field(
+        default=1,
+        gt=0,
+        description="Number of learning iterations per cycle.",
+    )
+    """Number of learning iterations per cycle."""
+
+
+TemplateOptions = Template1Options | Template2Options | Template3Options
 
 
 class ReferencePointOptions(BaseModel):
@@ -250,7 +277,7 @@ def preference_handler(
             problem=problem,
             aspiration_levels=preference.aspiration_levels,
             reservation_levels=preference.reservation_levels,
-            desirability_levels={name: preference.desirability_levels for name in preference.aspiration_levels},
+            desirability_levels=dict.fromkeys(preference.aspiration_levels, preference.desirability_levels),
             desirability_func="MaoMao",
         )
         return df_problem, selection
@@ -268,6 +295,8 @@ class ConstructorExtras:
     """The publisher associated with the current solver."""
     archive: NonDominatedArchive | None
     """The archive associated with the current solver, if any."""
+    learning_archive: Archive | None = None
+    """The full history archive used by XLEMOO learning mode, if any."""
 
 
 def emo_constructor(
@@ -365,6 +394,28 @@ def emo_constructor(
         )
         components["mate_selection"] = scalar_selector
 
+    learning_archive = None
+    if template.name == "Template3":
+        # Create a full history archive for the learning mode
+        learning_archive = Archive(
+            problem=problem_,
+            publisher=publisher,
+        )
+        components["learning_archive"] = learning_archive
+
+        # Construct the XLEMOOInstantiator (ML training + candidate generation).
+        # Learning mode selection is handled by the Darwinian selector to
+        # preserve reference-vector diversity.
+        learning_instantiator = xlemoo_instantiator_constructor(
+            problem=problem_,
+            options=template.learning_selection,
+            archive=learning_archive,
+            publisher=publisher,
+            verbosity=template.verbosity,
+            seed=template.seed,
+        )
+        components["learning_instantiator"] = learning_instantiator
+
     [publisher.auto_subscribe(x) for x in components.values()]
     [publisher.register_topics(x.provided_topics[x.verbosity], x.__class__.__name__) for x in components.values()]
 
@@ -373,11 +424,21 @@ def emo_constructor(
     if not consistency[0]:
         raise InvalidTemplateError(f"Inconsistent template configuration. See details:\n {consistency[1]}")
     archive = components.pop("archive", None)
+    components.pop("learning_archive", None)
+
     template_funcs = {
         "Template1": template1,
         "Template2": template2,
+        "Template3": template3,
     }
 
-    constructor_extras = ConstructorExtras(problem=problem_, publisher=publisher, archive=archive)
+    extra_kwargs = {}
+    if template.name == "Template3":
+        extra_kwargs["darwin_iterations_per_cycle"] = template.darwin_iterations_per_cycle
+        extra_kwargs["learning_iterations_per_cycle"] = template.learning_iterations_per_cycle
 
-    return (partial(template_funcs[template.name], **components, repair=repair), constructor_extras)
+    constructor_extras = ConstructorExtras(
+        problem=problem_, publisher=publisher, archive=archive, learning_archive=learning_archive
+    )
+
+    return (partial(template_funcs[template.name], **components, repair=repair, **extra_kwargs), constructor_extras)
