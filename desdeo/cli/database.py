@@ -325,6 +325,7 @@ def db() -> None:
     default_url = _get_db_path_from_config()
     db_url = typer.prompt("  Database URL", default=default_url)
 
+    console.print("\n  [dim]Initializing database (this may take a moment)...[/dim]")
     engine = _handle_existing_db(db_url)
 
     # Users

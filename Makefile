@@ -19,7 +19,8 @@
 
 # Pytest conf (defined with `?=` can be overridden, e.g., `make test
 # PYTST_MARK="-m slow"`)
-PYTEST 		?= pytest -n auto
+RUN 		:= $(shell command -v uv >/dev/null 2>&1 && echo "uv run" || echo "")
+PYTEST 		?= $(RUN) pytest -n auto
 PYTEST_SKIP 	?= -m "not fixme"
 PYTEST_OPTS 	?= --disable-warnings
 
@@ -43,6 +44,14 @@ test-failures:
 
 fullstack:
 	./run_fullstack.sh
+
+test-cli-e2e:
+	docker build --platform linux/amd64 -f docker/Dockerfile.cli-test -t desdeo-cli-test .
+	docker run --rm --platform linux/amd64 desdeo-cli-test
+
+test-cli-e2e-fullstack:
+	docker build --platform linux/amd64 -f docker/Dockerfile.cli-test -t desdeo-cli-test .
+	docker run --rm --platform linux/amd64 -e RUN_FULLSTACK=1 desdeo-cli-test
 
 docs-fast:
 	mkdocs serve -f mkdocs.yml

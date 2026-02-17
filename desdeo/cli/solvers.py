@@ -151,6 +151,8 @@ def _make_executable(directory: Path) -> None:
 
 def _download_coin_or_solvers() -> None:
     """Download and install COIN-OR solvers from DESDEO GitHub releases."""
+    from desdeo.cli.config import config_exists, get_solver_dir
+
     platform_key = _get_platform_key()
     url = SOLVER_URLS.get(platform_key)
     if not url:
@@ -158,12 +160,17 @@ def _download_coin_or_solvers() -> None:
         console.print(f"    Please download manually from: {AMPL_URL}")
         return
 
-    solver_dir = Path(get_default_solver_dir()).expanduser()
-    console.print(f"\n  Install location: [bold]{solver_dir}[/bold]")
-    custom = typer.confirm("  Use this location?", default=True)
-    if not custom:
-        custom_path = typer.prompt("  Enter install directory")
-        solver_dir = Path(custom_path).expanduser()
+    # Use config if available; otherwise fall back to interactive prompt
+    if config_exists():
+        solver_dir = Path(get_solver_dir())
+        console.print(f"\n  Install location (from config): [bold]{solver_dir}[/bold]")
+    else:
+        solver_dir = Path(get_default_solver_dir()).expanduser()
+        console.print(f"\n  Install location: [bold]{solver_dir}[/bold]")
+        custom = typer.confirm("  Use this location?", default=True)
+        if not custom:
+            custom_path = typer.prompt("  Enter install directory")
+            solver_dir = Path(custom_path).expanduser()
 
     solver_dir.mkdir(parents=True, exist_ok=True)
 

@@ -1,0 +1,41 @@
+# Dockerfile for E2E testing of the desdeo-setup CLI.
+#
+# Simulates a fresh machine: Python 3.12 + uv only.
+# No Node.js, no solvers, no database — that's what we're testing.
+#
+# Usage:
+#   docker build --platform linux/amd64 -f docker/Dockerfile.cli-test -t desdeo-cli-test .
+#   docker run --rm desdeo-cli-test
+
+FROM python:3.12-slim
+
+# System dependencies: curl (downloads), git (uv/nvm), build-essential (C exts),
+# sqlite3 (DB inspection during debugging).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    git \
+    build-essential \
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv.
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+# Solver setup needs a detectable shell and an rc file to append PATH to.
+ENV SHELL=/bin/bash
+RUN touch /root/.bashrc
+
+WORKDIR /app
+COPY . .
+
+# Guarantee fresh state: strip any host artifacts that slipped in via COPY.
+RUN rm -rf webui/node_modules webui/.env desdeo/api/test.db
+
+# Install Python dependencies.
+RUN uv sync
+
+RUN chmod +x docker/e2e_cli_test.sh
+
+# No -t (tty) at runtime — keeps getpass/hide_input reading from the pipe.
+ENTRYPOINT ["/bin/bash", "docker/e2e_cli_test.sh"]

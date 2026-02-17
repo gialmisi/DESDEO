@@ -136,6 +136,15 @@ def check_nvm() -> CheckResult:
     nvm_dir = os.environ.get("NVM_DIR")
     if nvm_dir:
         return CheckResult(name="nvm", ok=True, version=nvm_dir, detail="optional")
+
+    # Check config-specified nvm directory
+    from desdeo.cli.config import config_exists, get_nvm_dir
+
+    if config_exists():
+        cfg_nvm = get_nvm_dir()
+        if Path(cfg_nvm).is_dir():
+            return CheckResult(name="nvm", ok=True, version=cfg_nvm, detail="optional (from config)")
+
     # Check common install location
     home = Path.home()
     if (home / ".nvm").is_dir():

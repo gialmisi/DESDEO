@@ -4,53 +4,117 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import typer
 
-from desdeo.cli.checks import check_node, check_npm, check_nvm
-from desdeo.cli.styles import console, fail, step_header, success, warn
+from desdeo.cli.checks import check_node, check_npm
+from desdeo.cli.styles import console, fail, info, step_header, success, warn
 
 webui_app = typer.Typer(help="Set up the DESDEO web UI.")
 
 WEBUI_DIR = Path(__file__).resolve().parent.parent.parent / "webui"
 
 
+def _get_nvm_dir() -> str:
+    """Return the nvm directory from config, env, or default."""
+    from desdeo.cli.config import config_exists, get_nvm_dir
+
+    if config_exists():
+        return get_nvm_dir()
+    return os.environ.get("NVM_DIR", str(Path("~/.nvm").expanduser()))
+
+
+def _install_node_via_nvm() -> bool:
+    """Install Node.js 24 via nvm, adding the binary to PATH for this process."""
+    nvm_dir = _get_nvm_dir()
+    nvm_script = Path(nvm_dir) / "nvm.sh"
+
+    # Install nvm if not present
+    if not nvm_script.exists():
+        console.print("  Installing nvm...")
+        install_env = os.environ.copy()
+        install_env["NVM_DIR"] = nvm_dir
+        result = subprocess.run(
+            "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash",
+            shell=True,
+            capture_output=True,
+            text=True,
+            executable="/bin/bash",
+            env=install_env,
+        )
+        if result.returncode != 0:
+            fail("nvm installation failed")
+            console.print(f"    {result.stderr.strip()}")
+            return False
+        # Update nvm_dir after installation
+        nvm_dir = _get_nvm_dir()
+        nvm_script = Path(nvm_dir) / "nvm.sh"
+        if not nvm_script.exists():
+            fail("nvm.sh not found after installation")
+            return False
+        success("nvm installed")
+
+    # Install Node 24 and capture the node binary path
+    console.print("  Installing Node.js 24 via nvm...")
+    result = subprocess.run(
+        f'source "{nvm_script}" && nvm install 24 && which node',
+        shell=True,
+        capture_output=True,
+        text=True,
+        executable="/bin/bash",
+    )
+    if result.returncode != 0:
+        fail("Node.js 24 installation failed")
+        console.print(f"    {result.stderr.strip()}")
+        return False
+
+    # Extract node binary directory and add to PATH for this process
+    lines = result.stdout.strip().splitlines()
+    node_path = lines[-1] if lines else ""
+    if node_path and os.path.isfile(node_path):
+        node_bin_dir = str(Path(node_path).parent)
+        os.environ["PATH"] = node_bin_dir + os.pathsep + os.environ.get("PATH", "")
+        os.environ["NVM_DIR"] = nvm_dir
+        success(f"Node.js installed ({node_bin_dir})")
+        return True
+
+    fail("Could not determine node binary path after installation")
+    return False
+
+
 def _check_node_version() -> bool:
-    """Check Node.js version and offer nvm switch if needed."""
+    """Check Node.js version and offer nvm install if needed."""
     node_check = check_node()
-    npm_check = check_npm()
-    nvm_check = check_nvm()
 
     if node_check.ok:
         success(f"Node.js: {node_check.version}")
     else:
         if node_check.version:
-            warn(f"Node.js: {node_check.version} (>= 24 recommended)")
+            warn(f"Node.js: {node_check.version} (>= 24 required)")
         else:
             fail("Node.js not found")
-            console.print("    Install Node.js >= 24 (https://nodejs.org/)")
+
+        if sys.platform == "win32":
+            console.print("    Install Node.js >= 24 from https://nodejs.org/")
             return False
 
-        if nvm_check.ok:
-            console.print("    nvm is available. Run: [bold]nvm install 24 && nvm use 24[/bold]")
-            use_nvm = typer.confirm("    Try to switch now?", default=True)
-            if use_nvm:
-                # Source nvm and switch — this only works in the subprocess
-                nvm_dir = os.environ.get("NVM_DIR", str(Path("~/.nvm").expanduser()))
-                result = subprocess.run(
-                    f'source "{nvm_dir}/nvm.sh" && nvm use 24 && node --version',
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    executable="/bin/bash",
-                )
-                if result.returncode == 0:
-                    success(f"Switched to Node {result.stdout.strip()}")
-                else:
-                    warn("Could not switch. Please run 'nvm use 24' manually before continuing.")
-                    return False
+        console.print("\n  Options:")
+        console.print("    1) Install Node.js 24 via nvm (recommended)")
+        console.print("    2) Skip (install manually)\n")
 
+        choice = typer.prompt("  Choice", default="1")
+
+        if choice == "1":
+            if not _install_node_via_nvm():
+                return False
+        else:
+            info("Skipping Node.js installation.")
+            console.print("    Install Node.js >= 24 and re-run this command.")
+            return False
+
+    npm_check = check_npm()
     if not npm_check.ok:
         fail("npm not found")
         return False
@@ -63,11 +127,11 @@ def _run_npm_install(webui_dir: Path) -> bool:
     console.print("\n  Running npm install...\n")
 
     # Use nvm if available
-    nvm_dir = os.environ.get("NVM_DIR", str(Path("~/.nvm").expanduser()))
+    nvm_dir = _get_nvm_dir()
     nvm_script = Path(nvm_dir) / "nvm.sh"
 
     if nvm_script.exists():
-        cmd = f'source "{nvm_script}" && nvm use 24 2>/dev/null; npm install'
+        cmd = f'source "{nvm_script}" && npm install'
         result = subprocess.run(
             cmd,
             shell=True,

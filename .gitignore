@@ -155,6 +155,9 @@ debug.py
 reference_solutions.json
 
 
+# DESDEO CLI local configuration and binaries
+.desdeo/
+
 # Scratch
 scratch/
 
