@@ -28,10 +28,7 @@ from desdeo.api.models.generic_states import State, StateKind
 from desdeo.mcdm import ENautilusResult, enautilus_get_representative_solutions, enautilus_step
 from desdeo.problem import Problem
 
-from .utils import (
-    SessionContext,
-    get_session_context,
-)
+from .utils import ContextField, SessionContext, SessionContextGuard
 
 router = APIRouter(prefix="/method/enautilus")
 
@@ -39,17 +36,14 @@ router = APIRouter(prefix="/method/enautilus")
 @router.post("/step")
 def step(
     request: ENautilusStepRequest,
-    context: Annotated[SessionContext, Depends(get_session_context)],
+    context: Annotated[SessionContext, Depends(SessionContextGuard(require=[ContextField.PROBLEM]))],
 ) -> ENautilusStepResponse:
     """Steps the E-NAUTILUS method."""
-    # user = context.user  # not used here
     db_session = context.db_session
-
     problem_db = context.problem_db
     problem = Problem.from_problemdb(problem_db)
 
     interactive_session = context.interactive_session
-
     parent_state = context.parent_state
 
     representative_solutions = db_session.exec(
@@ -247,7 +241,10 @@ def get_representative(
 @router.post("/finalize")
 def finalize_enautilus(
     request: ENautilusFinalizeRequest,
-    context: Annotated[SessionContext, Depends(get_session_context)],
+    context: Annotated[
+        SessionContext,
+        Depends(SessionContextGuard(require=[ContextField.PROBLEM, ContextField.PARENT_STATE])),
+    ],
 ) -> ENautilusFinalizeResponse:
     """Finalize E-NAUTILUS by selecting the final solution.
 
@@ -365,8 +362,7 @@ def finalize_enautilus(
 
 @router.get("/session_tree/{session_id}")
 def get_session_tree(
-    session_id: int,
-    db_session: Annotated[Session, Depends(get_session)],
+    session_id: int, context: Annotated[SessionContext, Depends(SessionContextGuard())]
 ) -> ENautilusSessionTreeResponse:
     """Extract the full E-NAUTILUS decision tree for a session.
 
@@ -375,11 +371,13 @@ def get_session_tree(
 
     Args:
         session_id: The interactive session ID.
-        db_session: The database session.
+        context: The context of the query.
 
     Returns:
         ENautilusSessionTreeResponse with nodes, edges, root_ids, and decision_events.
     """
+    db_session = context.db_session
+
     # Query step states
     step_stmt = (
         select(StateDB)
