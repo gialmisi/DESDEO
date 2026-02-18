@@ -5,6 +5,7 @@ from desdeo.emo.options.generator import LHSGeneratorOptions, RandomMixedInteger
 from desdeo.emo.options.mutation import BoundedPolynomialMutationOptions, MixedIntegerRandomMutationOptions
 from desdeo.emo.options.repair import NoRepairOptions
 from desdeo.emo.options.scalar_selection import TournamentSelectionOptions
+from desdeo.emo.options.scalarization_selection import ScalarizationSelectorOptions, ScalarizationSpec
 from desdeo.emo.options.selection import (
     IBEASelectorOptions,
     NSGA2SelectorOptions,
@@ -18,6 +19,7 @@ from desdeo.emo.options.templates import (
     Template1Options,
     Template2Options,
     Template3Options,
+    emo_constructor,
 )
 from desdeo.emo.options.termination import MaxGenerationsTerminatorOptions
 from desdeo.emo.options.xlemoo_selection import XLEMOOSelectorOptions
@@ -401,12 +403,16 @@ def ibea_mixed_integer_options() -> EMOOptions:
     )
 
 
-def xlemoo_rvea_options() -> EMOOptions:
-    """Get default XLEMOO options with RVEA as the Darwinian mode selector.
+def xlemoo_options() -> EMOOptions:
+    """Get default XLEMOO options with ScalarizationSelector and weighted sums.
 
-    Uses RVEA for Darwinian mode, DecisionTreeClassifier for learning mode,
-    10 Darwinian iterations per cycle, 1 learning iteration per cycle,
-    and naive_sum as the fitness indicator.
+    Uses a ``ScalarizationSelector`` for Darwinian mode selection (ranking by
+    a scalarization column), DecisionTreeClassifier for learning mode,
+    10 Darwinian iterations per cycle, and 1 learning iteration per cycle.
+
+    The scalarization function (default: weighted sums with equal weights) is
+    added to the Problem by ``emo_constructor``, so both the selector and the
+    learning mode instantiator share the same fitness criterion.
 
     References:
         Misitano, G. (2024). Towards Explainable Multiobjective Optimization:
@@ -414,12 +420,12 @@ def xlemoo_rvea_options() -> EMOOptions:
         https://doi.org/10.1145/3626104
 
     Returns:
-        EMOOptions: The default XLEMOO-RVEA options as a Pydantic model.
+        EMOOptions: The default XLEMOO options as a Pydantic model.
     """
     return EMOOptions(
         preference=None,
         template=Template3Options(
-            algorithm_name="XLEMOO_RVEA",
+            algorithm_name="XLEMOO",
             crossover=SimulatedBinaryCrossoverOptions(
                 name="SimulatedBinaryCrossover",
                 xover_distribution=30,
@@ -430,84 +436,12 @@ def xlemoo_rvea_options() -> EMOOptions:
                 distribution_index=20,
                 mutation_probability=None,
             ),
-            selection=RVEASelectorOptions(
-                name="RVEASelector",
-                alpha=2,
-                parameter_adaptation_strategy=ParameterAdaptationStrategy.GENERATION_BASED,
-                reference_vector_options=ReferenceVectorOptions(
-                    adaptation_frequency=100,
-                    creation_type="simplex",
-                    vector_type="spherical",
-                    lattice_resolution=None,
-                    number_of_vectors=100,
-                    adaptation_distance=0.2,
-                ),
-            ),
-            learning_selection=XLEMOOSelectorOptions(
-                name="XLEMOOSelector",
-                ml_model_type="DecisionTree",
-                h_split=0.1,
-                l_split=0.1,
-                instantiation_factor=2.0,
-                generation_lookback=0,
-                ancestral_recall=0,
-                unique_only=False,
-                fitness_indicator="naive_sum",
-            ),
-            darwin_iterations_per_cycle=10,
-            learning_iterations_per_cycle=1,
-            generator=LHSGeneratorOptions(
-                name="LHSGenerator",
-                n_points=100,
-            ),
-            repair=NoRepairOptions(
-                name="NoRepair",
-            ),
-            termination=MaxGenerationsTerminatorOptions(
-                name="MaxGenerationsTerminator",
-                max_generations=100,
-            ),
-            use_archive=True,
-            verbosity=2,
-            seed=42,
-        ),
-    )
-
-
-def xlemoo_nsga2_options() -> EMOOptions:
-    """Get default XLEMOO options with NSGA-II as the Darwinian mode selector.
-
-    Uses NSGA-II for Darwinian mode, DecisionTreeClassifier for learning mode,
-    10 Darwinian iterations per cycle, 1 learning iteration per cycle,
-    and naive_sum as the fitness indicator.
-
-    References:
-        Misitano, G. (2024). Towards Explainable Multiobjective Optimization:
-        XLEMOO. ACM Trans. Evol. Learn. Optim., 4(1).
-        https://doi.org/10.1145/3626104
-
-    Returns:
-        EMOOptions: The default XLEMOO-NSGA2 options as a Pydantic model.
-    """
-    return EMOOptions(
-        preference=None,
-        template=Template3Options(
-            algorithm_name="XLEMOO_NSGA2",
-            crossover=SimulatedBinaryCrossoverOptions(
-                name="SimulatedBinaryCrossover",
-                xover_distribution=20,
-                xover_probability=0.9,
-            ),
-            mutation=BoundedPolynomialMutationOptions(
-                name="BoundedPolynomialMutation",
-                distribution_index=20,
-                mutation_probability=None,
-            ),
-            selection=NSGA2SelectorOptions(
-                name="NSGA2Selector",
+            selection=ScalarizationSelectorOptions(
+                name="ScalarizationSelector",
                 population_size=100,
             ),
-            learning_selection=XLEMOOSelectorOptions(
+            scalarization=ScalarizationSpec(type="weighted_sums"),
+            learning_instantiator=XLEMOOSelectorOptions(
                 name="XLEMOOSelector",
                 ml_model_type="DecisionTree",
                 h_split=0.1,
@@ -516,7 +450,6 @@ def xlemoo_nsga2_options() -> EMOOptions:
                 generation_lookback=0,
                 ancestral_recall=0,
                 unique_only=False,
-                fitness_indicator="naive_sum",
             ),
             darwin_iterations_per_cycle=10,
             learning_iterations_per_cycle=1,

@@ -42,7 +42,7 @@ dependencies = [
     "websockets>=15.0.1",
     "coco-experiment>=2.8.2",
     "scikit-learn>=1.5",
-    "imodels>=1.4",
+    "imodels>=2.0",
 ]
 
 [project.urls]

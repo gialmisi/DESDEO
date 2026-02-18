@@ -25,6 +25,7 @@ from .options.algorithms import (
     nsga3_options,
     rvea_mixed_integer_options,
     rvea_options,
+    xlemoo_options,
 )
 from .options.crossover import (
     BlendAlphaCrossoverOptions,
@@ -56,6 +57,7 @@ from .options.mutation import (
 )
 from .options.repair import ClipRepairOptions, NoRepairOptions
 from .options.scalar_selection import RouletteWheelSelectionOptions, TournamentSelectionOptions
+from .options.scalarization_selection import ScalarizationSelectorOptions, ScalarizationSpec
 from .options.selection import (
     IBEASelectorOptions,
     NSGA2SelectorOptions,
@@ -70,7 +72,9 @@ from .options.templates import (
     ReferencePointOptions,
     Template1Options,
     Template2Options,
+    Template3Options,
 )
+from .options.xlemoo_selection import XLEMOOSelectorOptions
 from .options.termination import (
     CompositeTerminatorOptions,
     ExternalCheckTerminatorOptions,
@@ -88,6 +92,7 @@ algorithms = SimpleNamespace(
     rvea_mixed_integer_options=rvea_mixed_integer_options,
     nsga3_mixed_integer_options=nsga3_mixed_integer_options,
     ibea_mixed_integer_options=ibea_mixed_integer_options,
+    xlemoo_options=xlemoo_options,
     emo_constructor=emo_constructor,
 )
 
@@ -104,6 +109,7 @@ selection = SimpleNamespace(
     NSGA3SelectorOptions=NSGA3SelectorOptions,
     NSGA2SelectorOptions=NSGA2SelectorOptions,
     RVEASelectorOptions=RVEASelectorOptions,
+    ScalarizationSelectorOptions=ScalarizationSelectorOptions,
 )
 
 other = SimpleNamespace(
@@ -138,6 +144,9 @@ generator = SimpleNamespace(
 templates = SimpleNamespace(
     Template1Options=Template1Options,
     Template2Options=Template2Options,
+    Template3Options=Template3Options,
+    XLEMOOSelectorOptions=XLEMOOSelectorOptions,
+    ScalarizationSpec=ScalarizationSpec,
 )
 
 repair = SimpleNamespace(NoRepairOptions=NoRepairOptions, ClipRepairOptions=ClipRepairOptions)

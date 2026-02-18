@@ -22,7 +22,7 @@ from desdeo.emo.options.generator import (
 )
 from desdeo.problem import Problem
 from desdeo.tools.patterns import Publisher
-from desdeo.tools.scalarization import add_desirability_funcs, add_iopis_funcs
+from desdeo.tools.scalarization import add_asf_nondiff, add_desirability_funcs, add_iopis_funcs, add_weighted_sums
 
 from .mutation import (
     MutationOptions,
@@ -38,6 +38,7 @@ from .termination import (
     TerminatorOptions,
     terminator_constructor,
 )
+from .scalarization_selection import ScalarizationSpec
 from .xlemoo_selection import XLEMOOSelectorOptions, xlemoo_instantiator_constructor
 
 
@@ -107,8 +108,12 @@ class Template3Options(BaseTemplateOptions):
 
     name: Literal["Template3"] = Field(default="Template3", frozen=True, description="The name of the template.")
     """The name of the template."""
-    learning_selection: XLEMOOSelectorOptions
-    """Options for the learning mode selector."""
+    scalarization: ScalarizationSpec = Field(default_factory=ScalarizationSpec)
+    """Specification for the scalarization function added to the Problem."""
+    mate_selection: ScalarSelectionOptions | None = Field(default=None, description="The mate selection operator options.")
+    """Optional mate selection operator (e.g., tournament selection for IBEA-style Darwinian mode)."""
+    learning_instantiator: XLEMOOSelectorOptions
+    """Options for the learning mode instantiator."""
     darwin_iterations_per_cycle: int = Field(
         default=10,
         gt=0,
@@ -297,6 +302,8 @@ class ConstructorExtras:
     """The archive associated with the current solver, if any."""
     learning_archive: Archive | None = None
     """The full history archive used by XLEMOO learning mode, if any."""
+    learning_instantiator: object | None = None
+    """The XLEMOOInstantiator, if any. Access ``last_classifier`` and ``last_rules`` for post-hoc analysis."""
 
 
 def emo_constructor(
@@ -325,6 +332,22 @@ def emo_constructor(
     problem_, selector_options = preference_handler(
         preference=emo_options.preference, problem=problem, selection=template.selection
     )
+
+    # For Template3, add scalarization to the problem BEFORE creating the
+    # evaluator (so it evaluates the scalarization) and BEFORE creating the
+    # selector (so BaseSelector.__init__ picks up target_symbols).
+    if template.name == "Template3":
+        scal = template.scalarization
+        if scal.type == "weighted_sums":
+            weights = scal.weights or [1.0] * len(problem_.objectives)
+            w_dict = {obj.symbol: w for obj, w in zip(problem_.objectives, weights, strict=True)}
+            problem_, _ = add_weighted_sums(problem_, scal.symbol, w_dict)
+        elif scal.type == "asf":
+            if scal.reference_point is None:
+                msg = "ScalarizationSpec with type='asf' requires a reference_point."
+                raise InvalidTemplateError(msg)
+            rp_dict = {obj.symbol: v for obj, v in zip(problem_.objectives, scal.reference_point, strict=True)}
+            problem_, _ = add_asf_nondiff(problem_, scal.symbol, rp_dict, delta=scal.delta, rho=scal.rho)
 
     evaluator = EMOEvaluator(problem=problem_, publisher=publisher, verbosity=template.verbosity)
 
@@ -395,7 +418,17 @@ def emo_constructor(
         components["mate_selection"] = scalar_selector
 
     learning_archive = None
+    xlemoo_instantiator = None
     if template.name == "Template3":
+        if template.mate_selection is not None:
+            scalar_selector = scalar_selector_constructor(
+                options=template.mate_selection,
+                publisher=publisher,
+                verbosity=template.verbosity,
+                seed=template.seed,
+            )
+            components["mate_selection"] = scalar_selector
+
         # Create a full history archive for the learning mode
         learning_archive = Archive(
             problem=problem_,
@@ -404,17 +437,15 @@ def emo_constructor(
         components["learning_archive"] = learning_archive
 
         # Construct the XLEMOOInstantiator (ML training + candidate generation).
-        # Learning mode selection is handled by the Darwinian selector to
-        # preserve reference-vector diversity.
-        learning_instantiator = xlemoo_instantiator_constructor(
+        xlemoo_instantiator = xlemoo_instantiator_constructor(
             problem=problem_,
-            options=template.learning_selection,
+            options=template.learning_instantiator,
             archive=learning_archive,
             publisher=publisher,
             verbosity=template.verbosity,
             seed=template.seed,
         )
-        components["learning_instantiator"] = learning_instantiator
+        components["learning_instantiator"] = xlemoo_instantiator
 
     [publisher.auto_subscribe(x) for x in components.values()]
     [publisher.register_topics(x.provided_topics[x.verbosity], x.__class__.__name__) for x in components.values()]
@@ -438,7 +469,11 @@ def emo_constructor(
         extra_kwargs["learning_iterations_per_cycle"] = template.learning_iterations_per_cycle
 
     constructor_extras = ConstructorExtras(
-        problem=problem_, publisher=publisher, archive=archive, learning_archive=learning_archive
+        problem=problem_,
+        publisher=publisher,
+        archive=archive,
+        learning_archive=learning_archive,
+        learning_instantiator=xlemoo_instantiator,
     )
 
     return (partial(template_funcs[template.name], **components, repair=repair, **extra_kwargs), constructor_extras)

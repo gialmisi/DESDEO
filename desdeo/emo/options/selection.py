@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from desdeo.emo.operators.scalarization_selection import ScalarizationSelector
 from desdeo.emo.operators.selection import (
     BaseSelector,
     IBEASelector,
@@ -86,7 +87,11 @@ class IBEASelectorOptions(BaseModel):
     """The binary indicator for IBEA."""
 
 
-SelectorOptions = RVEASelectorOptions | NSGA2SelectorOptions | NSGA3SelectorOptions | IBEASelectorOptions
+from desdeo.emo.options.scalarization_selection import ScalarizationSelectorOptions
+
+SelectorOptions = (
+    RVEASelectorOptions | NSGA2SelectorOptions | NSGA3SelectorOptions | IBEASelectorOptions | ScalarizationSelectorOptions
+)
 
 
 def selection_constructor(
@@ -112,6 +117,7 @@ def selection_constructor(
         "NSGA2Selector": NSGA2Selector,
         "NSGA3Selector": NSGA3Selector,
         "IBEASelector": IBEASelector,
+        "ScalarizationSelector": ScalarizationSelector,
     }
     options: dict = options.model_dump()
     name = options.pop("name")

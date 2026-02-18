@@ -2059,3 +2059,12 @@ def add_iopis_funcs(  # TODO (@light-weaver): Add docstrings here.
         delta=delta,
     )
     return _problem, symbols
+
+
+# Registry mapping scalarization type names to constructor functions.
+# Each function has the signature (problem, symbol, **kwargs) -> tuple[Problem, str],
+# though the specific kwargs vary per function.
+SCALARIZATION_REGISTRY: dict[str, object] = {
+    "weighted_sums": add_weighted_sums,
+    "asf": add_asf_nondiff,
+}

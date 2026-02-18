@@ -1,19 +1,16 @@
 """Operators for the XLEMOO learning mode.
 
-Implements the learning mode of the XLEMOO hybrid evolutionary-ML methodology
-as two separate operators:
+Implements the :class:`XLEMOOInstantiator`, which reads population history from
+an Archive, ranks solutions by a scalarization column (computed by the evaluator),
+trains an interpretable ML classifier to distinguish high-performing (H-group)
+from low-performing (L-group) solutions, extracts rules, and instantiates new
+candidate solutions.  Returns candidate decision variable vectors for evaluation
+by the shared EMOEvaluator.
 
-- :class:`XLEMOOInstantiator`: Reads population history from an Archive, trains
-  an interpretable ML classifier to distinguish high-performing (H-group) from
-  low-performing (L-group) solutions, extracts rules, and instantiates new
-  candidate solutions. Returns candidate decision variable vectors for evaluation.
-
-- :class:`XLEMOOSelector`: Receives evaluated candidates (from the shared
-  EMOEvaluator) and selects the best solutions by indicator-based ranking.
-
-These two operators are separated by an evaluation step in template3, ensuring
-that all real objective function evaluations go through the shared EMOEvaluator
-and are visible to the pub-sub system (terminator, archives, etc.).
+The scalarization function is added to the Problem (via ``add_weighted_sums`` or
+``add_asf_nondiff``) before the evaluator is created, so every solution gets the
+same fitness value.  Both the Darwinian selector (``ScalarizationSelector``) and
+this instantiator read the same column, ensuring consistent fitness pressure.
 
 Reference:
     Misitano, G. (2024). Towards Explainable Multiobjective Optimization:
@@ -23,7 +20,7 @@ Reference:
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from enum import StrEnum
 
 import numpy as np
@@ -31,8 +28,8 @@ import polars as pl
 from sklearn.tree import DecisionTreeClassifier
 
 from desdeo.emo.hooks.archivers import Archive
-from desdeo.emo.operators.selection import BaseSelector
 from desdeo.explanations.rule_interpreters import (
+    extract_boosted_rules,
     extract_skoped_rules,
     extract_slipper_rules,
     find_all_paths,
@@ -43,8 +40,6 @@ from desdeo.problem import Problem
 from desdeo.tools.message import (
     Message,
     MessageTopics,
-    PolarsDataFrameMessage,
-    SelectorMessageTopics,
     TerminatorMessageTopics,
 )
 from desdeo.tools.patterns import Publisher, Subscriber
@@ -85,7 +80,6 @@ class XLEMOOInstantiator(Subscriber):
         verbosity: int,
         publisher: Publisher,
         archive: Archive,
-        indicator: Callable[[np.ndarray], np.ndarray],
         ml_model_type: MLModelType = MLModelType.DECISION_TREE,
         ml_model_kwargs: dict | None = None,
         h_split: float = 0.1,
@@ -103,8 +97,6 @@ class XLEMOOInstantiator(Subscriber):
             verbosity: Verbosity level for pub-sub.
             publisher: The publisher for the pub-sub system.
             archive: The Archive containing population history.
-            indicator: A callable that takes a 2D array of target values (n_solutions, n_objectives)
-                and returns a 1D array of scalar fitness values (lower is better).
             ml_model_type: Which ML classifier to use.
             ml_model_kwargs: Additional kwargs passed to the ML model constructor.
             h_split: Fraction (if < 1) or count (if >= 1) of best solutions for H-group.
@@ -119,7 +111,6 @@ class XLEMOOInstantiator(Subscriber):
         super().__init__(publisher=publisher, verbosity=verbosity)
         self.problem = problem
         self.archive = archive
-        self.indicator = indicator
         self.ml_model_type = ml_model_type
         self.ml_model_kwargs = ml_model_kwargs or {}
         self.h_split = h_split
@@ -129,6 +120,11 @@ class XLEMOOInstantiator(Subscriber):
         self.ancestral_recall = ancestral_recall
         self.unique_only = unique_only
         self.rng = np.random.default_rng(seed)
+
+        # The most recently trained ML classifier (set by do())
+        self.last_classifier = None
+        # The most recently extracted rules (set by do())
+        self.last_rules = None
 
         # Derive feature/target symbols from the problem
         flat_vars = problem.get_flattened_variables()
@@ -227,7 +223,7 @@ class XLEMOOInstantiator(Subscriber):
 
         Steps:
         1. Read population history from archive, apply filters.
-        2. Compute scalar fitness via indicator.
+        2. Compute scalar fitness from scalarization column(s).
         3. Split into H-group (best) and L-group (worst).
         4. Train ML classifier (H=good, L=bad).
         5. Extract rules and instantiate new solutions.
@@ -249,8 +245,11 @@ class XLEMOOInstantiator(Subscriber):
         # 1. Get history data
         individuals, targets = self._get_history_data()
 
-        # 2. Compute scalar fitness
-        fitness_values = np.squeeze(self.indicator(targets))
+        # 2. Compute scalar fitness from scalarization column(s)
+        if targets.shape[1] == 1:
+            fitness_values = targets[:, 0]
+        else:
+            fitness_values = np.sum(targets, axis=1)
 
         # 3. Sort and split into H/L groups
         sorted_indices = np.argsort(fitness_values)
@@ -281,7 +280,9 @@ class XLEMOOInstantiator(Subscriber):
                 )
             )
 
-        classifier = ml_model.fit(x_train, y_train)
+        ml_model.fit(x_train, y_train)
+        classifier = ml_model
+        self.last_classifier = classifier
 
         # 5. Extract rules and instantiate
         # Use population_size (not archive size) to keep instantiation count stable,
@@ -290,6 +291,7 @@ class XLEMOOInstantiator(Subscriber):
 
         if self.ml_model_type == MLModelType.DECISION_TREE:
             paths = find_all_paths(classifier)
+            self.last_rules = paths
             instantiated = instantiate_tree_rules(
                 paths,
                 self._n_features,
@@ -303,13 +305,21 @@ class XLEMOOInstantiator(Subscriber):
                 instantiated = instantiated.reshape((-1, instantiated.shape[2]))
             else:
                 instantiated = np.zeros((0, self._n_features))
-        elif self.ml_model_type in (MLModelType.SLIPPER, MLModelType.BOOSTED_RULES):
+        elif self.ml_model_type == MLModelType.SLIPPER:
             ruleset, weights = extract_slipper_rules(classifier)
+            self.last_rules = (ruleset, weights)
+            instantiated = instantiate_ruleset_rules(
+                ruleset, weights, self._n_features, self._feature_limits, n_to_instantiate, self.rng
+            )
+        elif self.ml_model_type == MLModelType.BOOSTED_RULES:
+            ruleset, weights = extract_boosted_rules(classifier)
+            self.last_rules = (ruleset, weights)
             instantiated = instantiate_ruleset_rules(
                 ruleset, weights, self._n_features, self._feature_limits, n_to_instantiate, self.rng
             )
         elif self.ml_model_type == MLModelType.SKOPE_RULES:
             ruleset, weights = extract_skoped_rules(classifier)
+            self.last_rules = (ruleset, weights)
             instantiated = instantiate_ruleset_rules(
                 ruleset, weights, self._n_features, self._feature_limits, n_to_instantiate, self.rng
             )
@@ -346,119 +356,3 @@ class XLEMOOInstantiator(Subscriber):
         """
         if message.topic == TerminatorMessageTopics.GENERATION and isinstance(message.value, int):
             self._current_generation = message.value
-
-
-class XLEMOOSelector(BaseSelector):
-    """Selection operator for the XLEMOO learning mode.
-
-    Receives evaluated candidate solutions (from the shared EMOEvaluator after
-    instantiation by XLEMOOInstantiator), ranks them by a scalar fitness
-    indicator, and selects the best N solutions to form the next population.
-    """
-
-    @property
-    def provided_topics(self):
-        """The topics provided by the XLEMOOSelector."""
-        return {
-            0: [],
-            1: [SelectorMessageTopics.STATE],
-            2: [
-                SelectorMessageTopics.STATE,
-                SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS,
-            ],
-        }
-
-    @property
-    def interested_topics(self):
-        """The topics the XLEMOOSelector is interested in."""
-        return [TerminatorMessageTopics.GENERATION]
-
-    def __init__(
-        self,
-        problem: Problem,
-        verbosity: int,
-        publisher: Publisher,
-        indicator: Callable[[np.ndarray], np.ndarray],
-        seed: int = 0,
-    ):
-        """Initialize the XLEMOOSelector.
-
-        Args:
-            problem: The optimization problem.
-            verbosity: Verbosity level for pub-sub.
-            publisher: The publisher for the pub-sub system.
-            indicator: A callable that takes a 2D array of target values (n_solutions, n_objectives)
-                and returns a 1D array of scalar fitness values (lower is better).
-            seed: Random seed.
-        """
-        super().__init__(problem=problem, verbosity=verbosity, publisher=publisher, seed=seed)
-        self.indicator = indicator
-
-        # State for notifications
-        self.selected_individuals: pl.DataFrame | None = None
-        self.selected_targets: pl.DataFrame | None = None
-
-    def do(
-        self,
-        parents: tuple[pl.DataFrame, pl.DataFrame],
-        offsprings: tuple[pl.DataFrame, pl.DataFrame],
-    ) -> tuple[pl.DataFrame, pl.DataFrame]:
-        """Select the best solutions from parents and evaluated candidates combined.
-
-        Merges the current population (parents) with the ML-instantiated candidates
-        (offsprings), computes scalar fitness via the indicator, and selects the
-        best N solutions.  Combining both pools preserves the diversity maintained
-        by the Darwinian selector while allowing high-quality ML-generated
-        candidates to enter the population.
-
-        Args:
-            parents: Current population (variables_df, outputs_df).
-            offsprings: Evaluated candidates (variables_df, outputs_df) from the
-                EMOEvaluator after instantiation.
-
-        Returns:
-            Tuple of (selected_variables_df, selected_outputs_df).
-        """
-        population_size = len(parents[0])
-        parent_vars, parent_outputs = parents
-        candidates_vars, candidates_outputs = offsprings
-
-        # Combine parents and candidates into a single pool
-        all_vars = pl.concat([parent_vars, candidates_vars])
-        all_outputs = pl.concat([parent_outputs, candidates_outputs])
-
-        # Compute scalar fitness on the combined pool
-        all_targets = all_outputs[self.target_symbols].to_numpy()
-        all_fitness = np.squeeze(self.indicator(all_targets))
-        sorted_all = np.argsort(all_fitness)
-        selected_indices = sorted_all[:population_size]
-
-        variables_df = all_vars[selected_indices]
-        outputs_df = all_outputs[selected_indices]
-
-        self.selected_individuals = variables_df
-        self.selected_targets = outputs_df
-        self.notify()
-
-        return variables_df, outputs_df
-
-    def state(self) -> Sequence[Message]:
-        """Return the current state for pub-sub notifications."""
-        if self.verbosity == 0 or self.selected_targets is None:
-            return []
-        if self.verbosity >= 2 and self.selected_individuals is not None:
-            return [
-                PolarsDataFrameMessage(
-                    topic=SelectorMessageTopics.SELECTED_VERBOSE_OUTPUTS,
-                    value=pl.concat([self.selected_individuals, self.selected_targets], how="horizontal"),
-                    source=self.__class__.__name__,
-                ),
-            ]
-        return []
-
-    def update(self, message: Message) -> None:
-        """Update internal state from pub-sub messages.
-
-        Args:
-            message: A message from the publisher.
-        """

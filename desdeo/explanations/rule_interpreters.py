@@ -137,22 +137,72 @@ Rules = dict[tuple[str, str], str]
 
 
 def extract_slipper_rules(classifier) -> tuple[list[Rules], list[float]]:
-    """Extract rules and weights from a trained SlipperClassifier or BoostedRulesClassifier.
+    """Extract rules and weights from a trained SlipperClassifier.
+
+    Supports the current imodels API where rules are stored in
+    ``classifier.estimators_[i].rule`` as lists of dicts with
+    ``feature``, ``operator``, and ``pivot`` keys.
 
     Args:
-        classifier: A trained SlipperClassifier or BoostedRulesClassifier instance.
+        classifier: A trained SlipperClassifier instance.
 
     Returns:
         A tuple of (rules_list, weights) where each rule is a dict mapping
         (feature_name, comparison_op) to threshold value strings.
     """
-    weights = classifier.estimator_weights_
-    raw_rules = classifier.rules_
+    weights = list(classifier.estimator_weights_)
 
-    if weights == []:
-        weights = [1] * len(raw_rules)
+    if not weights:
+        weights = [1.0] * len(classifier.estimators_)
 
-    rules = [rule.agg_dict for rule in raw_rules]
+    rules: list[Rules] = []
+    for estimator in classifier.estimators_:
+        rule_dict: Rules = {}
+        for condition in estimator.rule:
+            feature_name = f"X{condition['feature']}"
+            op = condition["operator"]
+            pivot = str(condition["pivot"])
+            rule_dict[(feature_name, op)] = pivot
+        rules.append(rule_dict)
+
+    return rules, weights
+
+
+def extract_boosted_rules(classifier) -> tuple[list[Rules], list[float]]:
+    """Extract rules and weights from a trained BoostedRulesClassifier.
+
+    BoostedRulesClassifier uses ``DecisionTreeClassifier(max_depth=1)`` stumps
+    as its base estimators.  Each stump splits on a single feature, which we
+    convert to the same ``Rules`` dict format used by the other extractors.
+
+    Args:
+        classifier: A trained BoostedRulesClassifier instance.
+
+    Returns:
+        A tuple of (rules_list, weights) where each rule is a dict mapping
+        (feature_name, comparison_op) to threshold value strings.
+    """
+    weights = list(classifier.estimator_weights_)
+
+    if not weights:
+        weights = [1.0] * len(classifier.estimators_)
+
+    rules: list[Rules] = []
+    for estimator in classifier.estimators_:
+        tree = estimator.tree_
+        feature_idx = tree.feature[0]
+        threshold = tree.threshold[0]
+        feature_name = f"X{feature_idx}"
+
+        # A depth-1 stump has one split: left child (<=) and right child (>).
+        # Determine which child is the positive class.
+        left_class = np.argmax(tree.value[tree.children_left[0]])
+        if left_class == 1:
+            rule_dict: Rules = {(feature_name, "<="): str(threshold)}
+        else:
+            rule_dict = {(feature_name, ">"): str(threshold)}
+        rules.append(rule_dict)
+
     return rules, weights
 
 

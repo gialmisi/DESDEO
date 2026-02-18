@@ -3,6 +3,7 @@
 __all__ = [
     "ShapExplainer",
     "TreePath",
+    "extract_boosted_rules",
     "extract_skoped_rules",
     "extract_slipper_rules",
     "find_all_paths",
@@ -15,6 +16,7 @@ __all__ = [
 from .explainer import ShapExplainer
 from .rule_interpreters import (
     TreePath,
+    extract_boosted_rules,
     extract_skoped_rules,
     extract_slipper_rules,
     find_all_paths,
