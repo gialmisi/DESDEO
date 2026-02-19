@@ -18,12 +18,13 @@
 	import VisualizationsPanel from '$lib/components/custom/visualizations-panel/visualizations-panel.svelte';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import Honeycomb from '$lib/components/custom/honeycomb/honeycomb.svelte';
-	import { DISTANCE_GRADIENT_CSS } from '$lib/components/custom/honeycomb/honeycomb-utils';
+	import { DISTANCE_GRADIENT_CSS, CLUSTER_BORDER_COLORS } from '$lib/components/custom/honeycomb/honeycomb-utils';
 	import HorizontalBar from '$lib/components/visualizations/horizontal-bar/horizontal-bar.svelte';
 	import ParallelCoordinates from '$lib/components/visualizations/parallel-coordinates/parallel-coordinates.svelte';
 	import Combobox from '$lib/components/ui/combobox/combobox.svelte';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
+	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 
 	import {
 		type ColumnDef,
@@ -54,6 +55,12 @@
 	// --- Types ---
 	type ScenarioKey = 'owner_1' | 'owner_2' | 'owner_3' | 'supervisor';
 	type SupervisorView = 'solve' | 'compare';
+	type OwnerKey = 'owner_1' | 'owner_2' | 'owner_3';
+
+	interface Suggestion {
+		aspirationLevels: Record<string, number>;
+		note: string;
+	}
 
 	interface PartyState {
 		solverResults: SolverResults[] | null;
@@ -95,6 +102,21 @@
 	// Comparison
 	let comparisonData = $state<ScenarioComparisonResponse | null>(null);
 	let selectedClusterKeys = $state<string[]>([]);
+
+	// Suggestion state
+	let suggestions = $state<Record<OwnerKey, Suggestion | null>>({
+		owner_1: null,
+		owner_2: null,
+		owner_3: null
+	});
+	let suggestionDismissed = $state<Record<OwnerKey, boolean>>({
+		owner_1: false,
+		owner_2: false,
+		owner_3: false
+	});
+	let activeSuggestionCluster = $state<string | null>(null);
+	let suggestionDraft = $state<Record<string, number>>({});
+	let suggestionNote = $state<string>('');
 
 	function toggleCluster(cluster: ClusterComparison) {
 		const key = cluster.cluster_key;
@@ -154,6 +176,20 @@
 		const prefs = partyStates[activeTab].previousPreferences;
 		if (!activeObjectives.length || Object.keys(prefs).length === 0) return [];
 		return [activeObjectives.map((obj) => prefs[obj.symbol] ?? 0)];
+	});
+
+	// Derived: suggestion as previousObjectiveValues for VisualizationsPanel
+	let suggestionObjectiveValues = $derived.by(() => {
+		if (activeTab === 'supervisor') return [];
+		const suggestion = suggestions[activeTab as OwnerKey];
+		if (!suggestion) return [];
+		return [activeObjectives.map((obj) => suggestion.aspirationLevels[obj.symbol] ?? 0)];
+	});
+
+	let suggestionLabels = $derived.by(() => {
+		if (activeTab === 'supervisor') return {};
+		if (!suggestions[activeTab as OwnerKey]) return {};
+		return { previousSolutionLabels: ["Supervisor's suggestion"] };
 	});
 
 	// Can compare: supervisor solved + at least one owner solved
@@ -221,6 +257,47 @@
 			result[key.replace(`_${clusterKey}`, '')] = value;
 		}
 		return result;
+	}
+
+	// --- Suggestion helpers ---
+	function initSuggestionDraft(cluster: ClusterComparison) {
+		const draft: Record<string, number> = {};
+		// Copy supervisor objectives for this cluster, keeping owner-specific keys
+		for (const [key, value] of Object.entries(cluster.supervisor_objectives)) {
+			draft[key] = value;
+		}
+		suggestionDraft = draft;
+		suggestionNote = '';
+		activeSuggestionCluster = cluster.cluster_key;
+	}
+
+	function sendSuggestion(ownerKey: OwnerKey) {
+		suggestions[ownerKey] = {
+			aspirationLevels: { ...suggestionDraft },
+			note: suggestionNote
+		};
+		suggestionDismissed[ownerKey] = false;
+		activeSuggestionCluster = null;
+		suggestionDraft = {};
+		suggestionNote = '';
+	}
+
+	function cancelSuggestion() {
+		activeSuggestionCluster = null;
+		suggestionDraft = {};
+		suggestionNote = '';
+	}
+
+	function dismissSuggestion(ownerKey: OwnerKey) {
+		suggestionDismissed[ownerKey] = true;
+	}
+
+	function applySuggestion(ownerKey: OwnerKey) {
+		const suggestion = suggestions[ownerKey];
+		if (!suggestion) return;
+		for (const [key, value] of Object.entries(suggestion.aspirationLevels)) {
+			partyStates[ownerKey].preferences[key] = value;
+		}
 	}
 
 	// --- Table setup ---
@@ -616,6 +693,7 @@
 											c.cluster_key.replace('_', ' ').replace(/\b\w/g, (ch) => ch.toUpperCase())
 										])
 									)}
+									lineColors={CLUSTER_BORDER_COLORS}
 									options={{
 										showAxisLabels: true,
 										highlightOnHover: true,
@@ -627,9 +705,9 @@
 							</div>
 							<!-- Legend -->
 							<div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 pb-1 text-xs text-gray-600">
-								{#each selectedClusters as cluster}
+								{#each selectedClusters as cluster, i}
 									<span class="flex items-center gap-1.5">
-										<span class="inline-block h-0.5 w-4 bg-blue-400"></span>
+										<span class="inline-block h-0.5 w-4" style="background-color: {CLUSTER_BORDER_COLORS[i % CLUSTER_BORDER_COLORS.length]};"></span>
 										{cluster.cluster_key.replace('_', ' ').replace(/\b\w/g, (ch) => ch.toUpperCase())}
 									</span>
 								{/each}
@@ -686,6 +764,61 @@
 										<div class="mt-1 text-xs text-gray-500">
 											Distance: {formatNumber(cluster.distance, 3)}
 										</div>
+
+										<!-- Suggestion controls -->
+										{#if activeSuggestionCluster === cluster.cluster_key}
+											<div class="mt-3 rounded-md border-2 border-emerald-300 bg-emerald-50 p-3">
+												<p class="mb-2 text-xs font-semibold text-emerald-800">Suggest aspiration levels for {clusterLabel}</p>
+												{#each comparisonObjectives.filter((o) => o.scenario_keys?.includes(cluster.cluster_key)) as obj, idx}
+													{@const ideal = obj.ideal ?? 0}
+													{@const nadir = obj.nadir ?? 0}
+													{@const lo = Math.min(ideal, nadir)}
+													{@const hi = Math.max(ideal, nadir)}
+													<div class="mb-1">
+														<Label class="text-xs">
+															{obj.name}
+															<span class="text-gray-400">({obj.maximize ? 'max' : 'min'})</span>
+														</Label>
+														<HorizontalBar
+															axisRanges={[lo, hi]}
+															selectedValue={suggestionDraft[obj.symbol] ?? (lo + hi) / 2}
+															barColor="#10b981"
+															direction={obj.maximize ? 'max' : 'min'}
+															options={{
+																decimalPrecision: displayAccuracy[idx] ?? 2,
+																showSelectedValueLabel: false,
+																aspectRatio: 'aspect-[11/2]'
+															}}
+															onSelect={(v) => {
+																suggestionDraft[obj.symbol] = v;
+															}}
+														/>
+													</div>
+												{/each}
+												<div class="mt-2">
+													<Label class="text-xs">Note for the owner</Label>
+													<Textarea
+														bind:value={suggestionNote}
+														placeholder="Write a note to the owner..."
+														class="mt-1 text-xs"
+														rows={2}
+													/>
+												</div>
+												<div class="mt-2 flex gap-2">
+													<Button size="sm" class="bg-emerald-600 hover:bg-emerald-700" onclick={() => sendSuggestion(cluster.cluster_key as OwnerKey)}>Send</Button>
+													<Button size="sm" variant="outline" onclick={cancelSuggestion}>Cancel</Button>
+												</div>
+											</div>
+										{:else}
+											<div class="mt-2 flex items-center gap-2">
+												{#if suggestions[cluster.cluster_key as OwnerKey]}
+													<span class="text-xs text-emerald-600">Suggestion sent</span>
+													<Button size="sm" variant="ghost" class="h-6 text-xs text-emerald-600" onclick={() => initSuggestionDraft(cluster)}>Edit</Button>
+												{:else}
+													<Button size="sm" variant="outline" class="h-7 text-xs" onclick={() => initSuggestionDraft(cluster)}>Make Suggestion</Button>
+												{/if}
+											</div>
+										{/if}
 									</div>
 								{/each}
 							{/if}
@@ -700,6 +833,32 @@
 					<div class="w-64 space-y-4 p-4">
 						<h3 class="text-sm font-semibold">Reference Point</h3>
 						<p class="text-xs text-gray-500">{tabLabel(activeTab)}</p>
+
+						<!-- Supervisor suggestion banner -->
+						{#if activeTab !== 'supervisor' && suggestions[activeTab as OwnerKey] && !suggestionDismissed[activeTab as OwnerKey]}
+							<div class="rounded-md border-2 border-emerald-300 bg-emerald-50 p-3">
+								<div class="flex items-start justify-between">
+									<p class="text-xs font-semibold text-emerald-800">Supervisor's Suggestion</p>
+									<button
+										class="text-emerald-400 hover:text-emerald-600"
+										onclick={() => dismissSuggestion(activeTab as OwnerKey)}
+									>
+										&times;
+									</button>
+								</div>
+								{#if suggestions[activeTab as OwnerKey]?.note}
+									<p class="mt-1 text-xs italic text-emerald-700">{suggestions[activeTab as OwnerKey]?.note}</p>
+								{/if}
+								<Button
+									size="sm"
+									variant="outline"
+									class="mt-2 h-7 border-emerald-400 text-xs text-emerald-700 hover:bg-emerald-100"
+									onclick={() => applySuggestion(activeTab as OwnerKey)}
+								>
+									Apply to sliders
+								</Button>
+							</div>
+						{/if}
 
 						{#each activeObjectives as obj, idx}
 							{@const ideal = obj.ideal ?? 0}
@@ -754,7 +913,8 @@
 							previousPreferenceType={previousPreferenceValues.length > 0 ? 'reference_point' : ''}
 							currentPreferenceType="reference_point"
 							solutionsObjectiveValues={solutionsObjectiveValues}
-							previousObjectiveValues={[]}
+							previousObjectiveValues={suggestionObjectiveValues}
+							referenceDataLabels={suggestionLabels}
 							externalSelectedIndexes={[selectedSolutionIndex[activeTab]]}
 						/>
 					{:else}

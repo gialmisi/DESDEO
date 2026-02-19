@@ -2,10 +2,11 @@
 	import { onMount } from 'svelte';
 	import type { ScenarioComparisonResponse, ClusterComparison } from '$lib/gen/models';
 	import {
-		computeClusterPositions,
-		hexPath,
+		generateSeedPoints,
+		buildVoronoiCells,
 		distanceColorScale,
-		CLUSTER_BORDER_COLORS
+		CLUSTER_BORDER_COLORS,
+		type VoronoiCell
 	} from './honeycomb-utils';
 	import { formatNumber } from '$lib/helpers';
 
@@ -40,37 +41,19 @@
 		return () => observer.disconnect();
 	});
 
-	let hexRadius = $derived(Math.min(width / 8, height / 3, 80));
-	// Fixed scale so that each hex's color depends only on its own absolute
-	// distance, not on other clusters.  The backend distance is a normalized
-	// Euclidean metric (each objective diff / ideal-nadir range), so 1.0 is
-	// already a large disagreement.  Clamping keeps the scale stable when an
-	// individual owner re-solves.
+	// Fixed scale: 1.0 is already a large disagreement
 	let colorScale = $derived(distanceColorScale(1));
 
-	let clusterHexes = $derived.by(() => {
-		if (!data || !data.clusters.length || hexRadius <= 0 || width <= 0) return [];
+	let voronoiCells = $derived.by(() => {
+		if (!data || !data.clusters.length || width <= 0 || height <= 0) return [];
 
-		const { positions, labelPositions } = computeClusterPositions(
-			data.clusters.length,
-			hexRadius,
-			width,
-			height,
-			hexRadius * 0.8
-		);
-
-		return data.clusters.map((cluster, i) => ({
-			cluster,
-			pos: positions[i],
-			labelPos: labelPositions[i],
-			fillColor: colorScale(cluster.distance),
-			strokeColor: CLUSTER_BORDER_COLORS[i % CLUSTER_BORDER_COLORS.length],
-			path: hexPath(positions[i].x, positions[i].y, hexRadius * 0.92),
-			label: cluster.cluster_key
-				.replace('_', ' ')
-				.replace(/\b\w/g, (c) => c.toUpperCase())
-		}));
+		const clusterKeys = data.clusters.map((c) => c.cluster_key);
+		const seedPoints = generateSeedPoints(data.clusters.length, clusterKeys, width, height);
+		return buildVoronoiCells(seedPoints, data.clusters, colorScale, width, height);
 	});
+
+	let placeholderCells = $derived(voronoiCells.filter((c) => !c.interactive));
+	let clusterCells = $derived(voronoiCells.filter((c) => c.interactive));
 
 	function showTooltip(e: MouseEvent, cluster: ClusterComparison) {
 		tooltip = { visible: true, x: e.clientX, y: e.clientY, cluster };
@@ -97,46 +80,86 @@
 </script>
 
 <div class="absolute inset-0" bind:this={container}>
-	{#if data && clusterHexes.length > 0}
+	{#if data && voronoiCells.length > 0}
 		<svg {width} {height}>
-			{#each clusterHexes as hex}
-				<!-- Cluster label above hex -->
-				<text
-					x={hex.labelPos.x}
-					y={hex.labelPos.y}
-					text-anchor="middle"
-					class="select-none fill-gray-600 text-sm font-semibold"
-					font-size={hexRadius * 0.22}
-				>
-					{hex.label}
-				</text>
+			<!-- Forest texture pattern -->
+			<defs>
+				<pattern id="forest-texture" width="20" height="20" patternUnits="userSpaceOnUse">
+					<circle cx="5" cy="5" r="1.5" fill="#a0a89c" opacity="0.3" />
+					<circle cx="15" cy="12" r="1" fill="#939b8f" opacity="0.25" />
+					<circle cx="10" cy="18" r="1.2" fill="#a8b0a4" opacity="0.2" />
+				</pattern>
+			</defs>
 
-				<!-- Cluster hex -->
+			<!-- Layer 1: Placeholder cells (background) -->
+			{#each placeholderCells as cell}
 				<path
-					d={hex.path}
-					fill={hex.fillColor}
-					stroke={hex.strokeColor}
-					stroke-width={selectedClusterKeys.includes(hex.cluster.cluster_key) ? 5 : 3}
+					d={cell.path}
+					fill={cell.fillColor}
+					stroke={cell.strokeColor}
+					stroke-width="1"
+				/>
+				<path d={cell.path} fill="url(#forest-texture)" />
+			{/each}
+
+			<!-- Layer 2: Cluster cells (foreground) -->
+			{#each clusterCells as cell}
+				{@const isSelected = cell.cluster && selectedClusterKeys.includes(cell.cluster.cluster_key)}
+				<path
+					d={cell.path}
+					fill={cell.fillColor}
+					stroke={cell.strokeColor}
+					stroke-width="2"
 					class="cursor-pointer transition-opacity hover:opacity-80"
 					role="img"
-					aria-label="{hex.label} cluster"
-					onmouseenter={(e) => showTooltip(e, hex.cluster)}
+					aria-label="{cell.label} cluster"
+					onmouseenter={(e) => cell.cluster && showTooltip(e, cell.cluster)}
 					onmousemove={moveTooltip}
 					onmouseleave={hideTooltip}
-					onclick={() => onclusterclick?.(hex.cluster)}
+					onclick={() => cell.cluster && onclusterclick?.(cell.cluster)}
 				/>
 
-				<!-- Distance value inside hex -->
+				<!-- Cluster label -->
 				<text
-					x={hex.pos.x}
-					y={hex.pos.y}
+					x={cell.centroid.x}
+					y={cell.centroid.y - 8}
 					text-anchor="middle"
 					dominant-baseline="central"
-					class="pointer-events-none select-none fill-white font-bold"
-					font-size={hexRadius * 0.28}
+					class="pointer-events-none select-none font-semibold"
+					font-size="12"
+					fill="white"
+					style="text-shadow: 0 1px 3px rgba(0,0,0,0.5);"
 				>
-					{formatNumber(hex.cluster.distance, 3)}
+					{cell.label}
 				</text>
+
+				<!-- Distance value -->
+				<text
+					x={cell.centroid.x}
+					y={cell.centroid.y + 10}
+					text-anchor="middle"
+					dominant-baseline="central"
+					class="pointer-events-none select-none font-bold"
+					font-size="14"
+					fill="white"
+					style="text-shadow: 0 1px 3px rgba(0,0,0,0.5);"
+				>
+					{cell.cluster ? formatNumber(cell.cluster.distance, 3) : ''}
+				</text>
+			{/each}
+
+			<!-- Layer 3: Selection highlights (top) -->
+			{#each clusterCells as cell, i}
+				{#if cell.cluster && selectedClusterKeys.includes(cell.cluster.cluster_key)}
+					<path
+						d={cell.path}
+						fill="none"
+						stroke={CLUSTER_BORDER_COLORS[i % CLUSTER_BORDER_COLORS.length]}
+						stroke-width="4"
+						stroke-dasharray="8 4"
+						class="pointer-events-none"
+					/>
+				{/if}
 			{/each}
 		</svg>
 	{:else}

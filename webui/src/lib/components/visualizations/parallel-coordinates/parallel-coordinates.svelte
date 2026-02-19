@@ -110,6 +110,7 @@
 	};
 	// optional map of labels for each data index for tooltip display on hover
 	export let lineLabels: { [key: string]: string } = {}; // Map of data index to label
+	export let lineColors: string[] = []; // Optional per-line colors (one per data entry)
 	// Index of currently selected line (null = no selection)
 	export let selectedIndex: number | null = null;
 	// indexes for the case where multiple lines can be selected
@@ -279,12 +280,15 @@
 				if (isSelected(i)) return 1; // Selected line is fully opaque
 				return options.opacity; // Other lines use configured opacity
 			})
-			// Set stroke color - selected lines get theme color, other lines are thinner and color lighter variant
+			// Set stroke color - use per-line colors if provided, otherwise default blue
 			.attr('stroke', (d, i) => {
 				const passes = passesFilters(d);
-				if (!passes) return '#93c5fd'; // Hidden lines are lighter color, tailwind sky 700
+				if (!passes) return '#93c5fd'; // Hidden lines are lighter color
 
-				if (isSelected(i)) return '#3b82f6'; // Selected line uses primary color, tailwind blue 500
+				if (lineColors.length > 0) {
+					return lineColors[i % lineColors.length];
+				}
+				if (isSelected(i)) return '#3b82f6'; // Selected line uses primary color
 				return '#93c5fd'; // Non-selected lines are lighter color
 			})
 			// Set stroke width - selected line is slightly thicker
