@@ -1392,6 +1392,81 @@ Returns:
     ProblemInfo: the information about the problem added.
  * @summary Add Problem
  */
+export const addProblemProblemAddPostBodyOnePreferencePreferenceTypeDefault = `reference_point`;
+
+export const AddProblemProblemAddPostBody = zod.union([
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			scalarization_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			solver: zod.union([zod.string(), zod.null()]).optional(),
+			solver_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			preference: zod
+				.object({
+					preference_type: zod
+						.literal('reference_point')
+						.default(addProblemProblemAddPostBodyOnePreferencePreferenceTypeDefault),
+					aspiration_levels: zod.record(zod.string(), zod.number())
+				})
+				.optional()
+				.describe('Model for representing a reference point type of preference.')
+		})
+		.describe('Model of the request to the reference point method.'),
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			representative_solutions_id: zod
+				.number()
+				.describe('The id of the representative solutions to be used.'),
+			current_iteration: zod.number().describe('The number of the current iteration.'),
+			iterations_left: zod.number().describe('The number of iterations left.'),
+			selected_point: zod
+				.union([zod.record(zod.string(), zod.number()), zod.null()])
+				.describe(
+					'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+				),
+			reachable_point_indices: zod
+				.array(zod.number())
+				.describe(
+					'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
+				),
+			number_of_intermediate_points: zod
+				.number()
+				.describe('The number of intermediate points to be generated.')
+		})
+		.describe('Model of the request to the E-NAUTILUS method.'),
+	zod
+		.object({
+			name: zod.string(),
+			description: zod.union([zod.string(), zod.null()]).optional(),
+			solution_data: zod.record(zod.string(), zod.array(zod.number())),
+			ideal: zod.record(zod.string(), zod.number()),
+			nadir: zod.record(zod.string(), zod.number()),
+			problem_id: zod.number()
+		})
+		.describe('Model of the request to the representative solution set.'),
+	zod
+		.object({
+			info: zod.union([zod.string(), zod.null()]).optional()
+		})
+		.describe('Model of the request to create a new session.'),
+	zod.null()
+]);
+
 export const addProblemProblemAddPostResponseObjectivesItemMaximizeDefault = false;
 export const addProblemProblemAddPostResponseObjectivesItemIsLinearDefault = false;
 export const addProblemProblemAddPostResponseObjectivesItemIsConvexDefault = false;
@@ -1970,8 +2045,86 @@ Returns:
     ProblemInfo: a description of the added problem.
  * @summary Add Problem Json
  */
+export const addProblemJsonProblemAddJsonPostBodyRequestOnePreferencePreferenceTypeDefault = `reference_point`;
+
 export const AddProblemJsonProblemAddJsonPostBody = zod.object({
-	json_file: zod.instanceof(File)
+	json_file: zod.instanceof(File),
+	request: zod
+		.union([
+			zod
+				.object({
+					problem_id: zod.number(),
+					session_id: zod.union([zod.number(), zod.null()]).optional(),
+					parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+					scalarization_options: zod
+						.union([
+							zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+							zod.null()
+						])
+						.optional(),
+					solver: zod.union([zod.string(), zod.null()]).optional(),
+					solver_options: zod
+						.union([
+							zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+							zod.null()
+						])
+						.optional(),
+					preference: zod
+						.object({
+							preference_type: zod
+								.literal('reference_point')
+								.default(
+									addProblemJsonProblemAddJsonPostBodyRequestOnePreferencePreferenceTypeDefault
+								),
+							aspiration_levels: zod.record(zod.string(), zod.number())
+						})
+						.optional()
+						.describe('Model for representing a reference point type of preference.')
+				})
+				.describe('Model of the request to the reference point method.'),
+			zod
+				.object({
+					problem_id: zod.number(),
+					session_id: zod.union([zod.number(), zod.null()]).optional(),
+					parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+					representative_solutions_id: zod
+						.number()
+						.describe('The id of the representative solutions to be used.'),
+					current_iteration: zod.number().describe('The number of the current iteration.'),
+					iterations_left: zod.number().describe('The number of iterations left.'),
+					selected_point: zod
+						.union([zod.record(zod.string(), zod.number()), zod.null()])
+						.describe(
+							'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+						),
+					reachable_point_indices: zod
+						.array(zod.number())
+						.describe(
+							'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
+						),
+					number_of_intermediate_points: zod
+						.number()
+						.describe('The number of intermediate points to be generated.')
+				})
+				.describe('Model of the request to the E-NAUTILUS method.'),
+			zod
+				.object({
+					name: zod.string(),
+					description: zod.union([zod.string(), zod.null()]).optional(),
+					solution_data: zod.record(zod.string(), zod.array(zod.number())),
+					ideal: zod.record(zod.string(), zod.number()),
+					nadir: zod.record(zod.string(), zod.number()),
+					problem_id: zod.number()
+				})
+				.describe('Model of the request to the representative solution set.'),
+			zod
+				.object({
+					info: zod.union([zod.string(), zod.null()]).optional()
+				})
+				.describe('Model of the request to create a new session.'),
+			zod.null()
+		])
+		.optional()
 });
 
 export const addProblemJsonProblemAddJsonPostResponseObjectivesItemMaximizeDefault = false;
@@ -2694,16 +2847,8 @@ export const AddRepresentativeSolutionSetProblemAddRepresentativeSolutionSetPost
 	})
 	.describe('Model of the request to the representative solution set.');
 
-export const AddRepresentativeSolutionSetProblemAddRepresentativeSolutionSetPostResponse = zod
-	.object({
-		id: zod.number(),
-		problem_id: zod.number(),
-		name: zod.string(),
-		description: zod.union([zod.string(), zod.null()]).optional(),
-		ideal: zod.record(zod.string(), zod.number()),
-		nadir: zod.record(zod.string(), zod.number())
-	})
-	.describe('Model of the representative solution set info.');
+export const AddRepresentativeSolutionSetProblemAddRepresentativeSolutionSetPostResponse =
+	zod.unknown();
 
 /**
  * Get meta information about all representative solution sets for a given problem.
@@ -2716,24 +2861,89 @@ export const GetAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSet
 		problem_id: zod.number()
 	});
 
-export const GetAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponseItem =
-	zod
-		.object({
-			id: zod.number(),
-			problem_id: zod.number(),
-			name: zod.string(),
-			description: zod.union([zod.string(), zod.null()]).optional(),
-			ideal: zod.record(zod.string(), zod.number()),
-			nadir: zod.record(zod.string(), zod.number())
-		})
-		.describe('Model of the representative solution set info.');
+export const getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetBodyOnePreferencePreferenceTypeDefault = `reference_point`;
+
+export const GetAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetBody =
+	zod.union([
+		zod
+			.object({
+				problem_id: zod.number(),
+				session_id: zod.union([zod.number(), zod.null()]).optional(),
+				parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+				scalarization_options: zod
+					.union([
+						zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+						zod.null()
+					])
+					.optional(),
+				solver: zod.union([zod.string(), zod.null()]).optional(),
+				solver_options: zod
+					.union([
+						zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+						zod.null()
+					])
+					.optional(),
+				preference: zod
+					.object({
+						preference_type: zod
+							.literal('reference_point')
+							.default(
+								getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetBodyOnePreferencePreferenceTypeDefault
+							),
+						aspiration_levels: zod.record(zod.string(), zod.number())
+					})
+					.optional()
+					.describe('Model for representing a reference point type of preference.')
+			})
+			.describe('Model of the request to the reference point method.'),
+		zod
+			.object({
+				problem_id: zod.number(),
+				session_id: zod.union([zod.number(), zod.null()]).optional(),
+				parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+				representative_solutions_id: zod
+					.number()
+					.describe('The id of the representative solutions to be used.'),
+				current_iteration: zod.number().describe('The number of the current iteration.'),
+				iterations_left: zod.number().describe('The number of iterations left.'),
+				selected_point: zod
+					.union([zod.record(zod.string(), zod.number()), zod.null()])
+					.describe(
+						'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+					),
+				reachable_point_indices: zod
+					.array(zod.number())
+					.describe(
+						'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
+					),
+				number_of_intermediate_points: zod
+					.number()
+					.describe('The number of intermediate points to be generated.')
+			})
+			.describe('Model of the request to the E-NAUTILUS method.'),
+		zod
+			.object({
+				name: zod.string(),
+				description: zod.union([zod.string(), zod.null()]).optional(),
+				solution_data: zod.record(zod.string(), zod.array(zod.number())),
+				ideal: zod.record(zod.string(), zod.number()),
+				nadir: zod.record(zod.string(), zod.number()),
+				problem_id: zod.number()
+			})
+			.describe('Model of the request to the representative solution set.'),
+		zod
+			.object({
+				info: zod.union([zod.string(), zod.null()]).optional()
+			})
+			.describe('Model of the request to create a new session.'),
+		zod.null()
+	]);
+
 export const GetAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponse =
-	zod.array(
-		GetAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponseItem
-	);
+	zod.unknown();
 
 /**
- * Fetch full information of a single representative solution by its ID.
+ * Fetch full information of a single representative solution set by its ID.
  * @summary Get Representative Solution Set
  */
 export const GetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetParams =
@@ -2741,17 +2951,85 @@ export const GetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGe
 		set_id: zod.number()
 	});
 
-export const GetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetResponse = zod
-	.object({
-		id: zod.number(),
-		problem_id: zod.number(),
-		name: zod.string(),
-		description: zod.union([zod.string(), zod.null()]).optional(),
-		ideal: zod.record(zod.string(), zod.number()),
-		nadir: zod.record(zod.string(), zod.number()),
-		solution_data: zod.record(zod.string(), zod.array(zod.number()))
-	})
-	.describe('Model of the representative solution set full info.');
+export const getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetBodyOnePreferencePreferenceTypeDefault = `reference_point`;
+
+export const GetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetBody = zod.union([
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			scalarization_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			solver: zod.union([zod.string(), zod.null()]).optional(),
+			solver_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			preference: zod
+				.object({
+					preference_type: zod
+						.literal('reference_point')
+						.default(
+							getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetBodyOnePreferencePreferenceTypeDefault
+						),
+					aspiration_levels: zod.record(zod.string(), zod.number())
+				})
+				.optional()
+				.describe('Model for representing a reference point type of preference.')
+		})
+		.describe('Model of the request to the reference point method.'),
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			representative_solutions_id: zod
+				.number()
+				.describe('The id of the representative solutions to be used.'),
+			current_iteration: zod.number().describe('The number of the current iteration.'),
+			iterations_left: zod.number().describe('The number of iterations left.'),
+			selected_point: zod
+				.union([zod.record(zod.string(), zod.number()), zod.null()])
+				.describe(
+					'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+				),
+			reachable_point_indices: zod
+				.array(zod.number())
+				.describe(
+					'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
+				),
+			number_of_intermediate_points: zod
+				.number()
+				.describe('The number of intermediate points to be generated.')
+		})
+		.describe('Model of the request to the E-NAUTILUS method.'),
+	zod
+		.object({
+			name: zod.string(),
+			description: zod.union([zod.string(), zod.null()]).optional(),
+			solution_data: zod.record(zod.string(), zod.array(zod.number())),
+			ideal: zod.record(zod.string(), zod.number()),
+			nadir: zod.record(zod.string(), zod.number()),
+			problem_id: zod.number()
+		})
+		.describe('Model of the request to the representative solution set.'),
+	zod
+		.object({
+			info: zod.union([zod.string(), zod.null()]).optional()
+		})
+		.describe('Model of the request to create a new session.'),
+	zod.null()
+]);
+
+export const GetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetResponse =
+	zod.unknown();
 
 /**
  * Delete a representative solution set by its ID.
@@ -2762,6 +3040,84 @@ export const DeleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetI
 		set_id: zod.number()
 	});
 
+export const deleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteBodyOnePreferencePreferenceTypeDefault = `reference_point`;
+
+export const DeleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteBody =
+	zod.union([
+		zod
+			.object({
+				problem_id: zod.number(),
+				session_id: zod.union([zod.number(), zod.null()]).optional(),
+				parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+				scalarization_options: zod
+					.union([
+						zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+						zod.null()
+					])
+					.optional(),
+				solver: zod.union([zod.string(), zod.null()]).optional(),
+				solver_options: zod
+					.union([
+						zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+						zod.null()
+					])
+					.optional(),
+				preference: zod
+					.object({
+						preference_type: zod
+							.literal('reference_point')
+							.default(
+								deleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteBodyOnePreferencePreferenceTypeDefault
+							),
+						aspiration_levels: zod.record(zod.string(), zod.number())
+					})
+					.optional()
+					.describe('Model for representing a reference point type of preference.')
+			})
+			.describe('Model of the request to the reference point method.'),
+		zod
+			.object({
+				problem_id: zod.number(),
+				session_id: zod.union([zod.number(), zod.null()]).optional(),
+				parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+				representative_solutions_id: zod
+					.number()
+					.describe('The id of the representative solutions to be used.'),
+				current_iteration: zod.number().describe('The number of the current iteration.'),
+				iterations_left: zod.number().describe('The number of iterations left.'),
+				selected_point: zod
+					.union([zod.record(zod.string(), zod.number()), zod.null()])
+					.describe(
+						'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+					),
+				reachable_point_indices: zod
+					.array(zod.number())
+					.describe(
+						'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
+					),
+				number_of_intermediate_points: zod
+					.number()
+					.describe('The number of intermediate points to be generated.')
+			})
+			.describe('Model of the request to the E-NAUTILUS method.'),
+		zod
+			.object({
+				name: zod.string(),
+				description: zod.union([zod.string(), zod.null()]).optional(),
+				solution_data: zod.record(zod.string(), zod.array(zod.number())),
+				ideal: zod.record(zod.string(), zod.number()),
+				nadir: zod.record(zod.string(), zod.number()),
+				problem_id: zod.number()
+			})
+			.describe('Model of the request to the representative solution set.'),
+		zod
+			.object({
+				info: zod.union([zod.string(), zod.null()]).optional()
+			})
+			.describe('Model of the request to create a new session.'),
+		zod.null()
+	]);
+
 /**
  * Delete a problem by its ID.
  * @summary Delete Problem
@@ -2770,6 +3126,81 @@ export const DeleteProblemProblemProblemIdDeleteParams = zod.object({
 	problem_id: zod.number()
 });
 
+export const deleteProblemProblemProblemIdDeleteBodyOnePreferencePreferenceTypeDefault = `reference_point`;
+
+export const DeleteProblemProblemProblemIdDeleteBody = zod.union([
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			scalarization_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			solver: zod.union([zod.string(), zod.null()]).optional(),
+			solver_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			preference: zod
+				.object({
+					preference_type: zod
+						.literal('reference_point')
+						.default(deleteProblemProblemProblemIdDeleteBodyOnePreferencePreferenceTypeDefault),
+					aspiration_levels: zod.record(zod.string(), zod.number())
+				})
+				.optional()
+				.describe('Model for representing a reference point type of preference.')
+		})
+		.describe('Model of the request to the reference point method.'),
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			representative_solutions_id: zod
+				.number()
+				.describe('The id of the representative solutions to be used.'),
+			current_iteration: zod.number().describe('The number of the current iteration.'),
+			iterations_left: zod.number().describe('The number of iterations left.'),
+			selected_point: zod
+				.union([zod.record(zod.string(), zod.number()), zod.null()])
+				.describe(
+					'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+				),
+			reachable_point_indices: zod
+				.array(zod.number())
+				.describe(
+					'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
+				),
+			number_of_intermediate_points: zod
+				.number()
+				.describe('The number of intermediate points to be generated.')
+		})
+		.describe('Model of the request to the E-NAUTILUS method.'),
+	zod
+		.object({
+			name: zod.string(),
+			description: zod.union([zod.string(), zod.null()]).optional(),
+			solution_data: zod.record(zod.string(), zod.array(zod.number())),
+			ideal: zod.record(zod.string(), zod.number()),
+			nadir: zod.record(zod.string(), zod.number()),
+			problem_id: zod.number()
+		})
+		.describe('Model of the request to the representative solution set.'),
+	zod
+		.object({
+			info: zod.union([zod.string(), zod.null()]).optional()
+		})
+		.describe('Model of the request to create a new session.'),
+	zod.null()
+]);
+
 /**
  * Return a Problem as a serialized JSON object suitable for download/re-upload.
  * @summary Get Problem Json
@@ -2777,6 +3208,81 @@ export const DeleteProblemProblemProblemIdDeleteParams = zod.object({
 export const GetProblemJsonProblemProblemIdJsonGetParams = zod.object({
 	problem_id: zod.number()
 });
+
+export const getProblemJsonProblemProblemIdJsonGetBodyOnePreferencePreferenceTypeDefault = `reference_point`;
+
+export const GetProblemJsonProblemProblemIdJsonGetBody = zod.union([
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			scalarization_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			solver: zod.union([zod.string(), zod.null()]).optional(),
+			solver_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			preference: zod
+				.object({
+					preference_type: zod
+						.literal('reference_point')
+						.default(getProblemJsonProblemProblemIdJsonGetBodyOnePreferencePreferenceTypeDefault),
+					aspiration_levels: zod.record(zod.string(), zod.number())
+				})
+				.optional()
+				.describe('Model for representing a reference point type of preference.')
+		})
+		.describe('Model of the request to the reference point method.'),
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			representative_solutions_id: zod
+				.number()
+				.describe('The id of the representative solutions to be used.'),
+			current_iteration: zod.number().describe('The number of the current iteration.'),
+			iterations_left: zod.number().describe('The number of iterations left.'),
+			selected_point: zod
+				.union([zod.record(zod.string(), zod.number()), zod.null()])
+				.describe(
+					'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+				),
+			reachable_point_indices: zod
+				.array(zod.number())
+				.describe(
+					'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
+				),
+			number_of_intermediate_points: zod
+				.number()
+				.describe('The number of intermediate points to be generated.')
+		})
+		.describe('Model of the request to the E-NAUTILUS method.'),
+	zod
+		.object({
+			name: zod.string(),
+			description: zod.union([zod.string(), zod.null()]).optional(),
+			solution_data: zod.record(zod.string(), zod.array(zod.number())),
+			ideal: zod.record(zod.string(), zod.number()),
+			nadir: zod.record(zod.string(), zod.number()),
+			problem_id: zod.number()
+		})
+		.describe('Model of the request to the representative solution set.'),
+	zod
+		.object({
+			info: zod.union([zod.string(), zod.null()]).optional()
+		})
+		.describe('Model of the request to create a new session.'),
+	zod.null()
+]);
 
 export const GetProblemJsonProblemProblemIdJsonGetResponse = zod.unknown();
 
@@ -4032,7 +4538,7 @@ export const GetOrInitializeMethodNimbusGetOrInitializePostResponse = zod.union(
 
 Args:
     request (NIMBUSFinalizeRequest): The request containing the final solution, etc.
-    context (Annotated[User, get_session_context): The current context.
+    context (Annotated[SessionContext, SessionContextGuard): The current context.
 
 Raises:
     HTTPException
@@ -4434,7 +4940,7 @@ export const CalculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataP
 Args:
     request (UtopiaRequest): the set of decision variables and problem for which the utopia forest map is requested
         for.
-    context (Annotated[SessionContext, Depends(get_session_context)]): the current session context
+    context (Annotated[SessionContext, Depends(SessionContextGuard)]): the current session context
 
 Raises:
     HTTPException:
@@ -4705,49 +5211,59 @@ export const GetLatestResultsGnimbusGetLatestResultsPostResponse = zod
 							state_id: zod.union([zod.number(), zod.null()]).optional()
 						})
 						.describe('State holder with a single relationship to the base State.'),
-					state_id: zod.number(),
-					num_solutions: zod.number(),
-					objective_values_all: zod.array(zod.record(zod.string(), zod.number())),
-					variable_values_all: zod.array(
-						zod.record(
-							zod.string(),
-							zod.union([
-								zod.number(),
-								zod.number(),
-								zod.boolean(),
+					state_id: zod.number().describe('The state id.'),
+					num_solutions: zod
+						.number()
+						.describe('Number of solutions contained in the referenced state.'),
+					objective_values_all: zod
+						.array(zod.record(zod.string(), zod.number()))
+						.describe('All the objective values of the result.'),
+					variable_values_all: zod
+						.array(
+							zod.record(
+								zod.string(),
 								zod.union([
-									zod.array(zod.unknown()),
-									zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
 									zod.number(),
 									zod.number(),
 									zod.boolean(),
-									zod.literal('List'),
-									zod.null()
+									zod.union([
+										zod.array(zod.unknown()),
+										zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
+										zod.number(),
+										zod.number(),
+										zod.boolean(),
+										zod.literal('List'),
+										zod.null()
+									])
 								])
-							])
+							)
 						)
-					),
-					objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
-					variable_values: zod.union([
-						zod.record(
-							zod.string(),
-							zod.union([
-								zod.number(),
-								zod.number(),
-								zod.boolean(),
+						.describe('All the variable values of the result.'),
+					objective_values: zod
+						.union([zod.record(zod.string(), zod.number()), zod.null()])
+						.describe('The objective values of the referenced solution. None if not applicable.'),
+					variable_values: zod
+						.union([
+							zod.record(
+								zod.string(),
 								zod.union([
-									zod.array(zod.unknown()),
-									zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
 									zod.number(),
 									zod.number(),
 									zod.boolean(),
-									zod.literal('List'),
-									zod.null()
+									zod.union([
+										zod.array(zod.unknown()),
+										zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
+										zod.number(),
+										zod.number(),
+										zod.boolean(),
+										zod.literal('List'),
+										zod.null()
+									])
 								])
-							])
-						),
-						zod.null()
-					])
+							),
+							zod.null()
+						])
+						.describe('The variable values of the referenced solution. None if not apllicable.')
 				})
 				.describe('A full solution reference with objectives and variables.')
 		),
@@ -4773,49 +5289,59 @@ export const GetLatestResultsGnimbusGetLatestResultsPostResponse = zod
 							state_id: zod.union([zod.number(), zod.null()]).optional()
 						})
 						.describe('State holder with a single relationship to the base State.'),
-					state_id: zod.number(),
-					num_solutions: zod.number(),
-					objective_values_all: zod.array(zod.record(zod.string(), zod.number())),
-					variable_values_all: zod.array(
-						zod.record(
-							zod.string(),
-							zod.union([
-								zod.number(),
-								zod.number(),
-								zod.boolean(),
+					state_id: zod.number().describe('The state id.'),
+					num_solutions: zod
+						.number()
+						.describe('Number of solutions contained in the referenced state.'),
+					objective_values_all: zod
+						.array(zod.record(zod.string(), zod.number()))
+						.describe('All the objective values of the result.'),
+					variable_values_all: zod
+						.array(
+							zod.record(
+								zod.string(),
 								zod.union([
-									zod.array(zod.unknown()),
-									zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
 									zod.number(),
 									zod.number(),
 									zod.boolean(),
-									zod.literal('List'),
-									zod.null()
+									zod.union([
+										zod.array(zod.unknown()),
+										zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
+										zod.number(),
+										zod.number(),
+										zod.boolean(),
+										zod.literal('List'),
+										zod.null()
+									])
 								])
-							])
+							)
 						)
-					),
-					objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()]),
-					variable_values: zod.union([
-						zod.record(
-							zod.string(),
-							zod.union([
-								zod.number(),
-								zod.number(),
-								zod.boolean(),
+						.describe('All the variable values of the result.'),
+					objective_values: zod
+						.union([zod.record(zod.string(), zod.number()), zod.null()])
+						.describe('The objective values of the referenced solution. None if not applicable.'),
+					variable_values: zod
+						.union([
+							zod.record(
+								zod.string(),
 								zod.union([
-									zod.array(zod.unknown()),
-									zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
 									zod.number(),
 									zod.number(),
 									zod.boolean(),
-									zod.literal('List'),
-									zod.null()
+									zod.union([
+										zod.array(zod.unknown()),
+										zod.array(zod.union([zod.number(), zod.number(), zod.boolean()])),
+										zod.number(),
+										zod.number(),
+										zod.boolean(),
+										zod.literal('List'),
+										zod.null()
+									])
 								])
-							])
-						),
-						zod.null()
-					])
+							),
+							zod.null()
+						])
+						.describe('The variable values of the referenced solution. None if not apllicable.')
 				})
 				.describe('A full solution reference with objectives and variables.')
 		),
@@ -4945,9 +5471,15 @@ export const FullIterationGnimbusAllIterationsPostResponse = zod
 											state_id: zod.union([zod.number(), zod.null()]).optional()
 										})
 										.describe('State holder with a single relationship to the base State.'),
-									state_id: zod.number(),
-									num_solutions: zod.number(),
-									objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()])
+									state_id: zod.number().describe('The state id.'),
+									num_solutions: zod
+										.number()
+										.describe('Number of solutions contained in the referenced state.'),
+									objective_values: zod
+										.union([zod.record(zod.string(), zod.number()), zod.null()])
+										.describe(
+											'The objective values of the referenced solution. None if not applicable.'
+										)
 								})
 								.describe(
 									'The same as SolutionReference, but without decision variables for more efficient transport over the internet.'
@@ -4980,9 +5512,15 @@ export const FullIterationGnimbusAllIterationsPostResponse = zod
 											state_id: zod.union([zod.number(), zod.null()]).optional()
 										})
 										.describe('State holder with a single relationship to the base State.'),
-									state_id: zod.number(),
-									num_solutions: zod.number(),
-									objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()])
+									state_id: zod.number().describe('The state id.'),
+									num_solutions: zod
+										.number()
+										.describe('Number of solutions contained in the referenced state.'),
+									objective_values: zod
+										.union([zod.record(zod.string(), zod.number()), zod.null()])
+										.describe(
+											'The objective values of the referenced solution. None if not applicable.'
+										)
 								})
 								.describe(
 									'The same as SolutionReference, but without decision variables for more efficient transport over the internet.'
@@ -5012,9 +5550,15 @@ export const FullIterationGnimbusAllIterationsPostResponse = zod
 											state_id: zod.union([zod.number(), zod.null()]).optional()
 										})
 										.describe('State holder with a single relationship to the base State.'),
-									state_id: zod.number(),
-									num_solutions: zod.number(),
-									objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()])
+									state_id: zod.number().describe('The state id.'),
+									num_solutions: zod
+										.number()
+										.describe('Number of solutions contained in the referenced state.'),
+									objective_values: zod
+										.union([zod.record(zod.string(), zod.number()), zod.null()])
+										.describe(
+											'The objective values of the referenced solution. None if not applicable.'
+										)
 								})
 								.describe(
 									'The same as SolutionReference, but without decision variables for more efficient transport over the internet.'
@@ -5047,9 +5591,15 @@ export const FullIterationGnimbusAllIterationsPostResponse = zod
 											state_id: zod.union([zod.number(), zod.null()]).optional()
 										})
 										.describe('State holder with a single relationship to the base State.'),
-									state_id: zod.number(),
-									num_solutions: zod.number(),
-									objective_values: zod.union([zod.record(zod.string(), zod.number()), zod.null()])
+									state_id: zod.number().describe('The state id.'),
+									num_solutions: zod
+										.number()
+										.describe('Number of solutions contained in the referenced state.'),
+									objective_values: zod
+										.union([zod.record(zod.string(), zod.number()), zod.null()])
+										.describe(
+											'The objective values of the referenced solution. None if not applicable.'
+										)
 								})
 								.describe(
 									'The same as SolutionReference, but without decision variables for more efficient transport over the internet.'
@@ -5442,7 +5992,7 @@ decision events capturing what the DM chose at each transition.
 
 Args:
     session_id: The interactive session ID.
-    db_session: The database session.
+    context: The context of the query.
 
 Returns:
     ENautilusSessionTreeResponse with nodes, edges, root_ids, and decision_events.
@@ -5451,6 +6001,83 @@ Returns:
 export const GetSessionTreeMethodEnautilusSessionTreeSessionIdGetParams = zod.object({
 	session_id: zod.number()
 });
+
+export const getSessionTreeMethodEnautilusSessionTreeSessionIdGetBodyOnePreferencePreferenceTypeDefault = `reference_point`;
+
+export const GetSessionTreeMethodEnautilusSessionTreeSessionIdGetBody = zod.union([
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			scalarization_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			solver: zod.union([zod.string(), zod.null()]).optional(),
+			solver_options: zod
+				.union([
+					zod.record(zod.string(), zod.union([zod.number(), zod.string(), zod.boolean()])),
+					zod.null()
+				])
+				.optional(),
+			preference: zod
+				.object({
+					preference_type: zod
+						.literal('reference_point')
+						.default(
+							getSessionTreeMethodEnautilusSessionTreeSessionIdGetBodyOnePreferencePreferenceTypeDefault
+						),
+					aspiration_levels: zod.record(zod.string(), zod.number())
+				})
+				.optional()
+				.describe('Model for representing a reference point type of preference.')
+		})
+		.describe('Model of the request to the reference point method.'),
+	zod
+		.object({
+			problem_id: zod.number(),
+			session_id: zod.union([zod.number(), zod.null()]).optional(),
+			parent_state_id: zod.union([zod.number(), zod.null()]).optional(),
+			representative_solutions_id: zod
+				.number()
+				.describe('The id of the representative solutions to be used.'),
+			current_iteration: zod.number().describe('The number of the current iteration.'),
+			iterations_left: zod.number().describe('The number of iterations left.'),
+			selected_point: zod
+				.union([zod.record(zod.string(), zod.number()), zod.null()])
+				.describe(
+					'The selected intermediate point. If first iteration, set this to be the (approximated) nadir point. If not set, then the point is assumed to be the nadir point of the current approximating set.'
+				),
+			reachable_point_indices: zod
+				.array(zod.number())
+				.describe(
+					'The indices indicating the point on the non-dominated set that are reachable from the currently selected point.'
+				),
+			number_of_intermediate_points: zod
+				.number()
+				.describe('The number of intermediate points to be generated.')
+		})
+		.describe('Model of the request to the E-NAUTILUS method.'),
+	zod
+		.object({
+			name: zod.string(),
+			description: zod.union([zod.string(), zod.null()]).optional(),
+			solution_data: zod.record(zod.string(), zod.array(zod.number())),
+			ideal: zod.record(zod.string(), zod.number()),
+			nadir: zod.record(zod.string(), zod.number()),
+			problem_id: zod.number()
+		})
+		.describe('Model of the request to the representative solution set.'),
+	zod
+		.object({
+			info: zod.union([zod.string(), zod.null()]).optional()
+		})
+		.describe('Model of the request to create a new session.'),
+	zod.null()
+]);
 
 export const GetSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse = zod
 	.object({
@@ -5533,6 +6160,101 @@ export const GetSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse = zod
 			.describe('Pre-computed decision events for each parent-child transition.')
 	})
 	.describe('The complete E-NAUTILUS session tree.');
+
+/**
+ * Run E-NAUTILUS greedily from a state to completion.
+
+Given a starting state, this endpoint greedily selects the best intermediate
+point for the preferred objective at each iteration until iterations_left == 0,
+then projects to the Pareto front. No database writes are performed.
+ * @summary Simulate
+ */
+export const simulateMethodEnautilusSimulatePostBodyDeprioritizeDefault = false;
+export const simulateMethodEnautilusSimulatePostBodyNumberOfIntermediatePointsDefault = 3;
+
+export const SimulateMethodEnautilusSimulatePostBody = zod
+	.object({
+		state_id: zod.number().describe('Starting ENautilusState to branch from.'),
+		preferred_objective: zod.string().describe("Objective symbol to favor (e.g., 'f_1')."),
+		deprioritize: zod
+			.boolean()
+			.default(simulateMethodEnautilusSimulatePostBodyDeprioritizeDefault)
+			.describe('If True, always pick the WORST value for the objective instead of the best.'),
+		number_of_intermediate_points: zod
+			.number()
+			.default(simulateMethodEnautilusSimulatePostBodyNumberOfIntermediatePointsDefault)
+			.describe('Number of intermediate points per simulated step.')
+	})
+	.describe('Run E-NAUTILUS greedily from a state to completion.');
+
+export const SimulateMethodEnautilusSimulatePostResponse = zod
+	.object({
+		preferred_objective: zod.string(),
+		steps: zod.array(
+			zod
+				.object({
+					iteration: zod.number(),
+					iterations_left: zod.number(),
+					selected_point: zod
+						.record(zod.string(), zod.number())
+						.describe('The auto-picked intermediate point.'),
+					selected_point_index: zod.number(),
+					intermediate_points: zod.array(zod.record(zod.string(), zod.number())),
+					closeness_measures: zod.array(zod.number())
+				})
+				.describe('One step in the simulated path.')
+		),
+		final_solution: zod
+			.object({
+				optimal_variables: zod
+					.record(zod.string(), zod.union([zod.number(), zod.number(), zod.array(zod.unknown())]))
+					.describe('The optimal decision variables found.'),
+				optimal_objectives: zod
+					.record(zod.string(), zod.union([zod.number(), zod.array(zod.number())]))
+					.describe(
+						'The objective function values corresponding to the optimal decision variables found.'
+					),
+				constraint_values: zod
+					.union([
+						zod.record(
+							zod.string(),
+							zod.union([
+								zod.number(),
+								zod.number(),
+								zod.array(zod.number()),
+								zod.array(zod.unknown())
+							])
+						),
+						zod.unknown(),
+						zod.null()
+					])
+					.optional()
+					.describe(
+						'The constraint values of the problem. A negative value means the constraint is respected, a positive one means it has been breached.'
+					),
+				extra_func_values: zod
+					.union([
+						zod.record(zod.string(), zod.union([zod.number(), zod.array(zod.number())])),
+						zod.null()
+					])
+					.optional()
+					.describe('The extra function values of the problem.'),
+				scalarization_values: zod
+					.union([
+						zod.record(zod.string(), zod.union([zod.number(), zod.array(zod.number())])),
+						zod.null()
+					])
+					.optional()
+					.describe('The scalarization function values of the problem.'),
+				success: zod
+					.boolean()
+					.describe('A boolean flag indicating whether the optimization was successful or not.'),
+				message: zod.string().describe('Description of the cause of termination.')
+			})
+			.describe('Defines a schema for a dataclass to store the results of a solver.'),
+		final_intermediate_point: zod.record(zod.string(), zod.number())
+	})
+	.describe('Result of greedy E-NAUTILUS simulation.');
 
 /**
  * Vote for a band using this endpoint.

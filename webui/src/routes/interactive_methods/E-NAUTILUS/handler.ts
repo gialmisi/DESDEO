@@ -1,6 +1,6 @@
-import type { ENautilusRepresentativeSolutionsResponse, ENautilusSessionTreeResponse, ENautilusStateResponse, ENautilusStepRequest, ENautilusStepResponse, ProblemGetRequest, ProblemInfo } from "$lib/gen/models";
-import type { getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse, getSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse, getStateMethodEnautilusGetStateStateIdGetResponse, stepMethodEnautilusStepPostResponse } from "$lib/gen/endpoints/DESDEOFastAPI";
-import { stepMethodEnautilusStepPost, getProblemProblemGetPost, getStateMethodEnautilusGetStateStateIdGet, getRepresentativeMethodEnautilusGetRepresentativeStateIdGet, getSessionTreeMethodEnautilusSessionTreeSessionIdGet } from "$lib/gen/endpoints/DESDEOFastAPI";
+import type { ENautilusRepresentativeSolutionsResponse, ENautilusSessionTreeResponse, ENautilusSimulateResponse, ENautilusStateResponse, ENautilusStepRequest, ENautilusStepResponse, ProblemGetRequest, ProblemInfo } from "$lib/gen/models";
+import type { getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse, getSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse, getStateMethodEnautilusGetStateStateIdGetResponse, simulateMethodEnautilusSimulatePostResponse, stepMethodEnautilusStepPostResponse } from "$lib/gen/endpoints/DESDEOFastAPI";
+import { stepMethodEnautilusStepPost, getProblemProblemGetPost, getStateMethodEnautilusGetStateStateIdGet, getRepresentativeMethodEnautilusGetRepresentativeStateIdGet, getSessionTreeMethodEnautilusSessionTreeSessionIdGet, simulateMethodEnautilusSimulatePost } from "$lib/gen/endpoints/DESDEOFastAPI";
 import type { getProblemProblemGetPostResponse } from "$lib/gen/endpoints/DESDEOFastAPI";
 import { fetch_sessions, create_session } from '../../methods/sessions/handler';
 export { fetch_sessions, create_session };
@@ -110,6 +110,25 @@ export async function fetch_session_tree(
 
     if (response.status !== 200) {
         console.error("Failed to fetch session tree:", response.status);
+        return null;
+    }
+
+    return response.data;
+}
+
+export async function simulate_enautilus(
+    state_id: number,
+    preferred_objective: string,
+    number_of_intermediate_points?: number,
+): Promise<ENautilusSimulateResponse | null> {
+    const response: simulateMethodEnautilusSimulatePostResponse = await simulateMethodEnautilusSimulatePost({
+        state_id,
+        preferred_objective,
+        ...(number_of_intermediate_points != null ? { number_of_intermediate_points } : {}),
+    });
+
+    if (response.status !== 200) {
+        console.error("E-NAUTILUS simulation failed:", response.status);
         return null;
     }
 

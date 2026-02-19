@@ -16,6 +16,8 @@ import type {
 	ENautilusFinalizeResponse,
 	ENautilusRepresentativeSolutionsResponse,
 	ENautilusSessionTreeResponse,
+	ENautilusSimulateRequest,
+	ENautilusSimulateResponse,
 	ENautilusStateResponse,
 	ENautilusStepRequest,
 	ENautilusStepResponse,
@@ -57,8 +59,6 @@ import type {
 	RPMSolveRequest,
 	RPMState,
 	RepresentativeNonDominatedSolutions,
-	RepresentativeSolutionSetFull,
-	RepresentativeSolutionSetInfo,
 	RepresentativeSolutionSetRequest,
 	SCOREBandsGDMConfig,
 	ScoreBandsRequest,
@@ -566,21 +566,42 @@ export type addProblemProblemAddPostResponse200 = {
 	status: 200;
 };
 
+export type addProblemProblemAddPostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
 export type addProblemProblemAddPostResponseSuccess = addProblemProblemAddPostResponse200 & {
 	headers: Headers;
 };
-export type addProblemProblemAddPostResponse = addProblemProblemAddPostResponseSuccess;
+export type addProblemProblemAddPostResponseError = addProblemProblemAddPostResponse422 & {
+	headers: Headers;
+};
+
+export type addProblemProblemAddPostResponse =
+	| addProblemProblemAddPostResponseSuccess
+	| addProblemProblemAddPostResponseError;
 
 export const getAddProblemProblemAddPostUrl = () => {
 	return `http://localhost:8000/problem/add`;
 };
 
 export const addProblemProblemAddPost = async (
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| null,
 	options?: RequestInit
 ): Promise<addProblemProblemAddPostResponse> => {
 	return customFetch<addProblemProblemAddPostResponse>(getAddProblemProblemAddPostUrl(), {
 		...options,
-		method: 'POST'
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json', ...options?.headers },
+		body: JSON.stringify(
+			rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull
+		)
 	});
 };
 
@@ -632,6 +653,12 @@ export const addProblemJsonProblemAddJsonPost = async (
 ): Promise<addProblemJsonProblemAddJsonPostResponse> => {
 	const formData = new FormData();
 	formData.append(`json_file`, bodyAddProblemJsonProblemAddJsonPost.json_file);
+	if (
+		bodyAddProblemJsonProblemAddJsonPost.request !== undefined &&
+		bodyAddProblemJsonProblemAddJsonPost.request !== null
+	) {
+		formData.append(`request`, bodyAddProblemJsonProblemAddJsonPost.request);
+	}
 
 	return customFetch<addProblemJsonProblemAddJsonPostResponse>(
 		getAddProblemJsonProblemAddJsonPostUrl(),
@@ -806,7 +833,7 @@ Returns:
  * @summary Add Representative Solution Set
  */
 export type addRepresentativeSolutionSetProblemAddRepresentativeSolutionSetPostResponse200 = {
-	data: RepresentativeSolutionSetInfo;
+	data: unknown;
 	status: 200;
 };
 
@@ -855,7 +882,7 @@ Returns only name, description, ideal, and nadir for each set.
  */
 export type getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponse200 =
 	{
-		data: RepresentativeSolutionSetInfo[];
+		data: unknown;
 		status: 200;
 	};
 
@@ -887,6 +914,12 @@ export const getGetAllRepresentativeSolutionSetsProblemAllRepresentativeSolution
 export const getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGet =
 	async (
 		problemId: number,
+		rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull:
+			| RPMSolveRequest
+			| ENautilusStepRequest
+			| RepresentativeSolutionSetRequest
+			| CreateSessionRequest
+			| null,
 		options?: RequestInit
 	): Promise<getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponse> => {
 		return customFetch<getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSetsProblemIdGetResponse>(
@@ -895,17 +928,21 @@ export const getAllRepresentativeSolutionSetsProblemAllRepresentativeSolutionSet
 			),
 			{
 				...options,
-				method: 'GET'
+				method: 'GET',
+				headers: { 'Content-Type': 'application/json', ...options?.headers },
+				body: JSON.stringify(
+					rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull
+				)
 			}
 		);
 	};
 
 /**
- * Fetch full information of a single representative solution by its ID.
+ * Fetch full information of a single representative solution set by its ID.
  * @summary Get Representative Solution Set
  */
 export type getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetResponse200 = {
-	data: RepresentativeSolutionSetFull;
+	data: unknown;
 	status: 200;
 };
 
@@ -935,13 +972,23 @@ export const getGetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetI
 
 export const getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGet = async (
 	setId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| null,
 	options?: RequestInit
 ): Promise<getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetResponse> => {
 	return customFetch<getRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetResponse>(
 		getGetRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdGetUrl(setId),
 		{
 			...options,
-			method: 'GET'
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull
+			)
 		}
 	);
 };
@@ -983,13 +1030,23 @@ export const getDeleteRepresentativeSolutionSetProblemRepresentativeSolutionSetS
 
 export const deleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDelete = async (
 	setId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| null,
 	options?: RequestInit
 ): Promise<deleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteResponse> => {
 	return customFetch<deleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteResponse>(
 		getDeleteRepresentativeSolutionSetProblemRepresentativeSolutionSetSetIdDeleteUrl(setId),
 		{
 			...options,
-			method: 'DELETE'
+			method: 'DELETE',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull
+			)
 		}
 	);
 };
@@ -1027,13 +1084,23 @@ export const getDeleteProblemProblemProblemIdDeleteUrl = (problemId: number) => 
 
 export const deleteProblemProblemProblemIdDelete = async (
 	problemId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| null,
 	options?: RequestInit
 ): Promise<deleteProblemProblemProblemIdDeleteResponse> => {
 	return customFetch<deleteProblemProblemProblemIdDeleteResponse>(
 		getDeleteProblemProblemProblemIdDeleteUrl(problemId),
 		{
 			...options,
-			method: 'DELETE'
+			method: 'DELETE',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull
+			)
 		}
 	);
 };
@@ -1071,13 +1138,23 @@ export const getGetProblemJsonProblemProblemIdJsonGetUrl = (problemId: number) =
 
 export const getProblemJsonProblemProblemIdJsonGet = async (
 	problemId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| null,
 	options?: RequestInit
 ): Promise<getProblemJsonProblemProblemIdJsonGetResponse> => {
 	return customFetch<getProblemJsonProblemProblemIdJsonGetResponse>(
 		getGetProblemJsonProblemProblemIdJsonGetUrl(problemId),
 		{
 			...options,
-			method: 'GET'
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull
+			)
 		}
 	);
 };
@@ -1536,7 +1613,7 @@ export const getOrInitializeMethodNimbusGetOrInitializePost = async (
 
 Args:
     request (NIMBUSFinalizeRequest): The request containing the final solution, etc.
-    context (Annotated[User, get_session_context): The current context.
+    context (Annotated[SessionContext, SessionContextGuard): The current context.
 
 Raises:
     HTTPException
@@ -1746,7 +1823,7 @@ export const calculateScoreBandsFromObjectiveDataMethodGenericScoreBandsObjDataP
 Args:
     request (UtopiaRequest): the set of decision variables and problem for which the utopia forest map is requested
         for.
-    context (Annotated[SessionContext, Depends(get_session_context)]): the current session context
+    context (Annotated[SessionContext, Depends(SessionContextGuard)]): the current session context
 
 Raises:
     HTTPException:
@@ -2594,7 +2671,7 @@ decision events capturing what the DM chose at each transition.
 
 Args:
     session_id: The interactive session ID.
-    db_session: The database session.
+    context: The context of the query.
 
 Returns:
     ENautilusSessionTreeResponse with nodes, edges, root_ids, and decision_events.
@@ -2629,13 +2706,73 @@ export const getGetSessionTreeMethodEnautilusSessionTreeSessionIdGetUrl = (sessi
 
 export const getSessionTreeMethodEnautilusSessionTreeSessionIdGet = async (
 	sessionId: number,
+	rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull:
+		| RPMSolveRequest
+		| ENautilusStepRequest
+		| RepresentativeSolutionSetRequest
+		| CreateSessionRequest
+		| null,
 	options?: RequestInit
 ): Promise<getSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse> => {
 	return customFetch<getSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse>(
 		getGetSessionTreeMethodEnautilusSessionTreeSessionIdGetUrl(sessionId),
 		{
 			...options,
-			method: 'GET'
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(
+				rPMSolveRequestENautilusStepRequestRepresentativeSolutionSetRequestCreateSessionRequestNull
+			)
+		}
+	);
+};
+
+/**
+ * Run E-NAUTILUS greedily from a state to completion.
+
+Given a starting state, this endpoint greedily selects the best intermediate
+point for the preferred objective at each iteration until iterations_left == 0,
+then projects to the Pareto front. No database writes are performed.
+ * @summary Simulate
+ */
+export type simulateMethodEnautilusSimulatePostResponse200 = {
+	data: ENautilusSimulateResponse;
+	status: 200;
+};
+
+export type simulateMethodEnautilusSimulatePostResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type simulateMethodEnautilusSimulatePostResponseSuccess =
+	simulateMethodEnautilusSimulatePostResponse200 & {
+		headers: Headers;
+	};
+export type simulateMethodEnautilusSimulatePostResponseError =
+	simulateMethodEnautilusSimulatePostResponse422 & {
+		headers: Headers;
+	};
+
+export type simulateMethodEnautilusSimulatePostResponse =
+	| simulateMethodEnautilusSimulatePostResponseSuccess
+	| simulateMethodEnautilusSimulatePostResponseError;
+
+export const getSimulateMethodEnautilusSimulatePostUrl = () => {
+	return `http://localhost:8000/method/enautilus/simulate`;
+};
+
+export const simulateMethodEnautilusSimulatePost = async (
+	eNautilusSimulateRequest: ENautilusSimulateRequest,
+	options?: RequestInit
+): Promise<simulateMethodEnautilusSimulatePostResponse> => {
+	return customFetch<simulateMethodEnautilusSimulatePostResponse>(
+		getSimulateMethodEnautilusSimulatePostUrl(),
+		{
+			...options,
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', ...options?.headers },
+			body: JSON.stringify(eNautilusSimulateRequest)
 		}
 	);
 };

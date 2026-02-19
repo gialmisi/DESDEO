@@ -7,6 +7,6 @@
  */
 
 /**
- * The objective values of the referenced solution. None if not applicable.
+ * The auto-picked intermediate point.
  */
-export type SolutionReferenceObjectiveValues = { [key: string]: number } | null;
+export type ENautilusSimulateStepResultSelectedPoint = { [key: string]: number };
