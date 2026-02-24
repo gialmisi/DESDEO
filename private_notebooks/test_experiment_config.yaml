@@ -1,48 +1,12 @@
-# General setup
+# Test config — overrides experiment_config.yaml for quick end-to-end pipeline check.
+# Usage: snakemake --configfile test_experiment_config.yaml -j4
 
-results_dir: "results"
-data_gen_script: "scripts/experiment_1.py"
-front_gen_script: "scripts/generate_front.py"
-summary_stats_script: "scripts/summary_statistics.py"
-thresholds_script: "scripts/compute_thresholds.py"
-plot_script: "scripts/plot_summary_figures.py"
-result_extension: "parquet"
-base_seed: 28012026
+results_dir: "results/test_output"
 
-# NSGA3 options for front generation
-
-xover_probability: 0.9
-xover_distribution: 20
-tournament_size: 2
-distribution_index: 20
-
-# Data generation
-
-modes: ["baseline", "relaxed", "ranking"]
-population_sizes: [6, 12, 18]
+n_runs: 20
 n_generations: 200
-n_runs: 250
-
-# Random samples for inactive constraint thresholds
-
-n_random_samples: 10000
-
-# Epsilon for approximating shadow front nadir point
-
-hv_eps_percent: 0.01
-
-# Front generation
-
-n_generations_front: 10000
-population_size_front: 200
-seed_perturb_fraction: 0.2
-seed_sigma: 0.02
-seed_flip_prob: 0.1
-
-# List of all considered problems
-threshold_improvement_percentages: [0.05, 0.10, 0.20] # low, med, high
-
-# Remember to update 'PROBLEM_BUILDERS' in utils.py when adding new problems!
+n_generations_front: 500
+population_size_front: 50
 
 problems:
   - name: "branin"
@@ -136,8 +100,6 @@ problems:
     objective_optimum: -5.50801327159536
     optimal_solution: [2.329520197477607, 3.17849307411768]
 
-## problems for which summary statistics make sense
-
 summary_problems:
   [
     "branin",
@@ -151,55 +113,3 @@ summary_problems:
     "g9",
     "g24",
   ]
-
-# plotting settings
-plotting:
-  fig_width: 11.0
-  row_height: 3.2
-  ci_alpha: 0.18
-  gen_ticks: 7
-  grid_alpha: 0.25
-  grid_lw: 0.6
-
-  suptitle_y: 1.05
-  xlabel_y: -0.02
-
-  rcparams:
-    font.size: 10
-    axes.titlesize: 10
-    axes.labelsize: 10
-    legend.fontsize: 9
-    xtick.labelsize: 9
-    ytick.labelsize: 9
-    pdf.fonttype: 42
-    ps.fonttype: 42
-    figure.titlesize: 10
-
-  palette:
-    black: "#000000"
-    blue: "#0072B2"
-    orange: "#E69F00"
-    red: "#D55E00"
-
-  mode_style:
-    baseline:
-      { color: "#000000", linestyle: "-", linewidth: 2.0, label: "Baseline" }
-    relaxed:
-      { color: "#0072B2", linestyle: "--", linewidth: 2.0, label: "Relaxed" }
-    ranking:
-      { color: "#E69F00", linestyle: ":", linewidth: 2.2, label: "Ranking" }
-
-  optimum_line:
-    color: "#D55E00"
-    linestyle: "-"
-    linewidth: 1.6
-    label: "Optimum"
-
-  legend:
-    y: 1.03
-    frameon: true
-    facecolor: "white"
-    edgecolor: "black"
-    framealpha: 1.0
-    linewidth: 0.8
-    fancybox: false

@@ -2447,6 +2447,16 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         """Thresholded violation for one constraint: max(0, constraint violation value - threshold)."""
         return np.maximum(0.0, cj - thr)
 
+    def _build_violation_with_single_relaxation(self, c_mat: np.ndarray, j: int, thr_j: float) -> np.ndarray:
+        """Violation matrix enforcing all constraints, but relaxing column j by thr_j.
+
+        All columns use max(0, c), column j uses max(0, c_j - thr_j).
+        np.maximum(0.0, c_mat) creates a copy, so mutating column j is safe.
+        """
+        v = np.maximum(0.0, c_mat)
+        v[:, j] = np.maximum(0.0, c_mat[:, j] - thr_j)
+        return v
+
     def _order_by_objective_then_violation(
         self,
         target_arr: np.ndarray,
@@ -2568,6 +2578,16 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         else:
             c_mat = np.zeros((n, 0), dtype=float)
 
+        # Remove duplicates by objective value before any ranking
+        unique_mask = self._objective_unique_mask(target_arr, tol=1e-8)
+        unique_idx = np.where(unique_mask)[0].tolist()
+        solutions = solutions[unique_idx]
+        population = population[unique_idx]
+        target_arr = target_arr[unique_mask]
+        if c_mat.shape[1] > 0:
+            c_mat = c_mat[unique_mask]
+        n = population.shape[0]
+
         if self.mode == "baseline":
             # Full ordering: feasible-by-objective first, then infeasible by (breach count, sum normalized violation)
             if c_mat.shape[1] == 0:
@@ -2575,10 +2595,6 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
             else:
                 v0 = self._build_violation_all_original(c_mat)  # (n, k)
                 order_full = self._order_by_objective_then_violation(target_arr, v0)
-
-            # Filter unique solutions
-            unique_mask = self._objective_unique_mask(target_arr, tol=1e-8)
-            order_full = order_full[unique_mask[order_full]]
 
             order = order_full[: self.population_size]
 
@@ -2595,11 +2611,10 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                 pool0 = self._order_by_objective_then_violation(target_arr, v0)
                 pool_orders.append(pool0)
 
-            # rest of pools, per-constraint threshold, feasibility based only on that constraint
+            # rest of pools, per-constraint threshold with all constraints enforced
             for j in range(c_mat.shape[1]):
-                cj = c_mat[:, j]
                 thr = float(self.constraint_thresholds[j])
-                vj = self._build_violation_single_threshold(cj, thr)
+                vj = self._build_violation_with_single_relaxation(c_mat, j, thr)
                 poolj = self._order_by_objective_then_violation(target_arr, vj)
                 pool_orders.append(poolj)
 
@@ -2617,11 +2632,10 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                 ord0 = self._order_by_objective_then_violation(target_arr, v0)
                 orderings.append(ord0)
 
-                # Remaining ranking, each constraint with its threshold (single constraint)
+                # Remaining ranking, each constraint with its threshold (all constraints enforced, one relaxed)
                 for j in range(c_mat.shape[1]):
-                    cj = c_mat[:, j]
                     thr = float(self.constraint_thresholds[j])
-                    vj = self._build_violation_single_threshold(cj, thr)
+                    vj = self._build_violation_with_single_relaxation(c_mat, j, thr)
                     orderings.append(self._order_by_objective_then_violation(target_arr, vj))
 
                 # Convert to rank vectors (pseudo objective vectors)
