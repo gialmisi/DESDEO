@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import typer
 
 from desdeo.cli.styles import console, print_summary_panel, step_header, success
@@ -13,6 +16,7 @@ def _configure_install_paths() -> None:
         InstallMode,
         config_exists,
         get_project_root,
+        is_conda_env,
         load_config,
         resolve_paths_for_mode,
         save_config,
@@ -42,7 +46,8 @@ def _configure_install_paths() -> None:
     console.print(f"       nvm     : {local_paths['nvm_dir']}")
     console.print()
 
-    choice = typer.prompt("  Choice", default="1")
+    default_choice = "3" if is_conda_env() else "1"
+    choice = typer.prompt("  Choice", default=default_choice)
 
     if choice == "2":
         custom_base = typer.prompt("  Base directory for tools")
@@ -90,6 +95,15 @@ def setup() -> None:
 
     status = run_all_checks()
     display_status(status)
+
+    # Detect conda environment
+    from desdeo.cli.config import is_conda_env
+
+    if is_conda_env():
+        conda_name = Path(os.environ["CONDA_PREFIX"]).name
+        console.print(f"\n  [bold]Conda environment detected:[/bold] {conda_name}")
+        console.print("    Solver PATH will use conda activation scripts.")
+        console.print("    Node.js will be installed via conda if needed.")
 
     if status.everything_ok:
         console.print()

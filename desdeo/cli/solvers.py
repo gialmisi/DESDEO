@@ -59,7 +59,40 @@ def _detect_shell_rc() -> Path | None:
 
 
 def _add_to_path(solver_dir: Path) -> None:
-    """Offer to add solver directory to PATH via shell rc file."""
+    """Offer to add solver directory to PATH via shell rc or conda activation script."""
+    from desdeo.cli.config import is_conda_env
+
+    # Always update current process PATH immediately
+    if str(solver_dir) not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = str(solver_dir) + os.pathsep + os.environ.get("PATH", "")
+
+    # --- Conda branch ---
+    if is_conda_env():
+        conda_prefix = Path(os.environ["CONDA_PREFIX"])
+        activate_d = conda_prefix / "etc" / "conda" / "activate.d"
+        activate_d.mkdir(parents=True, exist_ok=True)
+
+        if sys.platform == "win32":
+            script = activate_d / "desdeo-solvers.bat"
+            content = f'@set "PATH={solver_dir};%PATH%"\n'
+        else:
+            script = activate_d / "desdeo-solvers.sh"
+            content = f'export PATH="{solver_dir}:$PATH"\n'
+
+        if script.exists() and str(solver_dir) in script.read_text():
+            info(f"Conda activation script already exists: {script}")
+            return
+
+        add = typer.confirm(f"  Add {solver_dir} to PATH via conda activation script?", default=True)
+        if add:
+            script.write_text(content)
+            success(f"Wrote {script}")
+            warn("Reactivate your conda env for PATH changes to take effect.")
+        else:
+            console.print("    Add the solver directory to PATH manually.")
+        return
+
+    # --- Shell rc branch (existing logic) ---
     rc_file = _detect_shell_rc()
     if not rc_file:
         warn("Could not detect shell config file.")
@@ -74,17 +107,12 @@ def _add_to_path(solver_dir: Path) -> None:
         content = rc_file.read_text()
         if str(solver_dir) in content:
             info(f"PATH entry already exists in {rc_file}")
-            # Still update the current process PATH so checks work immediately
-            if str(solver_dir) not in os.environ.get("PATH", ""):
-                os.environ["PATH"] = str(solver_dir) + os.pathsep + os.environ.get("PATH", "")
             return
 
     add = typer.confirm(f"  Add {solver_dir} to PATH in {rc_file}?", default=True)
     if add:
         with rc_file.open("a") as f:
             f.write(line)
-        # Update the current process PATH so checks work immediately
-        os.environ["PATH"] = str(solver_dir) + os.pathsep + os.environ.get("PATH", "")
         success(f"Added to {rc_file}")
         warn("Run 'source " + str(rc_file) + "' or open a new terminal for changes to take effect.")
     else:

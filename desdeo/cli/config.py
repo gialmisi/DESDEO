@@ -7,9 +7,15 @@ can all find the installed tools without re-prompting.
 
 from __future__ import annotations
 
+import os
 import sys
 from enum import Enum
 from pathlib import Path
+
+
+def is_conda_env() -> bool:
+    """Return True if running inside an activated conda environment."""
+    return bool(os.environ.get("CONDA_PREFIX"))
 
 
 class InstallMode(Enum):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -84,13 +85,56 @@ def _install_node_via_nvm() -> bool:
     return False
 
 
+def _install_node_via_conda() -> bool:
+    """Install Node.js using conda (for Anaconda environments)."""
+    console.print("  Installing Node.js via conda...")
+    result = subprocess.run(
+        ["conda", "install", "-y", "nodejs"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        fail("conda install nodejs failed")
+        console.print(f"    {result.stderr[:200]}")
+        return False
+
+    # Verify node is now available
+    node_path = shutil.which("node")
+    if node_path:
+        success(f"Node.js installed ({node_path})")
+        return True
+
+    fail("node not found after conda install")
+    return False
+
+
 def _check_node_version() -> bool:
-    """Check Node.js version and offer nvm install if needed."""
+    """Check Node.js version and offer install if needed."""
+    from desdeo.cli.config import is_conda_env
+
     node_check = check_node()
 
     if node_check.ok:
         success(f"Node.js: {node_check.version}")
+    elif is_conda_env():
+        # In conda: accept any version, offer conda install if missing
+        if node_check.version:
+            # Node present but < 24 — acceptable in conda
+            success(f"Node.js: {node_check.version} (conda)")
+        else:
+            # Node missing — install via conda
+            console.print("\n  Options:")
+            console.print("    1) Install Node.js via conda (recommended)")
+            console.print("    2) Skip (install manually)\n")
+            choice = typer.prompt("  Choice", default="1")
+            if choice == "1":
+                if not _install_node_via_conda():
+                    return False
+            else:
+                info("Skipping Node.js installation.")
+                return False
     else:
+        # Non-conda: existing logic (nvm on Unix, manual on Windows)
         if node_check.version:
             warn(f"Node.js: {node_check.version} (>= 24 required)")
         else:
@@ -103,9 +147,7 @@ def _check_node_version() -> bool:
         console.print("\n  Options:")
         console.print("    1) Install Node.js 24 via nvm (recommended)")
         console.print("    2) Skip (install manually)\n")
-
         choice = typer.prompt("  Choice", default="1")
-
         if choice == "1":
             if not _install_node_via_nvm():
                 return False

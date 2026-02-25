@@ -112,6 +112,8 @@ def check_uv() -> CheckResult:
 
 def check_node() -> CheckResult:
     """Check Node.js version."""
+    from desdeo.cli.config import is_conda_env
+
     version_str = _run_version("node")
     if not version_str:
         return CheckResult(name="Node.js", ok=False, detail="Not found")
@@ -124,6 +126,8 @@ def check_node() -> CheckResult:
 
     if major >= 24:
         return CheckResult(name="Node.js", ok=True, version=version_str)
+    if is_conda_env():
+        return CheckResult(name="Node.js", ok=True, version=version_str, detail="conda (< 24 accepted)")
     detail = f"Version {major} found, >= 24 recommended. Use 'nvm use 24' if available."
     return CheckResult(name="Node.js", ok=False, version=version_str, detail=detail)
 
