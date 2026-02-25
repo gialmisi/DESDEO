@@ -35,7 +35,7 @@ RUN rm -rf webui/node_modules webui/.env desdeo/api/test.db
 # Install Python dependencies.
 RUN uv sync
 
-RUN chmod +x docker/e2e_cli_test.sh
+RUN chmod +x docker/e2e_cli_test.sh docker/e2e_wizard_test.sh
 
 # No -t (tty) at runtime — keeps getpass/hide_input reading from the pipe.
 ENTRYPOINT ["/bin/bash", "docker/e2e_cli_test.sh"]

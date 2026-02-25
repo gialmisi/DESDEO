@@ -74,12 +74,17 @@ def _add_to_path(solver_dir: Path) -> None:
         content = rc_file.read_text()
         if str(solver_dir) in content:
             info(f"PATH entry already exists in {rc_file}")
+            # Still update the current process PATH so checks work immediately
+            if str(solver_dir) not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = str(solver_dir) + os.pathsep + os.environ.get("PATH", "")
             return
 
     add = typer.confirm(f"  Add {solver_dir} to PATH in {rc_file}?", default=True)
     if add:
         with rc_file.open("a") as f:
             f.write(line)
+        # Update the current process PATH so checks work immediately
+        os.environ["PATH"] = str(solver_dir) + os.pathsep + os.environ.get("PATH", "")
         success(f"Added to {rc_file}")
         warn("Run 'source " + str(rc_file) + "' or open a new terminal for changes to take effect.")
     else:

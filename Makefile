@@ -53,6 +53,14 @@ test-cli-e2e-fullstack:
 	docker build --platform linux/amd64 -f docker/Dockerfile.cli-test -t desdeo-cli-test .
 	docker run --rm --platform linux/amd64 -e RUN_FULLSTACK=1 desdeo-cli-test
 
+test-cli-wizard:
+	docker build --platform linux/amd64 -f docker/Dockerfile.cli-test -t desdeo-cli-test .
+	docker run --rm --platform linux/amd64 --entrypoint /bin/bash desdeo-cli-test docker/e2e_wizard_test.sh
+
+test-cli-wizard-fullstack:
+	docker build --platform linux/amd64 -f docker/Dockerfile.cli-test -t desdeo-cli-test .
+	docker run --rm --platform linux/amd64 -e RUN_FULLSTACK=1 --entrypoint /bin/bash desdeo-cli-test docker/e2e_wizard_test.sh
+
 docs-fast:
 	mkdocs serve -f mkdocs.yml
 
