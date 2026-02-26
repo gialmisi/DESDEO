@@ -86,12 +86,89 @@ def _configure_install_paths() -> None:
     success("Install paths saved to .desdeo/config.toml")
 
 
+def _dependency_group_phase() -> dict[str, bool]:
+    """Detect missing dependency groups and offer to install them.
+
+    Returns a dict ``{group_name: is_available}`` for every group found in
+    pyproject.toml.
+    """
+    from desdeo.cli.config import check_dependency_group, ensure_dependency_groups, read_dependency_groups
+    from desdeo.cli.styles import info, warn
+
+    groups = read_dependency_groups()
+    if not groups:
+        info("Could not locate pyproject.toml — skipping dependency-group check.")
+        return {}
+
+    # Check each group
+    group_missing: dict[str, list[str]] = {}
+    for name in groups:
+        missing, _ = check_dependency_group(name)
+        group_missing[name] = missing
+
+    any_missing = any(m for m in group_missing.values())
+    if not any_missing:
+        return {name: True for name in groups}
+
+    console.print("  [bold]Dependency Groups[/bold]")
+    console.print("    Some optional dependency groups have missing packages:\n")
+    for name, missing in group_missing.items():
+        if missing:
+            preview = ", ".join(m.split("[")[0].split(">")[0].split("<")[0].strip() for m in missing[:3])
+            if len(missing) > 3:
+                preview += ", ..."
+            console.print(f"      {name:12s} {len(missing)} missing ({preview})")
+        else:
+            console.print(f"      {name:12s} [green]OK[/green]")
+
+    console.print()
+    console.print("    1) Install all development groups (recommended)")
+    console.print("    2) Select specific groups")
+    console.print("    3) Skip\n")
+
+    choice = typer.prompt("  Choice", default="1")
+
+    # Groups included in "all-dev" (the standard development set)
+    all_dev_groups = ["dev", "docs", "jupyter", "web", "viz", "tools"]
+
+    if choice == "1":
+        # Install all dev groups that have missing packages
+        to_install = [g for g in all_dev_groups if g in group_missing and group_missing[g]]
+        if to_install:
+            return ensure_dependency_groups(to_install)
+    elif choice == "2":
+        # Let user pick
+        available = [name for name, m in group_missing.items() if m]
+        console.print("    Select groups to install (comma-separated numbers):\n")
+        for i, name in enumerate(available, 1):
+            console.print(f"      {i}) {name} ({len(group_missing[name])} missing)")
+        console.print()
+        selection = typer.prompt("  Groups", default=",".join(str(i) for i in range(1, len(available) + 1)))
+        indices = [int(s.strip()) - 1 for s in selection.split(",") if s.strip().isdigit()]
+        to_install = [available[i] for i in indices if 0 <= i < len(available)]
+        if to_install:
+            return ensure_dependency_groups(to_install)
+    else:
+        warn("Skipping dependency group installation.")
+
+    # Return current status (re-check)
+    result: dict[str, bool] = {}
+    for name in groups:
+        missing, _ = check_dependency_group(name)
+        result[name] = len(missing) == 0
+    return result
+
+
 def setup() -> None:
     """Run the full DESDEO setup wizard."""
     from desdeo.cli.checks import display_status, run_all_checks
 
     console.print("\n[bold]DESDEO Setup Wizard[/bold]")
     console.print("[dim]Scanning environment...[/dim]\n")
+
+    # Phase 0: dependency group installation (before any checks)
+    group_status = _dependency_group_phase()
+    console.print()
 
     status = run_all_checks()
     display_status(status)
@@ -146,16 +223,23 @@ def setup() -> None:
             solvers()
         step += 1
 
-    # Phase: Database
+    # Phase: Database (requires 'web' dependency group for sqlmodel etc.)
     if needs_db:
-        console.print("  [bold]Database Setup[/bold] — will create a local SQLite database")
-        console.print("    Creates desdeo/api/test.db, sets up user accounts (analyst + optional")
-        console.print("    decision makers), and seeds optimization test problems.\n")
-        if typer.confirm("Proceed?", default=True):
-            step_header(step, total, "Database Setup")
-            from desdeo.cli.database import db
+        web_available = group_status.get("web", False)
+        if not web_available:
+            from desdeo.cli.styles import warn
 
-            db()
+            warn("Skipping database setup — 'web' dependency group is not installed.")
+            warn("Run desdeo-setup again after installing the web dependencies.")
+        else:
+            console.print("  [bold]Database Setup[/bold] — will create a local SQLite database")
+            console.print("    Creates desdeo/api/test.db, sets up user accounts (analyst + optional")
+            console.print("    decision makers), and seeds optimization test problems.\n")
+            if typer.confirm("Proceed?", default=True):
+                step_header(step, total, "Database Setup")
+                from desdeo.cli.database import db
+
+                db()
         step += 1
 
     # Phase: WebUI

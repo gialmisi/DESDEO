@@ -7,8 +7,12 @@ can all find the installed tools without re-prompting.
 
 from __future__ import annotations
 
+import importlib.metadata
 import os
+import re
+import subprocess
 import sys
+import tomllib
 from enum import Enum
 from pathlib import Path
 
@@ -16,6 +20,127 @@ from pathlib import Path
 def is_conda_env() -> bool:
     """Return True if running inside an activated conda environment."""
     return bool(os.environ.get("CONDA_PREFIX"))
+
+
+# ---------------------------------------------------------------------------
+# Dependency-group helpers
+# ---------------------------------------------------------------------------
+
+
+def _find_pyproject_toml() -> Path | None:
+    """Locate pyproject.toml for reading dependency groups.
+
+    Tries two locations:
+    1. Project root (dev/editable installs, cloned repos)
+    2. Bundled ``desdeo/_pyproject.toml`` (pip-installed from wheel)
+    """
+    # 1. Dev / editable install: project root has pyproject.toml
+    project_pyproject = get_project_root() / "pyproject.toml"
+    if project_pyproject.is_file():
+        return project_pyproject
+
+    # 2. Pip-installed wheel: force-included as desdeo/_pyproject.toml
+    bundled = Path(__file__).resolve().parent.parent / "_pyproject.toml"
+    if bundled.is_file():
+        return bundled
+
+    return None
+
+
+def read_dependency_groups() -> dict[str, list[str]]:
+    """Parse ``[dependency-groups]`` from pyproject.toml.
+
+    Returns ``{group_name: [specifier_strings]}``, filtering out
+    ``include-group`` dict entries (PEP 735 cross-references).
+    Returns ``{}`` if pyproject.toml is not found.
+    """
+    path = _find_pyproject_toml()
+    if path is None:
+        return {}
+
+    with open(path, "rb") as f:
+        data = tomllib.load(f)
+
+    groups_raw = data.get("dependency-groups", {})
+    result: dict[str, list[str]] = {}
+    for name, entries in groups_raw.items():
+        # Keep only plain string specifiers, skip include-group dicts
+        result[name] = [e for e in entries if isinstance(e, str)]
+    return result
+
+
+def check_dependency_group(group: str) -> tuple[list[str], list[str]]:
+    """Check which packages in a dependency group are missing.
+
+    Returns ``(missing_specifiers, installed_names)``.
+    """
+    groups = read_dependency_groups()
+    specs = groups.get(group, [])
+
+    missing: list[str] = []
+    installed: list[str] = []
+
+    for spec in specs:
+        # Extract distribution name: strip extras, version constraints, env markers
+        dist_name = re.split(r"[\[>=<~!;]", spec)[0].strip()
+        try:
+            importlib.metadata.distribution(dist_name)
+            installed.append(dist_name)
+        except importlib.metadata.PackageNotFoundError:
+            missing.append(spec)
+
+    return missing, installed
+
+
+def ensure_dependency_groups(groups: list[str]) -> dict[str, bool]:
+    """Check requested dependency groups and pip-install any missing packages.
+
+    Returns ``{group_name: is_available}`` where ``is_available`` is True when
+    all packages in that group are installed (either already or after install).
+    """
+    all_missing: list[str] = []
+    group_missing: dict[str, list[str]] = {}
+
+    for group in groups:
+        m, _ = check_dependency_group(group)
+        group_missing[group] = m
+        all_missing.extend(m)
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    unique_missing: list[str] = []
+    for spec in all_missing:
+        if spec not in seen:
+            seen.add(spec)
+            unique_missing.append(spec)
+
+    if unique_missing:
+        from desdeo.cli.styles import console, fail, success
+
+        console.print("\n  [bold]Installing missing dependencies...[/bold]")
+        for group in groups:
+            if group_missing[group]:
+                names = ", ".join(re.split(r"[\[>=<~!;]", s)[0].strip() for s in group_missing[group])
+                console.print(f"    {group}: {names}")
+
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", *unique_missing],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            success("Dependencies installed successfully.")
+        else:
+            fail(f"pip install failed (exit {result.returncode}).")
+            console.print(f"    [dim]{result.stderr.strip()[:200]}[/dim]")
+
+    # Re-check after install
+    status: dict[str, bool] = {}
+    for group in groups:
+        m, _ = check_dependency_group(group)
+        status[group] = len(m) == 0
+
+    return status
 
 
 class InstallMode(Enum):
