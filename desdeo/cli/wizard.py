@@ -196,11 +196,21 @@ def setup() -> None:
         try:
             import desdeo.api.models  # noqa: F401
         except ImportError:
-            from desdeo.cli.styles import warn
+            from desdeo.cli.config import ensure_uv, uv_sync_groups
+            from desdeo.cli.styles import fail, info
 
-            warn("Skipping database setup — web dependencies not installed.")
-            warn("Run: uv sync --group web")
-        else:
+            info("Web dependencies missing (sqlmodel, fastapi, etc.).")
+            if typer.confirm("  Install via uv sync --group web?", default=True) and ensure_uv() and uv_sync_groups(["web"]):
+                success("Web dependencies installed.")
+                import importlib
+
+                importlib.invalidate_caches()
+                import desdeo.api.models  # noqa: F811
+            else:
+                fail("Could not install web dependencies. Skipping database setup.")
+                needs_db = False
+
+        if needs_db:
             console.print("  [bold]Database Setup[/bold] — will create a local SQLite database")
             console.print("    Creates desdeo/api/test.db, sets up user accounts (analyst + optional")
             console.print("    decision makers), and seeds optimization test problems.\n")
