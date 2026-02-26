@@ -86,12 +86,26 @@ class InstallMode(Enum):
 
 
 def get_project_root() -> Path:
-    """Walk up from this file to find the directory containing pyproject.toml."""
+    """Find the directory containing pyproject.toml.
+
+    Tries two strategies:
+    1. Walk up from this file (works for editable/dev installs)
+    2. Walk up from cwd (works for pip installs when user is in the repo)
+    """
+    # 1. Walk up from this file
     current = Path(__file__).resolve().parent
     while current != current.parent:
         if (current / "pyproject.toml").exists():
             return current
         current = current.parent
+
+    # 2. Walk up from cwd (pip install — __file__ is in site-packages)
+    current = Path.cwd()
+    while current != current.parent:
+        if (current / "pyproject.toml").exists():
+            return current
+        current = current.parent
+
     # Fallback: two levels up from desdeo/cli/
     return Path(__file__).resolve().parent.parent.parent
 
