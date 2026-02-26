@@ -274,8 +274,5 @@ build-backend = "hatchling.build"
 packages = ["desdeo"]
 exclude = ["desdeo/api", "desdeo/utopia_stuff"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"pyproject.toml" = "desdeo/_pyproject.toml"
-
 [tool.pyrefly]
 project-includes = ["desdeo/", "tests/"]

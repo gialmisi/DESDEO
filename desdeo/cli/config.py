@@ -7,14 +7,14 @@ can all find the installed tools without re-prompting.
 
 from __future__ import annotations
 
-import importlib.metadata
 import os
-import re
+import shutil
 import subprocess
 import sys
-import tomllib
 from enum import Enum
 from pathlib import Path
+
+import typer
 
 
 def is_conda_env() -> bool:
@@ -23,124 +23,58 @@ def is_conda_env() -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Dependency-group helpers
+# Dependency-group helpers (uv-based)
 # ---------------------------------------------------------------------------
 
 
-def _find_pyproject_toml() -> Path | None:
-    """Locate pyproject.toml for reading dependency groups.
+def ensure_uv() -> bool:
+    """Check if uv is available, offer to install via conda if not.
 
-    Tries two locations:
-    1. Project root (dev/editable installs, cloned repos)
-    2. Bundled ``desdeo/_pyproject.toml`` (pip-installed from wheel)
+    Returns True if uv is available (or was successfully installed).
     """
-    # 1. Dev / editable install: project root has pyproject.toml
-    project_pyproject = get_project_root() / "pyproject.toml"
-    if project_pyproject.is_file():
-        return project_pyproject
+    if shutil.which("uv"):
+        return True
 
-    # 2. Pip-installed wheel: force-included as desdeo/_pyproject.toml
-    bundled = Path(__file__).resolve().parent.parent / "_pyproject.toml"
-    if bundled.is_file():
-        return bundled
+    if not is_conda_env():
+        return False
 
-    return None
+    from desdeo.cli.styles import console, fail, success
+
+    console.print("  [bold]uv[/bold] is required but not installed.")
+
+    if not typer.confirm("  Install uv via conda-forge?", default=True):
+        return False
+
+    result = subprocess.run(
+        ["conda", "install", "-y", "conda-forge::uv"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        success("uv installed successfully.")
+        return True
+
+    fail("Failed to install uv via conda.")
+    console.print(f"    [dim]{result.stderr.strip()[:200]}[/dim]")
+    return False
 
 
-def read_dependency_groups() -> dict[str, list[str]]:
-    """Parse ``[dependency-groups]`` from pyproject.toml.
+def uv_sync_groups(groups: list[str]) -> bool:
+    """Run ``uv sync`` with the specified dependency groups.
 
-    Returns ``{group_name: [specifier_strings]}``, filtering out
-    ``include-group`` dict entries (PEP 735 cross-references).
-    Returns ``{}`` if pyproject.toml is not found.
+    Returns True on success.
     """
-    path = _find_pyproject_toml()
-    if path is None:
-        return {}
+    cmd = ["uv", "sync"]
+    for g in groups:
+        cmd.extend(["--group", g])
 
-    with open(path, "rb") as f:
-        data = tomllib.load(f)
-
-    groups_raw = data.get("dependency-groups", {})
-    result: dict[str, list[str]] = {}
-    for name, entries in groups_raw.items():
-        # Keep only plain string specifiers, skip include-group dicts
-        result[name] = [e for e in entries if isinstance(e, str)]
-    return result
-
-
-def check_dependency_group(group: str) -> tuple[list[str], list[str]]:
-    """Check which packages in a dependency group are missing.
-
-    Returns ``(missing_specifiers, installed_names)``.
-    """
-    groups = read_dependency_groups()
-    specs = groups.get(group, [])
-
-    missing: list[str] = []
-    installed: list[str] = []
-
-    for spec in specs:
-        # Extract distribution name: strip extras, version constraints, env markers
-        dist_name = re.split(r"[\[>=<~!;]", spec)[0].strip()
-        try:
-            importlib.metadata.distribution(dist_name)
-            installed.append(dist_name)
-        except importlib.metadata.PackageNotFoundError:
-            missing.append(spec)
-
-    return missing, installed
-
-
-def ensure_dependency_groups(groups: list[str]) -> dict[str, bool]:
-    """Check requested dependency groups and pip-install any missing packages.
-
-    Returns ``{group_name: is_available}`` where ``is_available`` is True when
-    all packages in that group are installed (either already or after install).
-    """
-    all_missing: list[str] = []
-    group_missing: dict[str, list[str]] = {}
-
-    for group in groups:
-        m, _ = check_dependency_group(group)
-        group_missing[group] = m
-        all_missing.extend(m)
-
-    # Deduplicate while preserving order
-    seen: set[str] = set()
-    unique_missing: list[str] = []
-    for spec in all_missing:
-        if spec not in seen:
-            seen.add(spec)
-            unique_missing.append(spec)
-
-    if unique_missing:
-        from desdeo.cli.styles import console, fail, success
-
-        console.print("\n  [bold]Installing missing dependencies...[/bold]")
-        for group in groups:
-            if group_missing[group]:
-                names = ", ".join(re.split(r"[\[>=<~!;]", s)[0].strip() for s in group_missing[group])
-                console.print(f"    {group}: {names}")
-
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", *unique_missing],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            success("Dependencies installed successfully.")
-        else:
-            fail(f"pip install failed (exit {result.returncode}).")
-            console.print(f"    [dim]{result.stderr.strip()[:200]}[/dim]")
-
-    # Re-check after install
-    status: dict[str, bool] = {}
-    for group in groups:
-        m, _ = check_dependency_group(group)
-        status[group] = len(m) == 0
-
-    return status
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        cwd=str(get_project_root()),
+    )
+    return result.returncode == 0
 
 
 class InstallMode(Enum):
