@@ -103,6 +103,16 @@ if ($env:CONDA_DEFAULT_ENV -ne $EnvName) {
     exit 1
 }
 
+# ── Set uv cache inside the conda env ─────────────────────────────────────────
+# On restricted Windows machines the default uv cache (AppData\Local\uv\cache)
+# may lack write permissions or trigger admin prompts. Placing the cache inside
+# the conda env avoids this.
+
+if (-not $env:UV_CACHE_DIR) {
+    $env:UV_CACHE_DIR = Join-Path $env:CONDA_PREFIX "uv_cache"
+    Write-Host "       UV_CACHE_DIR set to $env:UV_CACHE_DIR"
+}
+
 # ── Step 2: Install uv via conda-forge ────────────────────────────────────────
 
 Write-Host ""

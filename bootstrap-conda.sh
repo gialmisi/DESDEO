@@ -59,6 +59,15 @@ fi
 echo "       Activating '$ENV_NAME'..."
 conda activate "$ENV_NAME"
 
+# ── Set uv cache inside the conda env ─────────────────────────────────────────
+# On restricted machines the default uv cache location may lack write
+# permissions. Placing the cache inside the conda env avoids this.
+
+if [ -z "${UV_CACHE_DIR:-}" ]; then
+    export UV_CACHE_DIR="$CONDA_PREFIX/uv_cache"
+    echo "       UV_CACHE_DIR set to $UV_CACHE_DIR"
+fi
+
 # ── Step 2: Install uv via conda-forge ────────────────────────────────────────
 
 echo ""
