@@ -181,8 +181,13 @@ def _run_npm_install(webui_dir: Path) -> bool:
             executable="/bin/bash",
         )
     else:
+        cmd = ["npm", "install"]
+        if sys.platform == "win32":
+            # --ignore-scripts avoids esbuild postinstall failures on
+            # restricted Windows machines (AssignProcessToJobObject blocked).
+            cmd.append("--ignore-scripts")
         result = subprocess.run(
-            ["npm", "install"],
+            cmd,
             cwd=webui_dir,
             shell=(sys.platform == "win32"),
         )
