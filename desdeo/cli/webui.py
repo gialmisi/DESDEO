@@ -89,7 +89,7 @@ def _install_node_via_conda() -> bool:
     """Install Node.js using conda (for Anaconda environments)."""
     console.print("  Installing Node.js via conda...")
     result = subprocess.run(
-        ["conda", "install", "-y", "nodejs"],
+        ["conda", "install", "-y", "conda-forge::nodejs"],
         capture_output=True,
         text=True,
     )

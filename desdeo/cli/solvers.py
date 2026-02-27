@@ -73,20 +73,26 @@ def _add_to_path(solver_dir: Path) -> None:
         activate_d.mkdir(parents=True, exist_ok=True)
 
         if sys.platform == "win32":
-            script = activate_d / "desdeo-solvers.bat"
-            content = f'@set "PATH={solver_dir};%PATH%"\n'
+            # Write both .bat (for cmd.exe) and .ps1 (for PowerShell)
+            scripts = [
+                (activate_d / "desdeo-solvers.bat", f'@set "PATH={solver_dir};%PATH%"\n'),
+                (activate_d / "desdeo-solvers.ps1", f'$env:PATH = "{solver_dir};$env:PATH"\n'),
+            ]
         else:
-            script = activate_d / "desdeo-solvers.sh"
-            content = f'export PATH="{solver_dir}:$PATH"\n'
+            scripts = [
+                (activate_d / "desdeo-solvers.sh", f'export PATH="{solver_dir}:$PATH"\n'),
+            ]
 
-        if script.exists() and str(solver_dir) in script.read_text():
-            info(f"Conda activation script already exists: {script}")
+        # Check if already present
+        if all(s.exists() and str(solver_dir) in s.read_text() for s, _ in scripts):
+            info(f"Conda activation script(s) already exist in {activate_d}")
             return
 
         add = typer.confirm(f"  Add {solver_dir} to PATH via conda activation script?", default=True)
         if add:
-            script.write_text(content)
-            success(f"Wrote {script}")
+            for script, content in scripts:
+                script.write_text(content)
+                success(f"Wrote {script}")
             warn("Reactivate your conda env for PATH changes to take effect.")
         else:
             console.print("    Add the solver directory to PATH manually.")
