@@ -184,6 +184,7 @@ def _run_npm_install(webui_dir: Path) -> bool:
         result = subprocess.run(
             ["npm", "install"],
             cwd=webui_dir,
+            shell=(sys.platform == "win32"),
         )
 
     if result.returncode == 0:
