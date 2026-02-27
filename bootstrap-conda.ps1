@@ -62,7 +62,7 @@ if (-not $condaCmd) {
 # function and activate works out of the box.  Otherwise conda resolves to
 # conda.bat/.exe on PATH and we must import Conda.psm1 to make activate work.
 
-if ($condaCmd.CommandType -ne 'Function') {
+if ($condaCmd.CommandType -eq 'Application') {
     $condaExePath = $condaCmd.Source
     $condaRoot = (Split-Path (Split-Path $condaExePath))
     $condaModule = Join-Path $condaRoot "shell" "condabin" "Conda.psm1"
