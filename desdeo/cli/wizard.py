@@ -242,15 +242,28 @@ def _print_final_summary(status) -> None:
     db_status = status.database.detail if status.database.ok else "not configured"
     webui_status = "ready" if status.webui.ok else "not configured"
 
-    summary_lines = [
-        f"  Python:    {status.python.version}",
-        f"  Solvers:   {' '.join(solver_parts)}",
-        f"  Database:  {db_status}",
-        f"  WebUI:     {webui_status}",
-        "",
-        "  Start:  make fullstack",
-        "  Open:   http://localhost:5173",
-        "  Tests:  make test",
-    ]
+    if sys.platform == "win32":
+        summary_lines = [
+            f"  Python:    {status.python.version}",
+            f"  Solvers:   {' '.join(solver_parts)}",
+            f"  Database:  {db_status}",
+            f"  WebUI:     {webui_status}",
+            "",
+            "  Backend:   cd desdeo/api && uvicorn app:app --reload",
+            "  Frontend:  cd webui && npm run dev",
+            "  Open:      http://localhost:5173",
+            "  Tests:     pytest -n auto -m \"not fixme\"",
+        ]
+    else:
+        summary_lines = [
+            f"  Python:    {status.python.version}",
+            f"  Solvers:   {' '.join(solver_parts)}",
+            f"  Database:  {db_status}",
+            f"  WebUI:     {webui_status}",
+            "",
+            "  Start:  make fullstack",
+            "  Open:   http://localhost:5173",
+            "  Tests:  make test",
+        ]
     console.print()
     print_summary_panel(summary_lines)
