@@ -77,11 +77,13 @@ class EnvironmentStatus:
 def _run_version(cmd: str) -> str | None:
     """Run `cmd --version` and return the first line, or None on failure."""
     try:
+        # On Windows, shell=True is needed to run .cmd/.bat wrappers (e.g. npm.cmd)
         result = subprocess.run(
             [cmd, "--version"],
             capture_output=True,
             text=True,
             timeout=10,
+            shell=(sys.platform == "win32"),
         )
         if result.returncode == 0:
             return result.stdout.strip().splitlines()[0]
