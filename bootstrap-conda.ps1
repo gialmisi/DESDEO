@@ -12,12 +12,10 @@
     Name for the conda environment (default: desdeo).
 
 .NOTES
+    Prerequisite: conda must be available on PATH.
+
     If you get a "running scripts is disabled" error, run this first:
       Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-
-    Conda must be initialized for PowerShell. If 'conda activate' fails, run:
-      conda init powershell
-    then restart your terminal.
 
 .EXAMPLE
     .\bootstrap-conda.ps1
@@ -51,18 +49,43 @@ if ($answer -match '^[nN]') {
 
 # ── Pre-check: conda available? ──────────────────────────────────────────────
 
-if (-not (Get-Command conda -ErrorAction SilentlyContinue)) {
+$condaCmd = Get-Command conda -ErrorAction SilentlyContinue
+if (-not $condaCmd) {
     Write-Host ""
-    Write-Host "ERROR: conda is not available. Install Miniconda or Anaconda first:"
-    Write-Host "  https://docs.conda.io/en/latest/miniconda.html"
+    Write-Host "ERROR: conda is not available on PATH."
+    Write-Host "  Install Miniconda: https://docs.conda.io/en/latest/miniconda.html"
     exit 1
+}
+
+# ── Initialize conda shell hook if needed ────────────────────────────────────
+# If the user ran 'conda init powershell', conda is already a PowerShell
+# function and activate works out of the box.  Otherwise conda resolves to
+# conda.bat/.exe on PATH and we must import Conda.psm1 to make activate work.
+
+if ($condaCmd.CommandType -ne 'Function') {
+    $condaExePath = $condaCmd.Source
+    $condaRoot = (Split-Path (Split-Path $condaExePath))
+    $condaModule = Join-Path $condaRoot "shell" "condabin" "Conda.psm1"
+    if (-not (Test-Path $condaModule)) {
+        # Some layouts nest condabin one level deeper
+        $condaRoot = (Split-Path $condaRoot)
+        $condaModule = Join-Path $condaRoot "shell" "condabin" "Conda.psm1"
+    }
+    if (Test-Path $condaModule) {
+        Import-Module $condaModule
+    } else {
+        Write-Host ""
+        Write-Host "ERROR: Could not find Conda.psm1 to enable 'conda activate'."
+        Write-Host "       Run 'conda init powershell', restart PowerShell, and try again."
+        exit 1
+    }
 }
 
 # ── Step 1: Create or reuse conda environment ────────────────────────────────
 
 Write-Host ""
-$envExists = conda env list | Select-String -Pattern "^\s*$EnvName\s" -Quiet
-if (-not $envExists) {
+$envMatch = conda env list | Select-String -Pattern "^$([regex]::Escape($EnvName))\s"
+if (-not $envMatch) {
     Write-Host "[1/5] Creating conda environment '$EnvName' with Python 3.12..."
     conda create -y -n $EnvName python=3.12
     if ($LASTEXITCODE -ne 0) {
@@ -75,9 +98,8 @@ if (-not $envExists) {
 
 Write-Host "       Activating '$EnvName'..."
 conda activate $EnvName
-if ($LASTEXITCODE -ne 0) {
+if ($env:CONDA_DEFAULT_ENV -ne $EnvName) {
     Write-Host "ERROR: Failed to activate conda environment '$EnvName'."
-    Write-Host "       Make sure you have run 'conda init powershell' first."
     exit 1
 }
 
@@ -122,3 +144,12 @@ Write-Host ""
 Write-Host "[5/5] Launching DESDEO setup wizard..."
 Write-Host ""
 desdeo-setup
+
+Write-Host ""
+Write-Host "========================================"
+Write-Host "  Setup complete!"
+Write-Host "========================================"
+Write-Host ""
+Write-Host "To start working, run:"
+Write-Host "  conda activate $EnvName"
+Write-Host ""

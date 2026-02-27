@@ -91,4 +91,13 @@ uv pip install --group all-dev
 echo ""
 echo "[5/5] Launching DESDEO setup wizard..."
 echo ""
-exec desdeo-setup
+desdeo-setup
+
+echo ""
+echo "========================================"
+echo "  Setup complete!"
+echo "========================================"
+echo ""
+echo "To start working, run:"
+echo "  conda activate $ENV_NAME"
+echo ""
