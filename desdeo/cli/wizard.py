@@ -87,44 +87,36 @@ def _configure_install_paths() -> None:
 
 
 def _dependency_group_phase() -> None:
-    """Ensure optional dependency groups are installed via ``uv sync``."""
-    from desdeo.cli.config import ensure_uv, get_project_root, uv_sync_groups
+    """Ensure optional dependency groups are installed via ``uv pip install``."""
+    from desdeo.cli.config import ensure_uv, get_project_root, uv_pip_install_group
     from desdeo.cli.styles import fail, warn
 
     root = get_project_root()
     if not (root / "pyproject.toml").is_file():
-        warn("pyproject.toml not found — skipping dependency group sync.")
+        warn("pyproject.toml not found — skipping dependency group install.")
         return
 
     if not ensure_uv():
-        warn("uv not available — skipping dependency group sync.")
+        warn("uv not available — skipping dependency group install.")
         warn("Install uv (conda install conda-forge::uv) and re-run desdeo-setup.")
         return
 
-    all_dev_groups = ["dev", "docs", "jupyter", "web", "viz", "tools"]
-
     console.print("  [bold]Dependency Groups[/bold]")
-    console.print("    DESDEO uses uv to manage optional dependency groups.\n")
-    console.print("    1) Install all development groups (recommended)")
-    console.print(f"       Groups: {', '.join(all_dev_groups)}")
-    console.print("    2) Install web dependencies only (database + API)")
-    console.print("    3) Skip\n")
+    console.print("    Install optional dependency groups into the active environment.\n")
+    console.print("    1) Install all development dependencies (recommended)")
+    console.print("    2) Skip\n")
 
     choice = typer.prompt("  Choice", default="1")
 
-    if choice == "1":
-        groups = all_dev_groups
-    elif choice == "2":
-        groups = ["web"]
-    else:
-        warn("Skipping dependency group sync.")
+    if choice != "1":
+        warn("Skipping dependency group install.")
         return
 
-    console.print(f"\n  [dim]Running uv sync --group {' --group '.join(groups)}...[/dim]")
-    if uv_sync_groups(groups):
-        success(f"Dependency groups synced: {', '.join(groups)}")
+    console.print("\n  [dim]Running uv pip install --group all-dev...[/dim]")
+    if uv_pip_install_group("all-dev"):
+        success("Development dependencies installed.")
     else:
-        fail("uv sync failed. Run manually: uv sync --group " + " --group ".join(groups))
+        fail("uv pip install failed. Run manually: uv pip install --group all-dev")
 
 
 def setup() -> None:
@@ -196,11 +188,11 @@ def setup() -> None:
         try:
             import desdeo.api.models  # noqa: F401
         except ImportError:
-            from desdeo.cli.config import ensure_uv, uv_sync_groups
+            from desdeo.cli.config import ensure_uv, uv_pip_install_group
             from desdeo.cli.styles import fail, info
 
             info("Web dependencies missing (sqlmodel, fastapi, etc.).")
-            if typer.confirm("  Install via uv sync --group web?", default=True) and ensure_uv() and uv_sync_groups(["web"]):
+            if typer.confirm("  Install via uv pip install --group web?", default=True) and ensure_uv() and uv_pip_install_group("web"):
                 success("Web dependencies installed.")
                 import importlib
 

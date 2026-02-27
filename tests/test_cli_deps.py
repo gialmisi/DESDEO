@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from desdeo.cli.config import ensure_uv, get_project_root, uv_sync_groups
+from desdeo.cli.config import ensure_uv, get_project_root, uv_pip_install_group
 
 
 # ---------------------------------------------------------------------------
@@ -60,12 +60,12 @@ class TestEnsureUv:
 
 
 # ---------------------------------------------------------------------------
-# uv_sync_groups()
+# uv_pip_install_group()
 # ---------------------------------------------------------------------------
 
 
-class TestUvSyncGroups:
-    def test_calls_uv_sync_with_group_flags(self, monkeypatch):
+class TestUvPipInstallGroup:
+    def test_calls_uv_pip_install_with_group(self, monkeypatch):
         call_args = []
 
         def mock_run(cmd, **kwargs):
@@ -74,11 +74,11 @@ class TestUvSyncGroups:
 
         monkeypatch.setattr("desdeo.cli.config.subprocess.run", mock_run)
 
-        result = uv_sync_groups(["web", "dev"])
+        result = uv_pip_install_group("all-dev")
 
         assert result is True
         cmd = call_args[0][0]
-        assert cmd == ["uv", "sync", "--group", "web", "--group", "dev"]
+        assert cmd == ["uv", "pip", "install", "--group", "all-dev"]
         assert call_args[0][1]["cwd"] == str(get_project_root())
 
     def test_returns_false_on_failure(self, monkeypatch):
@@ -87,9 +87,9 @@ class TestUvSyncGroups:
             lambda *a, **kw: MagicMock(returncode=1),
         )
 
-        assert uv_sync_groups(["web"]) is False
+        assert uv_pip_install_group("web") is False
 
-    def test_single_group(self, monkeypatch):
+    def test_web_group(self, monkeypatch):
         call_args = []
 
         def mock_run(cmd, **kwargs):
@@ -98,5 +98,5 @@ class TestUvSyncGroups:
 
         monkeypatch.setattr("desdeo.cli.config.subprocess.run", mock_run)
 
-        uv_sync_groups(["docs"])
-        assert call_args[0] == ["uv", "sync", "--group", "docs"]
+        uv_pip_install_group("web")
+        assert call_args[0] == ["uv", "pip", "install", "--group", "web"]

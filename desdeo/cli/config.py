@@ -59,17 +59,16 @@ def ensure_uv() -> bool:
     return False
 
 
-def uv_sync_groups(groups: list[str]) -> bool:
-    """Run ``uv sync`` with the specified dependency groups.
+def uv_pip_install_group(group: str) -> bool:
+    """Run ``uv pip install --group <group>`` into the active environment.
+
+    Uses ``uv pip install`` (not ``uv sync``) so that packages go into the
+    active conda/virtualenv rather than a project-local ``.venv``.
 
     Returns True on success.
     """
-    cmd = ["uv", "sync"]
-    for g in groups:
-        cmd.extend(["--group", g])
-
     result = subprocess.run(
-        cmd,
+        ["uv", "pip", "install", "--group", group],
         capture_output=True,
         text=True,
         cwd=str(get_project_root()),
