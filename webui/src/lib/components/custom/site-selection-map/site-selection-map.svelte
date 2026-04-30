@@ -33,18 +33,23 @@
 		problem_id: number;
 		solution: SolverResults;
 		sites?: SiteInfo[];
+		siteStates?: Map<string, ConstraintState>;
 		on_constraints_changed?: (fixings: VariableFixing[]) => void;
 	}
 
-	let { problem_id, solution, sites = [], on_constraints_changed }: Props = $props();
+	let {
+		problem_id,
+		solution,
+		sites = [],
+		siteStates = $bindable(new Map()),
+		on_constraints_changed,
+	}: Props = $props();
 
 	let mapContainer = $state<HTMLDivElement>();
 	let map: L.Map | null = null;
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let mapData = $state<SiteSelectionMapResponse | null>(null);
-	// Constraint state keyed by site variable symbol (e.g. "sv_5").
-	let siteStates = $state<Map<string, ConstraintState>>(new Map());
 	// City whose per-site picker panel is open; null when closed.
 	let openCity = $state<string | null>(null);
 	let markerLayer: L.LayerGroup | null = null;

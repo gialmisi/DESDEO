@@ -140,11 +140,15 @@ export async function resolveWithSiteConstraints(
     fixings: VariableFixing[],
     reference_point: Record<string, number>,
     solver?: string,
+    max_total_sites?: number | null,
 ): Promise<{ constrained_problem_id: number; rpm_result: RPMState } | null> {
     // Step 1: Create constrained variant
     const variantResp = await createConstrainedVariantProblemProblemIdConstrainedVariantPost(
         problem_id,
-        { variable_fixings: fixings }
+        {
+            variable_fixings: fixings,
+            ...(max_total_sites != null ? { max_total_sites } : {}),
+        }
     );
 
     if (variantResp.status !== 200) {

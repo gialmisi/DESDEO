@@ -130,6 +130,7 @@ export interface ConstrainedVariantRequest {
 	variable_fixings: VariableFixing[];
 	name?: string | null;
 	is_temporary?: boolean;
+	max_total_sites?: number | null;
 }
 
 /**

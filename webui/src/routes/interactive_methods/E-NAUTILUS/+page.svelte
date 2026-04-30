@@ -16,6 +16,8 @@
 	import { EndStateView } from '$lib/components/custom/end-state-view';
 	import { DecisionJourney } from '$lib/components/custom/decision-journey';
 	import SiteSelectionMap from '$lib/components/custom/site-selection-map/site-selection-map.svelte';
+	import SitesTable from '$lib/components/custom/site-selection-map/sites-table.svelte';
+	import SitesSummary from '$lib/components/custom/site-selection-map/sites-summary.svelte';
 	import type { ENautilusSessionTreeResponse } from '$lib/gen/models';
 
 	import type {
@@ -59,7 +61,8 @@
 	type IntermediatePoint = Record<string, number>;
 
 	type ENautilusMode = "iterate" | "final";
-	type FinalView = "visualization" | "journey" | "map";
+	type FinalView = "visualization" | "journey" | "map" | "summary" | "sites";
+	type ConstraintState = 'free' | 'restricted' | 'forced';
 	let mode = $state<ENautilusMode>("iterate");
 	let finalView = $state<FinalView>("visualization");
 	type ComparisonTab = "chart" | "table";
@@ -92,13 +95,23 @@
 	let selectedRepSetId = $state<number | null>(null);
 
 	// Map re-solve state
-	let siteFixings = $state<VariableFixing[]>([]);
+	let siteStates = $state<Map<string, ConstraintState>>(new Map());
+	let maxTotalSitesInput = $state<number | null>(null);
 	let constrainedProblemId = $state<number | null>(null);
 	let rpmResult = $state<RPMState | null>(null);
 	let resolving = $state(false);
 	let resolveError = $state<string | null>(null);
 	let siteList = $state<SiteInfo[]>([]);
 	let siteListLoaded = $state(false);
+
+	let siteFixings = $derived.by(() => {
+		const result: VariableFixing[] = [];
+		for (const [symbol, state] of siteStates) {
+			if (state === 'restricted') result.push({ variable_symbol: symbol, fixed_value: 0 });
+			else if (state === 'forced') result.push({ variable_symbol: symbol, fixed_value: 1 });
+		}
+		return result;
+	});
 
 	let repSolutionSets = $derived(
 		problem_info?.problem_metadata?.representative_nd_metadata?.filter(s => s.id != null) ?? []
@@ -232,9 +245,14 @@
 		return parts.join(', ');
 	});
 
-	function handleConstraintsChanged(fixings: VariableFixing[]) {
-		siteFixings = fixings;
+	$effect(() => {
+		// any change to siteStates clears stale resolve errors
+		void siteStates;
 		resolveError = null;
+	});
+
+	function clearSiteConstraints() {
+		siteStates = new Map();
 	}
 
 	// Reset cached site metadata when the active problem changes.
@@ -248,9 +266,10 @@
 		}
 	});
 
-	// Lazy-load site metadata the first time the Map tab is opened.
+	// Lazy-load site metadata the first time any site-related tab is opened.
 	$effect(() => {
-		if (finalView !== 'map' || siteListLoaded) return;
+		if (siteListLoaded) return;
+		if (finalView !== 'map' && finalView !== 'sites' && finalView !== 'summary') return;
 		const pid = selection.selectedProblemId;
 		if (pid == null) return;
 		(async () => {
@@ -261,7 +280,8 @@
 	});
 
 	async function handleResolve() {
-		if (!finalSolution || !selection.selectedProblemId || siteFixings.length === 0) return;
+		if (!finalSolution || !selection.selectedProblemId) return;
+		if (!hasActiveWhatIf) return;
 
 		resolving = true;
 		resolveError = null;
@@ -283,6 +303,8 @@
 				selection.selectedProblemId,
 				siteFixings,
 				refPoint,
+				undefined,
+				maxTotalSitesInput,
 			);
 
 			if (result && result.rpm_result.solver_results.length > 0) {
@@ -293,9 +315,8 @@
 					...rawSol,
 					optimal_variables: unrollTensorVariables(rawSol.optimal_variables as Record<string, unknown>),
 				};
-				// Clear constraint markers so the map shows the new solution's natural colors
-				siteFixings = [];
-				mapRef?.clearConstraints();
+				// Clear constraint markers so the map shows the new solution's natural colors.
+				clearSiteConstraints();
 			} else {
 				resolveError = 'No feasible solution exists with the current site constraints.';
 			}
@@ -306,7 +327,46 @@
 		}
 	}
 
-	let mapRef = $state<{ clearConstraints: () => void } | undefined>();
+	function countSelectedSites(sol: SolverResults | null): number {
+		if (!sol) return 0;
+		const vars = sol.optimal_variables as Record<string, unknown> | undefined;
+		if (!vars) return 0;
+		let total = 0;
+		const sv = vars['sv'];
+		if (Array.isArray(sv)) {
+			const flatten = (arr: unknown[]): void => {
+				for (const el of arr) {
+					if (Array.isArray(el)) flatten(el);
+					else if (Math.round(Number(el)) === 1) total++;
+				}
+			};
+			flatten(sv);
+			return total;
+		}
+		for (const [k, v] of Object.entries(vars)) {
+			if (!k.startsWith('sv_')) continue;
+			const num = Array.isArray(v) ? Number(v[0]) : Number(v);
+			if (Math.round(num) === 1) total++;
+		}
+		return total;
+	}
+
+	let baseTotalSites = $derived(countSelectedSites(baseSolution));
+
+	let hasActiveWhatIf = $derived(
+		siteFixings.length > 0 ||
+		(maxTotalSitesInput != null && maxTotalSitesInput !== baseTotalSites)
+	);
+
+	// Initialise / refresh the cap input when the baseline changes.
+	let lastBaselineSig = $state<string>('');
+	$effect(() => {
+		const sig = `${promotedSolution ? 'p' : 'o'}-${final_selected_index}-${baseTotalSites}`;
+		if (sig !== lastBaselineSig) {
+			lastBaselineSig = sig;
+			maxTotalSitesInput = baseTotalSites > 0 ? baseTotalSites : null;
+		}
+	});
 
 	function handleUseSolution() {
 		// Promote the what-if to be the new committed baseline. Future
@@ -317,12 +377,14 @@
 		}
 		rpmResult = null;
 		resolveError = null;
-		siteFixings = [];
+		clearSiteConstraints();
 		if (constrainedProblemId != null) {
 			cleanupConstrainedVariant(constrainedProblemId);
 			constrainedProblemId = null;
 		}
-		mapRef?.clearConstraints();
+		// Reset cap to match the newly-promoted baseline.
+		maxTotalSitesInput = null;
+		lastBaselineSig = '';
 	}
 
 	function handleReset() {
@@ -331,12 +393,13 @@
 		promotedSolution = null;
 		rpmResult = null;
 		resolveError = null;
-		siteFixings = [];
+		clearSiteConstraints();
 		if (constrainedProblemId != null) {
 			cleanupConstrainedVariant(constrainedProblemId);
 			constrainedProblemId = null;
 		}
-		mapRef?.clearConstraints();
+		maxTotalSitesInput = null;
+		lastBaselineSig = '';
 	}
 
 	let finalTableData = $derived.by(() => {
@@ -833,6 +896,8 @@
 						<Tabs.Trigger value="visualization">Solution</Tabs.Trigger>
 						<Tabs.Trigger value="journey">Decision Journey</Tabs.Trigger>
 						<Tabs.Trigger value="map">Map</Tabs.Trigger>
+						<Tabs.Trigger value="sites">Sites</Tabs.Trigger>
+						<Tabs.Trigger value="summary">Summary</Tabs.Trigger>
 					</Tabs.List>
 				</Tabs.Root>
 
@@ -864,53 +929,88 @@
 							>&times; Reset to original</button>
 						</div>
 					{/if}
-					{#if finalView === 'map'}
+					{#if finalView === 'map' || finalView === 'summary' || finalView === 'sites'}
 						{#if finalSolution}
 							<div class="flex h-full flex-col">
-								<div class="flex-1 min-h-0">
-									<SiteSelectionMap
-										bind:this={mapRef}
-										problem_id={selection.selectedProblemId}
-										solution={finalSolution}
-										sites={siteList}
-										on_constraints_changed={handleConstraintsChanged}
-									/>
-								</div>
-								{#if constraintSummary || rpmResult || resolveError}
-									<div class="border-t bg-white p-3 space-y-2">
-										<div class="flex items-center gap-3 flex-wrap">
-											{#if constraintSummary}
-												<span class="text-sm text-gray-600">Site constraints: <span class="font-semibold">{constraintSummary}</span></span>
-											{/if}
-											{#if siteFixings.length > 0}
-												<button
-													class="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
-													disabled={resolving}
-													onclick={handleResolve}
-												>{resolving ? 'Solving...' : 'Re-solve with site constraints'}</button>
-											{/if}
-											{#if rpmResult}
-												<button
-													class="rounded bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700"
-													onclick={handleUseSolution}
-												>Use this solution</button>
-											{/if}
-											{#if rpmResult || siteFixings.length > 0}
-												<button
-													class="text-xs text-red-600 hover:text-red-800 underline"
-													onclick={handleReset}
-												>Reset</button>
-											{/if}
-										</div>
-										{#if resolveError}
-											<div class="text-sm text-red-600">{resolveError}</div>
+								<div class="relative flex-1 min-h-0">
+									<div class="absolute inset-0 {finalView === 'map' ? '' : 'overflow-y-auto'}">
+										{#if finalView === 'map'}
+											<SiteSelectionMap
+												problem_id={selection.selectedProblemId}
+												solution={finalSolution}
+												sites={siteList}
+												bind:siteStates
+											/>
+										{:else if finalView === 'summary'}
+											<SitesSummary
+												sites={siteList}
+												baseSolution={baseSolution}
+												whatIfSolution={adoptedSolution}
+												baseLabel={promotedSolution ? 'Current' : 'Original'}
+												whatIfLabel="What-if"
+												{siteStates}
+											/>
+										{:else if finalView === 'sites'}
+											<SitesTable
+												sites={siteList}
+												baseSolution={baseSolution}
+												whatIfSolution={adoptedSolution}
+												baseLabel={promotedSolution ? 'Current' : 'Original'}
+												whatIfLabel="What-if"
+												bind:siteStates
+											/>
 										{/if}
 									</div>
-								{/if}
+								</div>
+								<div class="border-t bg-white px-3 py-2 space-y-2">
+									<div class="flex flex-wrap items-center gap-3 text-xs">
+										<label class="flex items-center gap-2">
+											<span class="text-gray-700">Max sites:</span>
+											<input
+												type="number"
+												min="0"
+												max={siteList.length || undefined}
+												value={maxTotalSitesInput ?? ''}
+												oninput={(e) => {
+													const v = (e.target as HTMLInputElement).value;
+													maxTotalSitesInput = v === '' ? null : Number(v);
+												}}
+												class="w-20 rounded border border-gray-300 px-2 py-1"
+												title={`Cap on the total number of selected sites. Baseline uses ${baseTotalSites}.`}
+											/>
+											<span class="text-gray-400">(baseline {baseTotalSites})</span>
+										</label>
+										{#if constraintSummary}
+											<span class="text-gray-600">Constraints: <span class="font-semibold">{constraintSummary}</span></span>
+										{/if}
+										{#if hasActiveWhatIf}
+											<button
+												class="rounded bg-blue-600 px-3 py-1 text-white hover:bg-blue-700 disabled:opacity-50"
+												disabled={resolving}
+												onclick={handleResolve}
+											>{resolving ? 'Solving...' : 'Re-solve'}</button>
+										{/if}
+										{#if rpmResult}
+											<button
+												class="rounded bg-green-600 px-3 py-1 text-white hover:bg-green-700"
+												onclick={handleUseSolution}
+											>Use this solution</button>
+										{/if}
+										{#if rpmResult || hasActiveWhatIf}
+											<button
+												class="text-red-600 hover:text-red-800 underline"
+												onclick={handleReset}
+											>Reset</button>
+										{/if}
+									</div>
+									{#if resolveError}
+										<div class="text-sm text-red-600">{resolveError}</div>
+									{/if}
+								</div>
 							</div>
 						{:else}
 							<div class="flex h-full items-center justify-center text-sm text-gray-400">
-								No solution available for map.
+								No solution available.
 							</div>
 						{/if}
 				{:else if finalView === 'journey'}
@@ -955,17 +1055,45 @@
 					showVariables={true}
 					title="Representative solution"
 				/>
-			{:else if finalView === 'map' && rpmResult && rpmResult.solver_results.length > 0 && problem_info && baseSolution}
+			{:else if (finalView === 'map' || finalView === 'summary' || finalView === 'sites') && rpmResult && rpmResult.solver_results.length > 0 && problem_info && baseSolution}
 				<div class="h-full flex flex-col">
-					<div class="flex gap-1 border-b px-2 pt-1">
+					<div class="flex items-center gap-1 border-b px-2 pt-1">
 						<button
 							class="px-3 py-1 text-xs rounded-t {comparisonTab === 'chart' ? 'bg-white border border-b-white font-semibold -mb-px' : 'text-gray-500 hover:text-gray-700'}"
 							onclick={() => comparisonTab = 'chart'}
+							title="Visual comparison of objective values across the {promotedSolution ? 'current' : 'original'} and the constrained what-if solutions."
 						>Parallel Coordinates</button>
 						<button
 							class="px-3 py-1 text-xs rounded-t {comparisonTab === 'table' ? 'bg-white border border-b-white font-semibold -mb-px' : 'text-gray-500 hover:text-gray-700'}"
 							onclick={() => comparisonTab = 'table'}
+							title="Side-by-side numeric comparison of each objective. Δ shows the change; arrows mark improvement direction."
 						>Comparison Table</button>
+						{#if comparisonTab === 'chart'}
+							<div
+								class="ml-auto flex items-center gap-2 rounded border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600"
+								title="Each axis is one objective; lines connect a single solution's value across all objectives. Lower is better unless an objective is marked (max)."
+							>
+								<span class="font-semibold text-gray-700">Legend:</span>
+								<span
+									class="inline-flex items-center gap-1"
+									title="The {promotedSolution ? 'current' : 'original E-NAUTILUS'} solution — what the constrained solution is being compared against."
+								>
+									<svg width="22" height="6" aria-hidden="true">
+										<line x1="0" y1="3" x2="22" y2="3" stroke="#4a90e2" stroke-width="2" stroke-dasharray="3,3" />
+									</svg>
+									{promotedSolution ? 'Current' : 'Original'}
+								</span>
+								<span
+									class="inline-flex items-center gap-1"
+									title="The constrained re-optimization (your what-if). Click 'Use this solution' to promote it."
+								>
+									<svg width="22" height="6" aria-hidden="true">
+										<line x1="0" y1="3" x2="22" y2="3" stroke="#3b82f6" stroke-width="3" />
+									</svg>
+									Constrained
+								</span>
+							</div>
+						{/if}
 					</div>
 					<div class="flex-1 min-h-0 p-2">
 						{#if comparisonTab === 'chart'}
@@ -988,10 +1116,19 @@
 								<table class="w-full text-sm">
 									<thead>
 										<tr class="border-b">
-											<th class="py-1 pr-4 text-left font-semibold">Objective</th>
-											<th class="py-1 pr-4 text-right font-semibold">{promotedSolution ? 'Current' : 'Original'}</th>
-											<th class="py-1 pr-4 text-right font-semibold">Constrained</th>
-											<th class="py-1 text-right font-semibold">Δ</th>
+											<th class="py-1 pr-4 text-left font-semibold" title="Objective name; max/min indicates whether higher or lower is better.">Objective</th>
+											<th
+												class="py-1 pr-4 text-right font-semibold"
+												title="Objective value in the {promotedSolution ? 'current' : 'original E-NAUTILUS'} solution — the baseline being compared against."
+											>{promotedSolution ? 'Current' : 'Original'}</th>
+											<th
+												class="py-1 pr-4 text-right font-semibold"
+												title="Objective value in the constrained re-optimization (the what-if you're previewing)."
+											>Constrained</th>
+											<th
+												class="py-1 text-right font-semibold"
+												title="Constrained minus baseline. Green ↑ = improvement (better in this objective's direction); red ↓ = worse."
+											>Δ</th>
 										</tr>
 									</thead>
 									<tbody>

@@ -128,6 +128,9 @@
 		style={mode === 'objectives'
 			? `border-bottom: 4px solid ${COLOR_PALETTE[idx % COLOR_PALETTE.length]}; width: 100%; padding: 0.5rem;`
 			: 'width: 100%; padding: 0.5rem;'}
+		title={mode === 'objectives'
+			? `${item.name}${item.unit ? ' (' + item.unit + ')' : ''} — ${item.maximize ? 'higher is better (maximize)' : 'lower is better (minimize)'}. Symbol: ${item.symbol}. The coloured underline matches this objective in the parallel coordinates plot.`
+			: `Decision variable ${item.name}${item.unit ? ' (' + item.unit + ')' : ''}. Symbol: ${item.symbol}.`}
 	>
 		{item.name}
 		{#if item.unit}

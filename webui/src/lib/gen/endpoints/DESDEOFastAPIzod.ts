@@ -3296,7 +3296,10 @@ export const CreateConstrainedVariantProblemProblemIdConstrainedVariantPostBody 
 		name: zod.union([zod.string(), zod.null()]).optional(),
 		is_temporary: zod
 			.boolean()
-			.default(createConstrainedVariantProblemProblemIdConstrainedVariantPostBodyIsTemporaryDefault)
+			.default(
+				createConstrainedVariantProblemProblemIdConstrainedVariantPostBodyIsTemporaryDefault
+			),
+		max_total_sites: zod.union([zod.number(), zod.null()]).optional()
 	})
 	.describe('Request to create a derived problem with additional EQ constraints fixing variables.');
 

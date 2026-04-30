@@ -147,11 +147,20 @@ def clinic_fixture(session_and_user: dict):
     }
 
 
-def _post_constrained_variant(client: TestClient, problem_id: int, fixings: list[dict], token: str):
+def _post_constrained_variant(
+    client: TestClient,
+    problem_id: int,
+    fixings: list[dict],
+    token: str,
+    max_total_sites: int | None = None,
+):
+    body: dict = {"variable_fixings": fixings}
+    if max_total_sites is not None:
+        body["max_total_sites"] = max_total_sites
     return post_json(
         client,
         f"/problem/{problem_id}/constrained_variant",
-        {"variable_fixings": fixings},
+        body,
         token,
     )
 
@@ -296,6 +305,42 @@ def test_reoptimize_backward_compatible_city_only(client: TestClient, clinic: di
     assert data["n_constraints_added"] == 2
 
 
+def test_reoptimize_max_total_sites_alone(client: TestClient, clinic: dict):
+    """Setting only max_total_sites (no fixings) creates a variant with 0 added EQ constraints."""
+    token = login(client)
+    problem_id = clinic["problem_db"].id
+
+    response = _post_constrained_variant(client, problem_id, [], token, max_total_sites=5)
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["n_constraints_added"] == 0
+    assert data["parent_problem_id"] == problem_id
+
+
+def test_reoptimize_max_total_sites_negative_rejected(client: TestClient, clinic: dict):
+    """Negative max_total_sites is rejected with 422."""
+    token = login(client)
+    problem_id = clinic["problem_db"].id
+
+    response = _post_constrained_variant(client, problem_id, [], token, max_total_sites=-1)
+    assert response.status_code == 422
+    assert "max_total_sites" in response.json()["detail"]
+
+
+def test_reoptimize_max_total_sites_with_fixings(client: TestClient, clinic: dict):
+    """max_total_sites is independent of variable fixings; both can be supplied at once."""
+    token = login(client)
+    problem_id = clinic["problem_db"].id
+
+    payload = [
+        {"variable_symbol": "sv_1", "fixed_value": 1.0},
+        {"variable_symbol": "sv_2", "fixed_value": 0.0},
+    ]
+    response = _post_constrained_variant(client, problem_id, payload, token, max_total_sites=8)
+    assert response.status_code == 200, response.text
+    assert response.json()["n_constraints_added"] == 2
+
+
 # --- Solver-backed tests --------------------------------------------------
 # These actually invoke the RPM solver on the (linear, mixed-integer) clinic
 # problem. They are slower; group them so the cheap tests above can run alone.
@@ -367,6 +412,38 @@ def test_reoptimize_include_sites_solver(client: TestClient, clinic: dict):
     _flat(sv)
     for i in included:
         assert flat[i - 1] == pytest.approx(1.0, abs=1e-3), f"site sv_{i} expected 1 after inclusion, got {flat[i - 1]}"
+
+
+@pytest.mark.slow
+def test_reoptimize_max_total_sites_binds(client: TestClient, clinic: dict):
+    """A tightened max_total_sites caps the total number of selected sites in the optimum."""
+    token = login(client)
+    problem_id = clinic["problem_db"].id
+    pareto = json.loads((CLINIC_DIR / "clinic_pareto.json").read_text())
+
+    cap = 4
+    var_resp = _post_constrained_variant(client, problem_id, [], token, max_total_sites=cap)
+    assert var_resp.status_code == 200, var_resp.text
+    variant_id = var_resp.json()["problem_id"]
+
+    solve_resp = _solve_rpm(client, variant_id, _reference_point(pareto), token)
+    assert solve_resp.status_code == 200, solve_resp.text
+    results = solve_resp.json()["solver_results"]
+    assert results
+
+    sv = results[0]["optimal_variables"]["sv"]
+    flat: list[float] = []
+
+    def _flat(v):
+        if isinstance(v, list):
+            for x in v:
+                _flat(x)
+        else:
+            flat.append(v)
+
+    _flat(sv)
+    total = sum(round(x) for x in flat)
+    assert total <= cap, f"expected at most {cap} sites selected, got {total}"
 
 
 @pytest.mark.slow

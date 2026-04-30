@@ -81,6 +81,7 @@ class ConstrainedVariantRequest(BaseModel):
     variable_fixings: list[VariableFixing]
     name: str | None = None
     is_temporary: bool = True
+    max_total_sites: int | None = None
 
 
 class ConstrainedVariantResponse(BaseModel):

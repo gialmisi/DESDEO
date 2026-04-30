@@ -31,7 +31,7 @@ from desdeo.api.models.representative_solution import (
 )
 from desdeo.api.routers.user_authentication import get_current_user
 from desdeo.problem import Problem
-from desdeo.problem.schema import Constraint, ConstraintTypeEnum, TensorVariable
+from desdeo.problem.schema import Constant, Constraint, ConstraintTypeEnum, TensorVariable
 from desdeo.tools.utils import available_solvers
 
 from .utils import ContextField, SessionContext, SessionContextGuard
@@ -628,7 +628,34 @@ def create_constrained_variant(
         )
 
     # Create the variant (immutable copy with added constraints)
-    variant = problem.add_constraints(new_constraints)
+    variant = problem.add_constraints(new_constraints) if new_constraints else problem
+
+    # Optionally override the `max_events` constant to retune the per-month cap
+    # (clinic-specific: the `mc` constraint is `Sum(sv) - max_events <= 0`).
+    if request.max_total_sites is not None:
+        if request.max_total_sites < 0:
+            raise HTTPException(
+                status_code=422,
+                detail=f"max_total_sites must be non-negative, got {request.max_total_sites}.",
+            )
+        existing = variant.constants or []
+        target_symbol = "max_events"
+        if not any(getattr(c, "symbol", None) == target_symbol for c in existing):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"max_total_sites was provided but constant '{target_symbol}' is not "
+                    "defined on this problem; cap override is only supported for the clinic problem."
+                ),
+            )
+        new_constants = [
+            Constant(name=c.name, symbol=c.symbol, value=float(request.max_total_sites))
+            if getattr(c, "symbol", None) == target_symbol
+            else c
+            for c in existing
+        ]
+        variant = variant.model_copy(update={"constants": new_constants})
+
     variant_name = request.name or f"{problem_db.name} [variant]"
     # Update the name on the frozen model
     variant = variant.model_copy(update={"name": variant_name})
