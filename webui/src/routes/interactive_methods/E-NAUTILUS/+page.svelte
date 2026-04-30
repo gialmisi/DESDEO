@@ -3,7 +3,7 @@
 	import { methodSelection } from '../../../stores/methodSelection';
 	import type { MethodSelectionState } from '../../../stores/methodSelection';
 	import { type ENautilusRepresentativeSolutionsResponse, type InteractiveSessionBase, type SolverResults } from '$lib/gen/models';
-	import type { VariableFixing, RPMState } from '$lib/gen/models';
+	import type { SiteInfo, VariableFixing, RPMState } from '$lib/gen/models';
 	import { isLoading, errorMessage } from '../../../stores/uiState';
 
 	import BaseLayout from '$lib/components/custom/method_layout/base-layout.svelte';
@@ -36,6 +36,7 @@
 		resolveWithSiteConstraints,
 		cleanupConstrainedVariant,
 		unrollTensorVariables,
+		fetch_site_selection_sites,
 	} from './handler';
 
 	import {
@@ -65,7 +66,11 @@
 	let comparisonTab = $state<ComparisonTab>("chart");
 	let representative = $state<ENautilusRepresentativeSolutionsResponse | null>(null);
 	let final_selected_index = $state<number>(0);
+	// Transient what-if currently being previewed; revertable.
 	let adoptedSolution = $state<SolverResults | null>(null);
+	// Promoted baseline — the user has committed to using this as the new current
+	// solution. Clears `adoptedSolution` and survives tab switches.
+	let promotedSolution = $state<SolverResults | null>(null);
 
 	let selection = $state<MethodSelectionState>({ selectedProblemId: null, selectedMethod: null, selectedSessionId: null, selectedSessionInfo: null
 	});
@@ -92,6 +97,8 @@
 	let rpmResult = $state<RPMState | null>(null);
 	let resolving = $state(false);
 	let resolveError = $state<string | null>(null);
+	let siteList = $state<SiteInfo[]>([]);
+	let siteListLoaded = $state(false);
 
 	let repSolutionSets = $derived(
 		problem_info?.problem_metadata?.representative_nd_metadata?.filter(s => s.id != null) ?? []
@@ -193,9 +200,12 @@
 		return representative.solutions[final_selected_index] ?? null;
 	});
 
+	// The committed baseline: a previously promoted what-if, or the original.
+	let baseSolution = $derived(promotedSolution ?? originalFinalSolution);
+
 	let finalSolution = $derived.by(() => {
 		if (adoptedSolution) return adoptedSolution;
-		return originalFinalSolution;
+		return baseSolution;
 	})
 
 	// SolverResults values may be number | number[]; unwrap arrays to plain numbers.
@@ -226,6 +236,29 @@
 		siteFixings = fixings;
 		resolveError = null;
 	}
+
+	// Reset cached site metadata when the active problem changes.
+	let lastSitesProblemId = $state<number | null>(null);
+	$effect(() => {
+		const pid = selection.selectedProblemId;
+		if (pid !== lastSitesProblemId) {
+			siteList = [];
+			siteListLoaded = false;
+			lastSitesProblemId = pid;
+		}
+	});
+
+	// Lazy-load site metadata the first time the Map tab is opened.
+	$effect(() => {
+		if (finalView !== 'map' || siteListLoaded) return;
+		const pid = selection.selectedProblemId;
+		if (pid == null) return;
+		(async () => {
+			const sites = await fetch_site_selection_sites(pid);
+			siteList = sites ?? [];
+			siteListLoaded = true;
+		})();
+	});
 
 	async function handleResolve() {
 		if (!finalSolution || !selection.selectedProblemId || siteFixings.length === 0) return;
@@ -276,7 +309,12 @@
 	let mapRef = $state<{ clearConstraints: () => void } | undefined>();
 
 	function handleUseSolution() {
-		// Keep the adopted solution, clear constraints and comparison UI
+		// Promote the what-if to be the new committed baseline. Future
+		// re-optimizations and tab switches treat it as the current solution.
+		if (adoptedSolution) {
+			promotedSolution = adoptedSolution;
+			adoptedSolution = null;
+		}
 		rpmResult = null;
 		resolveError = null;
 		siteFixings = [];
@@ -290,6 +328,7 @@
 	function handleReset() {
 		// Revert to original E-NAUTILUS solution and clear everything
 		adoptedSolution = null;
+		promotedSolution = null;
 		rpmResult = null;
 		resolveError = null;
 		siteFixings = [];
@@ -816,6 +855,14 @@
 								onclick={() => (adoptedSolution = null)}
 							>&times; Revert</button>
 						</div>
+					{:else if promotedSolution}
+						<div class="absolute top-2 left-1/2 z-10 -translate-x-1/2 flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-700 shadow-sm">
+							<span>Using a re-solved solution</span>
+							<button
+								class="font-semibold hover:text-emerald-900"
+								onclick={handleReset}
+							>&times; Reset to original</button>
+						</div>
 					{/if}
 					{#if finalView === 'map'}
 						{#if finalSolution}
@@ -825,6 +872,7 @@
 										bind:this={mapRef}
 										problem_id={selection.selectedProblemId}
 										solution={finalSolution}
+										sites={siteList}
 										on_constraints_changed={handleConstraintsChanged}
 									/>
 								</div>
@@ -887,7 +935,7 @@
 							previousPreferenceType={''}
 							currentPreferenceType={''}
 							solutionsObjectiveValues={finalSolution ? [objective_keys.map(k => { const v = finalSolution.optimal_objectives[k]; return Array.isArray(v) ? v[0] : v as number; })] : []}
-							previousObjectiveValues={adoptedSolution && originalFinalSolution ? [objective_keys.map(k => { const v = originalFinalSolution.optimal_objectives[k]; return Array.isArray(v) ? v[0] : v as number; })] : []}
+							previousObjectiveValues={adoptedSolution && baseSolution ? [objective_keys.map(k => { const v = baseSolution.optimal_objectives[k]; return Array.isArray(v) ? v[0] : v as number; })] : []}
 							externalSelectedIndexes={[0]}
 						/>
 					{/if}
@@ -907,7 +955,7 @@
 					showVariables={true}
 					title="Representative solution"
 				/>
-			{:else if finalView === 'map' && rpmResult && rpmResult.solver_results.length > 0 && problem_info && originalFinalSolution}
+			{:else if finalView === 'map' && rpmResult && rpmResult.solver_results.length > 0 && problem_info && baseSolution}
 				<div class="h-full flex flex-col">
 					<div class="flex gap-1 border-b px-2 pt-1">
 						<button
@@ -929,9 +977,9 @@
 									previousPreferenceType={''}
 									currentPreferenceType={''}
 									solutionsObjectiveValues={[objective_keys.map(k => { const v = rpmResult.solver_results[0].optimal_objectives[k]; return Array.isArray(v) ? v[0] : v as number; })]}
-									previousObjectiveValues={[objective_keys.map(k => { const v = originalFinalSolution.optimal_objectives[k]; return Array.isArray(v) ? v[0] : v as number; })]}
+									previousObjectiveValues={[objective_keys.map(k => { const v = baseSolution.optimal_objectives[k]; return Array.isArray(v) ? v[0] : v as number; })]}
 									externalSelectedIndexes={[0]}
-									referenceDataLabels={{ previousSolutionLabels: ['Original E-NAUTILUS'] }}
+									referenceDataLabels={{ previousSolutionLabels: [promotedSolution ? 'Current solution' : 'Original E-NAUTILUS'] }}
 									lineLabels={{ '0': 'Constrained' }}
 								/>
 							</div>
@@ -941,14 +989,14 @@
 									<thead>
 										<tr class="border-b">
 											<th class="py-1 pr-4 text-left font-semibold">Objective</th>
-											<th class="py-1 pr-4 text-right font-semibold">Original</th>
+											<th class="py-1 pr-4 text-right font-semibold">{promotedSolution ? 'Current' : 'Original'}</th>
 											<th class="py-1 pr-4 text-right font-semibold">Constrained</th>
 											<th class="py-1 text-right font-semibold">Δ</th>
 										</tr>
 									</thead>
 									<tbody>
 										{#each problem_info.objectives as obj, i}
-											{@const origVal = Array.isArray(originalFinalSolution.optimal_objectives[obj.symbol]) ? originalFinalSolution.optimal_objectives[obj.symbol][0] : originalFinalSolution.optimal_objectives[obj.symbol]}
+											{@const origVal = Array.isArray(baseSolution.optimal_objectives[obj.symbol]) ? baseSolution.optimal_objectives[obj.symbol][0] : baseSolution.optimal_objectives[obj.symbol]}
 											{@const newVal = Array.isArray(rpmResult.solver_results[0].optimal_objectives[obj.symbol]) ? rpmResult.solver_results[0].optimal_objectives[obj.symbol][0] : rpmResult.solver_results[0].optimal_objectives[obj.symbol]}
 											{@const delta = (newVal as number) - (origVal as number)}
 											{@const improved = obj.maximize ? delta > 0 : delta < 0}

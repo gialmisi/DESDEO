@@ -573,6 +573,20 @@ def create_constrained_variant(
     if problem_db.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized user.")
 
+    # Detect conflicting fixings: same variable symbol with different target values.
+    seen: dict[str, float] = {}
+    for fixing in request.variable_fixings:
+        prior = seen.get(fixing.variable_symbol)
+        if prior is not None and prior != fixing.fixed_value:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Conflicting fixings for variable '{fixing.variable_symbol}': "
+                    f"requested values {prior} and {fixing.fixed_value}."
+                ),
+            )
+        seen[fixing.variable_symbol] = fixing.fixed_value
+
     # Reconstruct in-memory Problem
     problem = Problem.from_problemdb(problem_db)
 

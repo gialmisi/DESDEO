@@ -7707,6 +7707,36 @@ export const BuildMapSiteSelectionMapPostResponse = zod
 	.describe('Response body for the site selection map endpoint.');
 
 /**
+ * Return per-site metadata for a problem with site selection metadata loaded.
+
+Each site includes its index in the site_variable_symbols vector, its display
+name, the node (city) it belongs to, coordinates, and the variable symbol used
+in constraint definitions. The frontend uses this to render per-site toggles
+grouped by city.
+ * @summary Get Sites
+ */
+export const GetSitesSiteSelectionSitesProblemIdGetParams = zod.object({
+	problem_id: zod.number()
+});
+
+export const GetSitesSiteSelectionSitesProblemIdGetResponse = zod
+	.object({
+		sites: zod.array(
+			zod
+				.object({
+					index: zod.number(),
+					name: zod.string(),
+					node: zod.string(),
+					lat: zod.number(),
+					lon: zod.number(),
+					variable_symbol: zod.string()
+				})
+				.describe('A single site with its metadata, indexed against site_variable_symbols.')
+		)
+	})
+	.describe('Per-site metadata grouped for the frontend.');
+
+/**
  * Vote for a band using this endpoint.
 
 Args:

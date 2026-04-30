@@ -1721,6 +1721,18 @@ export interface ScoreBandsResponse {
 }
 
 /**
+ * A single site with its metadata, indexed against site_variable_symbols.
+ */
+export interface SiteInfo {
+	index: number;
+	name: string;
+	node: string;
+	lat: number;
+	lon: number;
+	variable_symbol: string;
+}
+
+/**
  * A coverage connection edge between two nodes.
  */
 export interface SiteSelectionMapEdge {
@@ -1778,6 +1790,13 @@ export interface SiteSelectionMetaDataRequest {
 	site_variable_symbols: string[];
 	coverage_variable_symbols?: string[] | null;
 	coverage_threshold?: number;
+}
+
+/**
+ * Per-site metadata grouped for the frontend.
+ */
+export interface SiteSelectionSitesResponse {
+	sites: SiteInfo[];
 }
 
 /**
@@ -5765,6 +5784,55 @@ export const buildMapSiteSelectionMapPost = async (
 		headers: { 'Content-Type': 'application/json', ...options?.headers },
 		body: JSON.stringify(siteSelectionMapRequest)
 	});
+};
+
+/**
+ * Return per-site metadata for a problem with site selection metadata loaded.
+
+Each site includes its index in the site_variable_symbols vector, its display
+name, the node (city) it belongs to, coordinates, and the variable symbol used
+in constraint definitions. The frontend uses this to render per-site toggles
+grouped by city.
+ * @summary Get Sites
+ */
+export type getSitesSiteSelectionSitesProblemIdGetResponse200 = {
+	data: SiteSelectionSitesResponse;
+	status: 200;
+};
+
+export type getSitesSiteSelectionSitesProblemIdGetResponse422 = {
+	data: HTTPValidationError;
+	status: 422;
+};
+
+export type getSitesSiteSelectionSitesProblemIdGetResponseSuccess =
+	getSitesSiteSelectionSitesProblemIdGetResponse200 & {
+		headers: Headers;
+	};
+export type getSitesSiteSelectionSitesProblemIdGetResponseError =
+	getSitesSiteSelectionSitesProblemIdGetResponse422 & {
+		headers: Headers;
+	};
+
+export type getSitesSiteSelectionSitesProblemIdGetResponse =
+	| getSitesSiteSelectionSitesProblemIdGetResponseSuccess
+	| getSitesSiteSelectionSitesProblemIdGetResponseError;
+
+export const getGetSitesSiteSelectionSitesProblemIdGetUrl = (problemId: number) => {
+	return `http://localhost:8000/site-selection/sites/${problemId}`;
+};
+
+export const getSitesSiteSelectionSitesProblemIdGet = async (
+	problemId: number,
+	options?: RequestInit
+): Promise<getSitesSiteSelectionSitesProblemIdGetResponse> => {
+	return customFetch<getSitesSiteSelectionSitesProblemIdGetResponse>(
+		getGetSitesSiteSelectionSitesProblemIdGetUrl(problemId),
+		{
+			...options,
+			method: 'GET'
+		}
+	);
 };
 
 /**

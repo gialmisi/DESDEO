@@ -72,6 +72,23 @@ class SiteSelectionMapResponse(BaseModel):
     site_node_names: list[str]
 
 
+class SiteInfo(BaseModel):
+    """A single site with its metadata, indexed against site_variable_symbols."""
+
+    index: int
+    name: str
+    node: str
+    lat: float
+    lon: float
+    variable_symbol: str
+
+
+class SiteSelectionSitesResponse(BaseModel):
+    """Per-site metadata grouped for the frontend."""
+
+    sites: list[SiteInfo]
+
+
 # --- Endpoints ---
 
 
@@ -275,3 +292,60 @@ def build_map(
         site_variable_symbols=meta.site_variable_symbols,
         site_node_names=[s["node"] for s in sites],
     )
+
+
+@router.get("/sites/{problem_id}", response_model=SiteSelectionSitesResponse)
+def get_sites(
+    problem_id: int,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+) -> SiteSelectionSitesResponse:
+    """Return per-site metadata for a problem with site selection metadata loaded.
+
+    Each site includes its index in the site_variable_symbols vector, its display
+    name, the node (city) it belongs to, coordinates, and the variable symbol used
+    in constraint definitions. The frontend uses this to render per-site toggles
+    grouped by city.
+    """
+    metadata_db = session.exec(select(ProblemMetaDataDB).where(ProblemMetaDataDB.problem_id == problem_id)).first()
+
+    if metadata_db is None:
+        raise HTTPException(status_code=404, detail="No metadata found for this problem.")
+
+    site_sel_list = [m for m in metadata_db.all_metadata if m.metadata_type == "site_selection_metadata"]
+    if not site_sel_list:
+        raise HTTPException(status_code=404, detail="No site selection metadata found for this problem.")
+
+    meta: SiteSelectionMetaData = site_sel_list[-1]
+    sites_raw: list[dict] = json.loads(meta.sites_json)
+    nodes_raw: list[dict] = json.loads(meta.nodes_json)
+
+    # Sites whose own coordinates are missing inherit them from the parent node.
+    node_coords: dict[str, tuple[float, float]] = {n["name"]: (n["lat"], n["lon"]) for n in nodes_raw}
+
+    if len(sites_raw) != len(meta.site_variable_symbols):
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Metadata inconsistency: {len(sites_raw)} sites but "
+                f"{len(meta.site_variable_symbols)} site variable symbols."
+            ),
+        )
+
+    sites_out: list[SiteInfo] = []
+    for i, (s, sym) in enumerate(zip(sites_raw, meta.site_variable_symbols, strict=True)):
+        node_name = s.get("node", "")
+        lat = s.get("lat") if s.get("lat") is not None else node_coords.get(node_name, (0.0, 0.0))[0]
+        lon = s.get("lon") if s.get("lon") is not None else node_coords.get(node_name, (0.0, 0.0))[1]
+        sites_out.append(
+            SiteInfo(
+                index=i,
+                name=s.get("name", f"site_{i}"),
+                node=node_name,
+                lat=float(lat),
+                lon=float(lon),
+                variable_symbol=sym,
+            )
+        )
+
+    return SiteSelectionSitesResponse(sites=sites_out)

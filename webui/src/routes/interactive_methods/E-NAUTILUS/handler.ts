@@ -1,6 +1,6 @@
-import type { ENautilusRepresentativeSolutionsResponse, ENautilusSessionTreeResponse, ENautilusSimulateResponse, ENautilusStateResponse, ENautilusStepRequest, ENautilusStepResponse, ProblemInfo, VariableFixing, RPMState } from "$lib/gen/models";
+import type { ENautilusRepresentativeSolutionsResponse, ENautilusSessionTreeResponse, ENautilusSimulateResponse, ENautilusStateResponse, ENautilusStepRequest, ENautilusStepResponse, ProblemInfo, SiteInfo, VariableFixing, RPMState } from "$lib/gen/models";
 import type { getRepresentativeMethodEnautilusGetRepresentativeStateIdGetResponse, getSessionTreeMethodEnautilusSessionTreeSessionIdGetResponse, getStateMethodEnautilusGetStateStateIdGetResponse, simulateMethodEnautilusSimulatePostResponse, stepMethodEnautilusStepPostResponse } from "$lib/gen/endpoints/DESDEOFastAPI";
-import { stepMethodEnautilusStepPost, getProblemProblemProblemIdGet, getStateMethodEnautilusGetStateStateIdGet, getRepresentativeMethodEnautilusGetRepresentativeStateIdGet, getSessionTreeMethodEnautilusSessionTreeSessionIdGet, simulateMethodEnautilusSimulatePost, createConstrainedVariantProblemProblemIdConstrainedVariantPost, solveSolutionsMethodRpmSolvePost, deleteProblemProblemProblemIdDelete } from "$lib/gen/endpoints/DESDEOFastAPI";
+import { stepMethodEnautilusStepPost, getProblemProblemProblemIdGet, getStateMethodEnautilusGetStateStateIdGet, getRepresentativeMethodEnautilusGetRepresentativeStateIdGet, getSessionTreeMethodEnautilusSessionTreeSessionIdGet, simulateMethodEnautilusSimulatePost, createConstrainedVariantProblemProblemIdConstrainedVariantPost, solveSolutionsMethodRpmSolvePost, deleteProblemProblemProblemIdDelete, getSitesSiteSelectionSitesProblemIdGet } from "$lib/gen/endpoints/DESDEOFastAPI";
 import type { getProblemProblemProblemIdGetResponse } from "$lib/gen/endpoints/DESDEOFastAPI";
 import { fetch_sessions, create_session } from '../../methods/sessions/handler';
 export { fetch_sessions, create_session };
@@ -215,6 +215,17 @@ export function unrollTensorVariables(
     return result;
 }
 
+export async function fetch_site_selection_sites(problem_id: number): Promise<SiteInfo[] | null> {
+    const response = await getSitesSiteSelectionSitesProblemIdGet(problem_id);
+    if (response.status !== 200) {
+        if (response.status !== 404) {
+            console.error("Failed to fetch site selection sites:", response.status);
+        }
+        return null;
+    }
+    return response.data.sites;
+}
+
 export async function cleanupConstrainedVariant(constrained_problem_id: number): Promise<void> {
     try {
         await deleteProblemProblemProblemIdDelete(constrained_problem_id);
@@ -223,4 +234,4 @@ export async function cleanupConstrainedVariant(constrained_problem_id: number):
     }
 }
 
-export type { VariableFixing };
+export type { SiteInfo, VariableFixing };
