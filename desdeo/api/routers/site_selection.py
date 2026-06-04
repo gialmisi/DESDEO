@@ -260,6 +260,8 @@ def build_map(
         lat = n["lat"]
         lon = n["lon"]
         size = n.get("size", 5.0)
+        pop = n.get("pop")
+        svi = n.get("svi")
 
         # Color assignment
         if name in active_node_names:
@@ -270,14 +272,19 @@ def build_map(
             color = COLOR_INACTIVE
 
         # Tooltip HTML
+        header = f"<b>{name}</b>"
+        if pop is not None:
+            header += f"<br><b>Population:</b> {pop}"
+        if svi is not None:
+            header += f"<br><b>SVI:</b> {svi}"
         if name in sites_in_nodes:
             site_list_html = "<br>".join(sites_in_nodes[name])
-            tooltip = f"<b>{name}</b><br><b>Sites:</b><br>{site_list_html}"
+            tooltip = f"{header}<br><b>Sites:</b><br>{site_list_html}"
         elif name in adjacent_sites:
             covered_by = "<br>".join(sorted(adjacent_sites[name]))
-            tooltip = f"<b>{name}</b><br><b>Covered by sites in:</b><br>{covered_by}"
+            tooltip = f"{header}<br><b>Covered by sites in:</b><br>{covered_by}"
         else:
-            tooltip = f"<b>{name}</b>"
+            tooltip = header
 
         nodes_out.append(SiteSelectionMapNode(name=name, lat=lat, lon=lon, size=size, color=color, tooltip=tooltip))
 
