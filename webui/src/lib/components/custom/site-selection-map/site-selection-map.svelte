@@ -230,6 +230,7 @@
 					<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${COLOR_FORCED};border:1px solid black;vertical-align:middle;margin-right:6px;"></span>Forced sites</div>
 					<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${COLOR_MIXED};border:1px solid black;vertical-align:middle;margin-right:6px;"></span>Mixed (some forced + some restricted)</div>
 					<div style="margin-top:4px;"><span style="display:inline-block;width:20px;height:2px;background:black;vertical-align:middle;margin-right:6px;"></span>Coverage link</div>
+					<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:rgba(128,128,128,0.25);border:1px dashed #888;vertical-align:middle;margin-right:6px;"></span>No candidate sites</div>
 				</div>`;
 			return div;
 		};
@@ -242,15 +243,17 @@
 
 		for (const node of data.nodes) {
 			const symbols = symbolsForCity(node.name);
+			const hasSites = symbols.length > 0;
 			const fillColor = aggregateColor(node, symbols);
 			const agg = aggregateState(symbols);
 
 			const marker = L.circleMarker([node.lat, node.lon], {
 				radius: node.size,
-				color: 'black',
+				color: hasSites ? 'black' : '#888',
 				weight: 1,
+				dashArray: hasSites ? undefined : '3 3',
 				fillColor,
-				fillOpacity: 0.7
+				fillOpacity: hasSites ? 0.7 : 0.25
 			});
 
 			if (agg.forced + agg.restricted > 0) {
@@ -263,12 +266,12 @@
 				L.marker([node.lat, node.lon], { icon: badge, interactive: false }).addTo(markerLayer);
 			}
 
-			const tip = node.tooltip + (symbols.length > 0
+			const tip = node.tooltip + (hasSites
 				? `<br><i>Click to manage ${symbols.length} site(s)</i>`
-				: '');
+				: `<br><i>No candidate sites in this city</i>`);
 			marker.bindTooltip(tip, { direction: 'top', offset: [0, -5] });
 
-			if (symbols.length > 0) {
+			if (hasSites) {
 				marker.on('click', () => {
 					openCity = node.name;
 				});
