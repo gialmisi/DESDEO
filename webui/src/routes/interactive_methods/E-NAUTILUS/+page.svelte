@@ -359,12 +359,18 @@
 	);
 
 	// Initialise / refresh the cap input when the baseline changes.
+	// Leave the field empty by default: a null `max_total_sites` means the
+	// constrained variant inherits the problem's `max_events` constant (the
+	// real hard cap, e.g. 16 for the clinic). Auto-pinning to `baseTotalSites`
+	// silently tightens the cap to the current solution's site count, which
+	// makes the variant infeasible the moment the user forces more sites than
+	// the baseline already had.
 	let lastBaselineSig = $state<string>('');
 	$effect(() => {
 		const sig = `${promotedSolution ? 'p' : 'o'}-${final_selected_index}-${baseTotalSites}`;
 		if (sig !== lastBaselineSig) {
 			lastBaselineSig = sig;
-			maxTotalSitesInput = baseTotalSites > 0 ? baseTotalSites : null;
+			maxTotalSitesInput = null;
 		}
 	});
 
@@ -978,7 +984,6 @@
 												class="w-20 rounded border border-gray-300 px-2 py-1"
 												title={`Cap on the total number of selected sites. Baseline uses ${baseTotalSites}.`}
 											/>
-											<span class="text-gray-400">(baseline {baseTotalSites})</span>
 										</label>
 										{#if constraintSummary}
 											<span class="text-gray-600">Constraints: <span class="font-semibold">{constraintSummary}</span></span>
