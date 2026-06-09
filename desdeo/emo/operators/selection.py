@@ -15,6 +15,7 @@ import numpy as np
 import polars as pl
 from numba import njit
 from pydantic import BaseModel, ConfigDict, Field
+from scipy.spatial import cKDTree
 from scipy.special import comb
 from scipy.stats.qmc import LatinHypercube
 
@@ -1515,6 +1516,66 @@ def _nsga2_crowding_distance_assignment(
     return crowding_distances
 
 
+def _knn_distance_assignment(
+    non_dominated_front: np.ndarray,
+    f_mins: np.ndarray,
+    f_maxs: np.ndarray,
+    k: int = 3,
+    reduction: str = "mean",
+) -> np.ndarray:
+    """Euclidean-distance-to-nearest-neighbours niching score.
+
+    Distances are computed in normalized rank-vector space (per-axis min-max scaling
+    using the full-population extents) so dimensions are comparable. Boundary points
+    (those with the minimum or maximum value in any dimension) are assigned
+    `np.inf` so they always survive truncation, but they still participate in the
+    distance computation for the other points.
+
+    Args:
+        non_dominated_front (np.ndarray): 2-D array (n x m) of rank vectors in one front.
+        f_mins (np.ndarray): 1-D array of minimum values per dimension over the full population.
+        f_maxs (np.ndarray): 1-D array of maximum values per dimension over the full population.
+        k (int): Number of nearest neighbours considered. Defaults to 3.
+        reduction (str): 'mean' averages the k nearest distances (gentler clustering penalty);
+            'kth' uses only the distance to the k-th nearest neighbour (SPEA2-style density).
+            Defaults to 'mean'.
+
+    Returns:
+        np.ndarray: 1-D array of size n with niching scores. Higher = less crowded = better.
+    """
+    n = non_dominated_front.shape[0]
+    if n == 0:
+        return np.zeros(0)
+    if n == 1:
+        return np.array([np.inf])
+
+    ranges = f_maxs - f_mins
+    ranges_safe = np.where(ranges == 0.0, 1.0, ranges)
+    normed = (non_dominated_front - f_mins) / ranges_safe
+
+    # Boundary mask: point is boundary if it holds the min or max value in any dimension
+    boundary = np.zeros(n, dtype=bool)
+    for m in range(non_dominated_front.shape[1]):
+        col = non_dominated_front[:, m]
+        boundary |= (col == col.min()) | (col == col.max())
+
+    tree = cKDTree(normed)
+    k_eff = min(k, n - 1)
+    # query k_eff + 1 since the point itself will appear with distance 0
+    dists, _ = tree.query(normed, k=k_eff + 1)
+    nn_dists = dists[:, 1:]  # drop self-match
+
+    if reduction == "mean":
+        scores = nn_dists.mean(axis=1)
+    elif reduction == "kth":
+        scores = nn_dists[:, -1]
+    else:
+        raise ValueError(f"Unknown reduction '{reduction}'. Expected 'mean' or 'kth'.")
+
+    scores[boundary] = np.inf
+    return scores
+
+
 class NSGA2Selector(BaseSelector):
     """Implements the selection operator defined for NSGA2.
 
@@ -2382,6 +2443,8 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         mode: str = "baseline",
         constraints: dict[str, float] | None = None,
         seed: int | None = None,
+        niching: str = "crowding",
+        niching_k: int = 3,
     ):
         """Initializes the operator.
 
@@ -2397,12 +2460,17 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                 The keys should match the constraint symbols in `Problem`. Ignored
                 in the 'baseline' mode. Defaults to None.
             seed (int, optional): the seed utilized in random number generation (currently not used). Defaults to 0.
+            niching (str, optional): niching mechanism for 'ranking' mode: 'crowding' (NSGA-II) or 'knearest'
+                (mean Euclidean distance to the k nearest neighbours). Defaults to 'crowding'.
+            niching_k (int, optional): number of nearest neighbours used when niching='knearest'. Defaults to 3.
         """
         super().__init__(problem=problem, verbosity=verbosity, publisher=publisher, seed=seed)
         self.population_size = int(population_size)
         self.seed = seed
         self.mode = mode
         self.target_objective_symbol = target_objective_symbol
+        self.niching = niching
+        self.niching_k = int(niching_k)
 
         # constraints: dict symbol -> threshold
         self.constraint_dict = dict(constraints) if constraints is not None else {}
@@ -2549,6 +2617,28 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
         return out[out >= 0]
 
+    def _compute_niching_scores(
+        self,
+        fronts: list[np.ndarray],
+        rank_vectors: np.ndarray,
+        f_mins: np.ndarray,
+        f_maxs: np.ndarray,
+    ) -> list[np.ndarray]:
+        """Compute per-front niching scores using the configured `self.niching` mechanism."""
+        if self.niching == "crowding":
+            return [_nsga2_crowding_distance_assignment(rank_vectors[front], f_mins, f_maxs) for front in fronts]
+        if self.niching in ("knearest", "kth"):
+            reduction = "mean" if self.niching == "knearest" else "kth"
+            return [
+                _knn_distance_assignment(
+                    rank_vectors[front], f_mins, f_maxs, k=self.niching_k, reduction=reduction
+                )
+                for front in fronts
+            ]
+        raise ValueError(
+            f"Unsupported niching '{self.niching}'. Expected one of: 'crowding', 'knearest', 'kth'."
+        )
+
     def do(
         self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
     ) -> tuple[SolutionType, pl.DataFrame]:
@@ -2645,16 +2735,14 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                     r[ordk] = np.arange(n, dtype=float)
                     rank_vectors[:, k] = r
 
-                # Non-dominated sorting + crowding distance (NSGA-II style)
+                # Non-dominated sorting + niching within each front
                 fronts = fast_non_dominated_sort(rank_vectors)
 
                 front_ranks = [[i] * np.sum(row) for i, row in enumerate(fronts)]
 
                 f_mins = rank_vectors.min(axis=0)
                 f_maxs = rank_vectors.max(axis=0)
-                distances_raw = [
-                    _nsga2_crowding_distance_assignment(rank_vectors[front], f_mins, f_maxs) for front in fronts
-                ]
+                distances_raw = self._compute_niching_scores(fronts, rank_vectors, f_mins, f_maxs)
 
                 distance_ranks = [
                     1

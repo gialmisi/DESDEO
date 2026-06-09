@@ -120,6 +120,21 @@ class SingleObjectiveConstrainedRankingSelectorOptions(BaseModel):
         ),
     )
     """The mode of the operator. 'alternate' for alternative picking,'baseline' for baseline fitness assignment."""
+    niching: str = Field(
+        default="crowding",
+        description=(
+            "Niching mechanism used in 'ranking' mode to break ties within a non-dominated front. "
+            "'crowding' uses NSGA-II crowding distance. 'knearest' uses mean Euclidean distance to the k "
+            "nearest neighbours in rank-vector space."
+        ),
+    )
+    """Niching mechanism used in 'ranking' mode: 'crowding' or 'knearest'."""
+    niching_k: int = Field(
+        default=3,
+        gt=0,
+        description="Number of nearest neighbours to consider when niching='knearest'. Defaults to 3.",
+    )
+    """Number of nearest neighbours to consider when niching='knearest'. Defaults to 3."""
 
 
 class IBEASelectorOptions(BaseModel):
