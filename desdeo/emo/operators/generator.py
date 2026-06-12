@@ -73,11 +73,15 @@ class BaseGenerator(Subscriber):
         """
         if self.population is None or self.out is None or self.verbosity == 0:
             return []
+        # The generator does not evaluate the population itself: it delegates to the EMOEvaluator (see ``do``),
+        # which already reports those evaluations via EvaluatorMessageTopics.NEW_EVALUATIONS. Reporting the population
+        # size here as well would double-count the initial population in evaluation-budget terminators, so we report 0
+        # (matching the convention of the pre-provided-solutions generator below).
         if self.verbosity == 1:
             return [
                 IntMessage(
                     topic=GeneratorMessageTopics.NEW_EVALUATIONS,
-                    value=self.population.shape[0],
+                    value=0,
                     source=self.__class__.__name__,
                 ),
             ]
@@ -90,7 +94,7 @@ class BaseGenerator(Subscriber):
             ),
             IntMessage(
                 topic=GeneratorMessageTopics.NEW_EVALUATIONS,
-                value=self.population.shape[0],
+                value=0,
                 source=self.__class__.__name__,
             ),
         ]
