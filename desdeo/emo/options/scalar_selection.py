@@ -53,6 +53,7 @@ def scalar_selector_constructor(
             winner_size=options.winner_size,
             publisher=publisher,
             verbosity=verbosity,
+            rng_seed=seed,  # reproducible tournament pairings; keeps the deterministic winner-of-pair behavior
         )
     if options.name == "RouletteWheelSelection":
         return TournamentSelection(  # It implements both (and more)

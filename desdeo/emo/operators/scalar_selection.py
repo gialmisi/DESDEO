@@ -111,6 +111,7 @@ class TournamentSelection(BaseScalarSelector):
         tournament_size: int = 2,
         seed: int | None = None,
         selection_probability: float | None = None,
+        rng_seed: int | None = None,
     ) -> None:
         """Initialize the tournament selection operator.
 
@@ -131,12 +132,19 @@ class TournamentSelection(BaseScalarSelector):
                 probabilities of choosing the k-best solution in the tournament is given by p * (1 - p) ** (k - 1),
                 where p is the selection probability. Note that doing selection with a probability proportional to
                 fitness is equivalent to roulette wheel selection.
+            rng_seed (int | None, optional): Seed for the random number generator that forms the tournaments
+                (the random sampling of competitors). Unlike ``seed`` it does not switch the selection between
+                deterministic and stochastic; it only makes the tournament pairings reproducible. It is used only
+                when ``seed`` is None (when ``seed`` is given, the generator is seeded with ``seed``). Defaults to
+                None, which seeds the generator from fresh entropy. Defaults to None.
         """
         super().__init__(verbosity=verbosity, publisher=publisher)
         self.winner_size = winner_size
         self.tournament_size = tournament_size
         self.seed = seed
-        self.rng = np.random.default_rng(seed)
+        # ``seed`` doubles as the deterministic/stochastic toggle (None => deterministic winner-of-pair). To keep
+        # the tournament pairings reproducible without changing that behavior, fall back to ``rng_seed`` for the RNG.
+        self.rng = np.random.default_rng(seed if seed is not None else rng_seed)
         self.selection_probability = selection_probability
         if self.seed is None and self.selection_probability is not None:
             raise ValueError(
