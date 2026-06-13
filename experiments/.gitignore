@@ -1,0 +1,12 @@
+# Generated benchmark artifacts (reproducible from the workflow).
+/reference/
+/results/
+/metrics/
+/summary.csv
+/summary_b*.csv
+*.log
+# generated figures/reports (regenerate with scripts/make_report.py)
+*.pdf
+*.png
+.snakemake/
+__pycache__/

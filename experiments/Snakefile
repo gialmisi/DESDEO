@@ -1,0 +1,89 @@
+# Snakemake workflow: SMS-EMOA (DESDEO) vs. pymoo SMS-EMOA benchmark.
+#
+# One job = one (algorithm, problem, seed). Pipeline:
+#   reference  -> per-problem true Pareto front, ideal/nadir, R2 weights   (reference/{problem}.npz)
+#   run_algo   -> final population objective vectors + run metadata         (results/b{budget}/.../seed{seed}.*)
+#   evaluate   -> HV, IGD, R2 for that run                                  (metrics/b{budget}/.../seed{seed}.json)
+#   aggregate  -> single tidy CSV over the whole sweep                      (summary_b{budget}.csv)
+#
+# Outputs are tagged by the evaluation budget, so several budgets coexist without overwriting each other
+# (references are budget-independent and shared). Run from this directory:
+#   cd experiments && snakemake --cores 4
+# Inspect first with a dry run: snakemake -n
+
+configfile: "config.yaml"
+
+ALGORITHMS = list(config["algorithms"].keys())
+PROBLEMS = list(config["problems"].keys())
+SEEDS = config["seeds"]
+BUDGET = config["budget"]
+
+RESULTS = f"results/b{BUDGET}"
+METRICS = f"metrics/b{BUDGET}"
+SUMMARY = f"summary_b{BUDGET}.csv"
+
+
+wildcard_constraints:
+    algo="|".join(ALGORITHMS),
+    problem="|".join(PROBLEMS),
+    seed=r"\d+",
+
+
+rule all:
+    input:
+        SUMMARY,
+
+
+rule reference:
+    output:
+        "reference/{problem}.npz",
+    params:
+        problem_cfg=lambda wc: config["problems"][wc.problem],
+        metrics=config["metrics"],
+    script:
+        "scripts/make_reference.py"
+
+
+rule run_algo:
+    output:
+        front=f"{RESULTS}/{{algo}}/{{problem}}/seed{{seed}}.parquet",
+        meta=f"{RESULTS}/{{algo}}/{{problem}}/seed{{seed}}.meta.json",
+    params:
+        algo_cfg=lambda wc: config["algorithms"][wc.algo],
+        problem_cfg=lambda wc: config["problems"][wc.problem],
+        budget=BUDGET,
+        population_size=config["population_size"],
+    script:
+        "scripts/run_algo.py"
+
+
+rule evaluate:
+    input:
+        front=f"{RESULTS}/{{algo}}/{{problem}}/seed{{seed}}.parquet",
+        reference="reference/{problem}.npz",
+    output:
+        f"{METRICS}/{{algo}}/{{problem}}/seed{{seed}}.json",
+    params:
+        metrics=config["metrics"],
+    script:
+        "scripts/evaluate.py"
+
+
+rule aggregate:
+    input:
+        metrics=expand(
+            f"{METRICS}/{{algo}}/{{problem}}/seed{{seed}}.json",
+            algo=ALGORITHMS,
+            problem=PROBLEMS,
+            seed=SEEDS,
+        ),
+        meta=expand(
+            f"{RESULTS}/{{algo}}/{{problem}}/seed{{seed}}.meta.json",
+            algo=ALGORITHMS,
+            problem=PROBLEMS,
+            seed=SEEDS,
+        ),
+    output:
+        SUMMARY,
+    script:
+        "scripts/aggregate.py"

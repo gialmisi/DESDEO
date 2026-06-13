@@ -1,0 +1,58 @@
+# Single source of truth for the SMS-EMOA (DESDEO batched) vs. pymoo SMS-EMOA benchmark.
+# Edit this file to change the experiment; the Snakemake workflow reads everything from here.
+
+budget: 20000           # function-evaluation budget per run. Both frameworks now respect this exactly
+                        # (DESDEO after the initial-population double-count fix; see experiments notes).
+population_size: 100    # mu, shared by both algorithms.
+
+seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]  # independent replications; report statistics over these.
+
+algorithms:
+  # Fair comparison: all three use (mu + mu) generational scheme, SBX(eta=15)/PM(eta=20), and LHS
+  # initialization, so only the genuine algorithmic differences remain. pymoo's default random init was
+  # dropped (it performs ~the same as LHS for pymoo); matching init to LHS removes that confound.
+  pymoo_lhs:
+    framework: pymoo            # pymoo SMSEMOA (greedy one-at-a-time pure-HV reduction) with LHS init.
+    sampling: lhs              # the fair reference.
+  desdeo_greedy:
+    framework: desdeo           # SAME SCHEME as pymoo: (mu + mu) generational + greedy one-at-a-time HV.
+    greedy_reduction: true      # remove one at a time, recomputing HV contributions (canonical reduction).
+    use_dominating_points: false # pure hypervolume reduction, matching pymoo (no dominating-points heuristic).
+    n_offspring: null           # null => equal to population_size.
+  desdeo_batched:
+    framework: desdeo
+    method: smsemoa             # (default) S-metric selection EMOA.
+    greedy_reduction: false     # batched hypervolume reduction (the variant of interest).
+    use_dominating_points: true # cheaper dominated-solution handling while the population is multi-front.
+    n_offspring: null           # null => equal to population_size (the (mu + mu) batched scheme).
+  desdeo_nsga3:
+    framework: desdeo           # NSGA-III (reference-vector / decomposition). NOTE: at 4 objectives the
+    method: nsga3              # simplex lattice fixes the population to 84 (nearest lattice size to mu=100).
+  desdeo_rvea:
+    framework: desdeo           # RVEA (reference-vector guided, angle-penalized distance).
+    method: rvea               # Same lattice caveat as NSGA-III at 4 objectives.
+
+problems:
+  # ZDT: 2-objective. pymoo defaults for n_var (ZDT1-3: 30, ZDT4/6: 10). Do NOT pass n_obj to ZDT.
+  zdt1: {}
+  zdt2: {}
+  zdt3: {}
+  zdt4: {}
+  zdt6: {}
+  # DTLZ: 4-objective. n_var = n_obj + k - 1 (k=5 for DTLZ1, k=10 for DTLZ2-4).
+  dtlz1: {n_var: 8, n_obj: 4}
+  dtlz2: {n_var: 13, n_obj: 4}
+  dtlz3: {n_var: 13, n_obj: 4}
+  dtlz4: {n_var: 13, n_obj: 4}
+  # Inverted (minus-)DTLZ: objectives are maximized, giving an inverted spherical front that stresses
+  # decomposition methods (Ishibuchi et al.). Only DTLZ2/DTLZ4 are used: their g is bounded, so maximization
+  # converges on the radius-(1+g_max) sphere (a clean analytic reference front). DTLZ1/DTLZ3 use the
+  # multimodal g1 whose maximum is huge/oscillatory, making pure maximization pathological, so they are omitted.
+  inv_dtlz2: {pymoo_name: dtlz2, invert: true, n_var: 13, n_obj: 4}
+  inv_dtlz4: {pymoo_name: dtlz4, invert: true, n_var: 13, n_obj: 4}
+
+metrics:
+  hv_ref_component: 1.1        # HV reference point (per objective) in the normalized [0, 1]^m space.
+  r2_rho: 0.05                 # augmented Tchebycheff coefficient for the R2 indicator.
+  ref_dirs_partitions_2d: 99   # das-dennis partitions for 2-objective weights / Pareto front (=> 100 points).
+  ref_dirs_partitions_md: 12   # das-dennis partitions for 4-objective weights / Pareto front (=> 455 points).
