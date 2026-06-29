@@ -2630,53 +2630,30 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         if self.niching in ("knearest", "kth"):
             reduction = "mean" if self.niching == "knearest" else "kth"
             return [
-                _knn_distance_assignment(
-                    rank_vectors[front], f_mins, f_maxs, k=self.niching_k, reduction=reduction
-                )
+                _knn_distance_assignment(rank_vectors[front], f_mins, f_maxs, k=self.niching_k, reduction=reduction)
                 for front in fronts
             ]
-        raise ValueError(
-            f"Unsupported niching '{self.niching}'. Expected one of: 'crowding', 'knearest', 'kth'."
-        )
+        raise ValueError(f"Unsupported niching '{self.niching}'. Expected one of: 'crowding', 'knearest', 'kth'.")
 
-    def do(
-        self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
-    ) -> tuple[SolutionType, pl.DataFrame]:
-        """Run the operator.
+    def compute_order(self, target_arr: np.ndarray, c_mat: np.ndarray) -> np.ndarray:
+        """Compute the selection order (best to worst) for given objective and constraint values.
+
+        This is the core ranking logic shared by every mode, factored out of ``do`` so it can
+        be reused to rank an arbitrary set of solutions (e.g. for analysis and plotting).
 
         Args:
-            parents (tuple[SolutionType, pl.DataFrame]): parent population.
-            offsprings (tuple[SolutionType, pl.DataFrame]): offspring population.
+            target_arr (np.ndarray): the (already de-duplicated) objective values to minimize, shape ``(n,)``.
+            c_mat (np.ndarray): the constraint value matrix, shape ``(n, k)``; use an ``(n, 0)`` array
+                when the problem has no constraints.
 
         Raises:
-            ValueError: unsupported `mode`.
+            ValueError: unsupported ``mode``.
 
         Returns:
-            tuple[SolutionType, pl.DataFrame]: a new population selected from the parent and offspring populations.
+            np.ndarray: indices of the selected solutions, ordered best to worst and truncated to
+                ``self.population_size``.
         """
-        target_col = self.target_objective_symbol + "_min"
-
-        solutions = parents[0].vstack(offsprings[0])
-        population = parents[1].vstack(offsprings[1])
-
-        target_arr = population[target_col].to_numpy()
-        n = population.shape[0]
-
-        # Constraints matrix (n, k). If no constraints, treat as empty.
-        if len(self.constraint_symbols) > 0:
-            c_mat = population.select(self.constraint_symbols).to_numpy()
-        else:
-            c_mat = np.zeros((n, 0), dtype=float)
-
-        # Remove duplicates by objective value before any ranking
-        unique_mask = self._objective_unique_mask(target_arr, tol=1e-8)
-        unique_idx = np.where(unique_mask)[0].tolist()
-        solutions = solutions[unique_idx]
-        population = population[unique_idx]
-        target_arr = target_arr[unique_mask]
-        if c_mat.shape[1] > 0:
-            c_mat = c_mat[unique_mask]
-        n = population.shape[0]
+        n = target_arr.shape[0]
 
         if self.mode == "baseline":
             # Full ordering: feasible-by-objective first, then infeasible by (breach count, sum normalized violation)
@@ -2758,9 +2735,49 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
                 order = fitness_combined.argsort(kind="mergesort")[: self.population_size]
 
         else:
-            raise ValueError(f"Unsupported mode '{self.mode}'. Expected one of: baseline2, relaxed, ranking.")
+            raise ValueError(f"Unsupported mode '{self.mode}'. Expected one of: baseline, relaxed, ranking.")
 
-        order = np.atleast_1d(order).astype(int)
+        return np.atleast_1d(order).astype(int)
+
+    def do(
+        self, parents: tuple[SolutionType, pl.DataFrame], offsprings: tuple[SolutionType, pl.DataFrame]
+    ) -> tuple[SolutionType, pl.DataFrame]:
+        """Run the operator.
+
+        Args:
+            parents (tuple[SolutionType, pl.DataFrame]): parent population.
+            offsprings (tuple[SolutionType, pl.DataFrame]): offspring population.
+
+        Raises:
+            ValueError: unsupported `mode`.
+
+        Returns:
+            tuple[SolutionType, pl.DataFrame]: a new population selected from the parent and offspring populations.
+        """
+        target_col = self.target_objective_symbol + "_min"
+
+        solutions = parents[0].vstack(offsprings[0])
+        population = parents[1].vstack(offsprings[1])
+
+        target_arr = population[target_col].to_numpy()
+        n = population.shape[0]
+
+        # Constraints matrix (n, k). If no constraints, treat as empty.
+        if len(self.constraint_symbols) > 0:
+            c_mat = population.select(self.constraint_symbols).to_numpy()
+        else:
+            c_mat = np.zeros((n, 0), dtype=float)
+
+        # Remove duplicates by objective value before any ranking
+        unique_mask = self._objective_unique_mask(target_arr, tol=1e-8)
+        unique_idx = np.where(unique_mask)[0].tolist()
+        solutions = solutions[unique_idx]
+        population = population[unique_idx]
+        target_arr = target_arr[unique_mask]
+        if c_mat.shape[1] > 0:
+            c_mat = c_mat[unique_mask]
+
+        order = self.compute_order(target_arr, c_mat)
         self.fitness = np.arange(0, len(order))
 
         new_solutions = pl.DataFrame(solutions[order], schema=solutions.schema)
