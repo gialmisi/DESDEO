@@ -11,6 +11,7 @@ from enum import StrEnum
 from itertools import combinations
 from typing import Literal, TypeVar
 
+import moocore
 import numpy as np
 import polars as pl
 from numba import njit
@@ -2445,6 +2446,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         seed: int | None = None,
         niching: str = "crowding",
         niching_k: int = 3,
+        hv_eps: float = 0.01,
     ):
         """Initializes the operator.
 
@@ -2454,7 +2456,8 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
             publisher (Publisher): publisher the operator subscribes to.
             population_size (int): the population size. This will be the size of the newly created population.
             target_objective_symbol (str): the symbol of the objective function that should be optimized.
-            mode (str, optional): the mode the operator works in. Defaults to "baseline".
+            mode (str, optional): the operator mode: 'baseline', 'relaxed', 'ranking', or
+                'hypervolume'. Defaults to "baseline".
             constraints (dict[str, float] | None, optional): A dict that
                 provides threshold values for each constraint present in `Problem`.
                 The keys should match the constraint symbols in `Problem`. Ignored
@@ -2463,6 +2466,8 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
             niching (str, optional): niching mechanism for 'ranking' mode: 'crowding' (NSGA-II) or 'knearest'
                 (mean Euclidean distance to the k nearest neighbours). Defaults to 'crowding'.
             niching_k (int, optional): number of nearest neighbours used when niching='knearest'. Defaults to 3.
+            hv_eps (float, optional): fractional outward expansion of the online hypervolume reference
+                point on each axis, used only in the 'hypervolume' mode. Defaults to 0.01.
         """
         super().__init__(problem=problem, verbosity=verbosity, publisher=publisher, seed=seed)
         self.population_size = int(population_size)
@@ -2471,6 +2476,7 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         self.target_objective_symbol = target_objective_symbol
         self.niching = niching
         self.niching_k = int(niching_k)
+        self.hv_eps = float(hv_eps)
 
         # constraints: dict symbol -> threshold
         self.constraint_dict = dict(constraints) if constraints is not None else {}
@@ -2504,6 +2510,22 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         rounded = np.round(target_arr / tol) * tol
         _, first_idx = np.unique(rounded, return_index=True)
         mask = np.zeros(target_arr.shape[0], dtype=bool)
+        mask[first_idx] = True
+        return mask
+
+    @staticmethod
+    def _decision_unique_mask(dec_mat: np.ndarray) -> np.ndarray:
+        """Boolean mask keeping the first occurrence of each unique decision vector.
+
+        Deduplication is done in decision (variable) space, so that solutions which are
+        identical in the objective but distinct in the decision variables (or vice versa)
+        are treated correctly. Used by every mode.
+        """
+        n = dec_mat.shape[0]
+        if n == 0:
+            return np.zeros(0, dtype=bool)
+        _, first_idx = np.unique(dec_mat, axis=0, return_index=True)
+        mask = np.zeros(n, dtype=bool)
         mask[first_idx] = True
         return mask
 
@@ -2635,6 +2657,113 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
             ]
         raise ValueError(f"Unsupported niching '{self.niching}'. Expected one of: 'crowding', 'knearest', 'kth'.")
 
+    def _hypervolume_order(self, target_arr: np.ndarray, c_mat: np.ndarray, eps: float | None = None) -> np.ndarray:
+        """Order solutions by their hypervolume contribution to the shadow front (mode 'hypervolume').
+
+        Solutions inside the relaxation box (threshold-feasible on every
+        constraint) are mapped into a normalized shadow-front space: the
+        objective on one axis and the relaxation used on each constraint on the
+        others, all to be minimized. These are ranked based on their greedy
+        hypervolume contribution (repeatedly dropping the least-contributing
+        solution, inspired by SMS-EMOA) with respect to an online reference
+        point (the per-population nadir, expanded by ``eps`` on every axis).
+        Solutions outside the box follow, ordered by how far they lie beyond the
+        thresholds. The reference point is recomputed each call.
+
+        Args:
+            target_arr (np.ndarray): objective values to minimize, shape ``(n,)``.
+            c_mat (np.ndarray): constraint value matrix, shape ``(n, k)`` with ``k >= 1``.
+            eps (float | None): fractional outward expansion of the reference point on each axis;
+                defaults to ``self.hv_eps``.
+
+        Returns:
+            np.ndarray: indices ordered best to worst, truncated to ``self.population_size``.
+        """
+        if eps is None:
+            eps = self.hv_eps
+        t = self.constraint_thresholds  # (k,), aligned with c_mat columns
+
+        # Threshold-feasible (inside the relaxation box) vs. beyond-threshold.
+        inside = np.all(c_mat <= t[None, :], axis=1)
+        idx_in = np.where(inside)[0]
+        idx_out = np.where(~inside)[0]
+
+        # Beyond-threshold solutions: ordered by how far they lie outside the box (existing rule).
+        if idx_out.size > 0:
+            v_beyond = np.maximum(0.0, c_mat[idx_out] - t[None, :])
+            out_order = idx_out[self._order_by_objective_then_violation(target_arr[idx_out], v_beyond)]
+        else:
+            out_order = np.empty(0, dtype=int)
+
+        if idx_in.size == 0:
+            return out_order[: self.population_size].astype(int)
+
+        # Map the in-box solutions into normalized shadow-front space (all axes minimized).
+        f = target_arr[idx_in]
+        f_range = f.max() - f.min()
+        f_norm = (f - f.min()) / f_range if f_range > 0 else np.zeros_like(f)
+
+        r = np.maximum(0.0, c_mat[idx_in])  # relaxation used per constraint, (|in|, k)
+        t_safe = np.where(t > 0.0, t, 1.0)
+        r_norm = r / t_safe[None, :]
+        r_norm[:, t <= 0.0] = 0.0
+
+        pts = np.column_stack([f_norm, r_norm])  # (|in|, k + 1)
+        ref = np.full(pts.shape[1], 1.0 + eps)
+
+        # The shadow-front endpoints define the shadow price, but hypervolume under-weights extreme
+        # points; protect them from removal until last: the best objective in the box (threshold-
+        # optimum end) and the best strictly-feasible objective (strict-optimum end).
+        protect = {int(np.argmin(f))}
+        strict = np.all(c_mat[idx_in] <= 0.0, axis=1)
+        if strict.any():
+            strict_local = np.where(strict)[0]
+            protect.add(int(strict_local[int(np.argmin(f[strict_local]))]))
+
+        in_order = idx_in[self._greedy_hv_peel(pts, ref, protect, f)]
+
+        return np.concatenate([in_order, out_order])[: self.population_size].astype(int)
+
+    @staticmethod
+    def _greedy_hv_peel(pts: np.ndarray, ref: np.ndarray, protect: set[int], tiebreak: np.ndarray) -> np.ndarray:
+        """Greedy SMS-EMOA-inspired ordering by hypervolume contribution.
+
+        Repeatedly removes the least-contributing point, recomputing all
+        contributions after each removal, so the survival order reflects each
+        point's marginal value to the shrinking set rather than a single static
+        score. Points in ``protect`` are removed only once nothing else remains.
+        Ties in contribution are broken by ``tiebreak`` (smaller value survives
+        longer).
+
+        Args:
+            pts (np.ndarray): points in the normalized objective space, shape ``(m, d)``.
+            ref (np.ndarray): reference point, shape ``(d,)``.
+            protect (set[int]): local indices to remove last (the shadow-front endpoints).
+            tiebreak (np.ndarray): per-point tie-break key, shape ``(m,)``; smaller is better.
+
+        Returns:
+            np.ndarray: local indices ordered best to worst.
+        """
+        m = pts.shape[0]
+        if m == 1:
+            return np.zeros(1, dtype=int)
+        alive = np.ones(m, dtype=bool)
+        removed_worst_first: list[int] = []
+        n_alive = m
+        while n_alive > 1:
+            ia = np.where(alive)[0]
+            contribs = np.asarray(moocore.hv_contributions(pts[ia], ref=ref), dtype=float)
+            # Worst first: least contribution, ties broken by larger tiebreak (worse objective).
+            for pos in np.lexsort((-tiebreak[ia], contribs)):
+                gi = int(ia[pos])
+                if gi not in protect or n_alive <= len(protect):
+                    removed_worst_first.append(gi)
+                    alive[gi] = False
+                    n_alive -= 1
+                    break
+        removed_worst_first.append(int(np.where(alive)[0][0]))
+        return np.array(removed_worst_first[::-1], dtype=int)
+
     def compute_order(self, target_arr: np.ndarray, c_mat: np.ndarray) -> np.ndarray:
         """Compute the selection order (best to worst) for given objective and constraint values.
 
@@ -2734,8 +2863,17 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
 
                 order = fitness_combined.argsort(kind="mergesort")[: self.population_size]
 
+        elif self.mode == "hypervolume":
+            if c_mat.shape[1] == 0:
+                # No constraints: no relaxation axis exists, fall back to objective ordering.
+                order = np.argsort(target_arr, kind="mergesort")[: self.population_size]
+            else:
+                order = self._hypervolume_order(target_arr, c_mat)
+
         else:
-            raise ValueError(f"Unsupported mode '{self.mode}'. Expected one of: baseline, relaxed, ranking.")
+            raise ValueError(
+                f"Unsupported mode '{self.mode}'. Expected one of: baseline, relaxed, ranking, hypervolume."
+            )
 
         return np.atleast_1d(order).astype(int)
 
@@ -2768,8 +2906,9 @@ class SingleObjectiveConstrainedRankingSelector(BaseSelector):
         else:
             c_mat = np.zeros((n, 0), dtype=float)
 
-        # Remove duplicates by objective value before any ranking
-        unique_mask = self._objective_unique_mask(target_arr, tol=1e-8)
+        # Remove duplicates in decision space before any ranking
+        dec_mat = solutions.select(self.variable_symbols).to_numpy()
+        unique_mask = self._decision_unique_mask(dec_mat)
         unique_idx = np.where(unique_mask)[0].tolist()
         solutions = solutions[unique_idx]
         population = population[unique_idx]

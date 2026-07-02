@@ -114,12 +114,14 @@ class SingleObjectiveConstrainedRankingSelectorOptions(BaseModel):
     )
     """The value over which constraints are considered to not be true."""
     mode: str = Field(
-        default="alternate",
+        default="baseline",
         description=(
-            "The mode of the operator. 'alternate' for alternative picking,'baseline' for baseline fitness assignment."
+            "The mode of the operator: 'baseline' (feasibility-first lexicographic), 'relaxed' "
+            "(per-constraint round-robin pools), 'ranking' (rank vectors with non-dominated sorting "
+            "and niching), or 'hypervolume' (greedy hypervolume-contribution ranking of the shadow front)."
         ),
     )
-    """The mode of the operator. 'alternate' for alternative picking,'baseline' for baseline fitness assignment."""
+    """The operator mode: 'baseline', 'relaxed', 'ranking', or 'hypervolume'."""
     niching: str = Field(
         default="crowding",
         description=(
@@ -135,6 +137,15 @@ class SingleObjectiveConstrainedRankingSelectorOptions(BaseModel):
         description="Number of nearest neighbours to consider when niching='knearest'. Defaults to 3.",
     )
     """Number of nearest neighbours to consider when niching='knearest'. Defaults to 3."""
+    hv_eps: float = Field(
+        default=0.01,
+        ge=0.0,
+        description=(
+            "Fractional outward expansion of the online hypervolume reference point on each axis, "
+            "used only in the 'hypervolume' mode. Defaults to 0.01."
+        ),
+    )
+    """Fractional outward expansion of the hypervolume reference point, used in 'hypervolume' mode."""
 
 
 class IBEASelectorOptions(BaseModel):
