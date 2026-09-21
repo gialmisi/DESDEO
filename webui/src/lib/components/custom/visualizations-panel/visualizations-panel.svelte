@@ -98,6 +98,12 @@
 		externalSelectedIndexes?: number[] | null;
 		// Labels for different types of solutions
 		lineLabels?: { [key: string]: string };
+		/**
+		 * Optional overrides for the fixed labels of the panel. Anything left out
+		 * keeps its English default. Used by pages that are shown in another
+		 * language, such as the cats and dogs demo.
+		 */
+		labels?: { title?: string; noSolutions?: string };
 		referenceDataLabels?: {
 			currentRefLabel?: string;
 			previousRefLabel?: string;
@@ -120,8 +126,14 @@
 		externalSelectedIndex = null,
 		externalSelectedIndexes = null,
 		lineLabels = {},
-		referenceDataLabels = {}
+		referenceDataLabels = {},
+		labels = {}
 	}: Props = $props();
+
+	const label = {
+		title: labels.title ?? 'Visualization',
+		noSolutions: labels.noSolutions ?? 'No solutions available. Run the optimization to see results.'
+	};
 
 	/**
 	 * Transform objective values into format expected by ParallelCoordinates
@@ -234,7 +246,7 @@
 	{#if solutionsObjectiveValues.length > 0}
 		<!-- Visualization Type Selector -->
 		<div class="mb-2 flex items-center justify-between">
-			<h3>Visualization</h3>
+			<h3>{label.title}</h3>
 			<SegmentedControl
 				bind:value={visualizationType}
 				options={[
@@ -273,7 +285,7 @@
 		<div
 			class="flex h-full items-center justify-center rounded border bg-gray-50 p-8 text-center text-gray-500"
 		>
-			No solutions available. Run the optimization to see results.
+			{label.noSolutions}
 		</div>
 	{/if}
 </div>

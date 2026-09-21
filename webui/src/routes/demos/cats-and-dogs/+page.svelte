@@ -39,9 +39,20 @@
 	import { formatNumber, getDisplayAccuracy } from '$lib/helpers/index.js';
 	import { errorMessage, isLoading } from '../../../stores/uiState';
 
+	import { SegmentedControl } from '$lib/components/custom/segmented-control';
+
 	import { breedImagePath, breedLabel } from './breeds';
 	import { loadBreedImageCredits, type BreedImageCredit } from './image-credits';
 	import { iterate } from './handlers';
+	import {
+		LANGUAGES,
+		LANGUAGE_NAMES,
+		OBJECTIVE_NAMES,
+		TRANSLATIONS,
+		storeLanguage,
+		storedLanguage,
+		type Language
+	} from './i18n';
 	import type { Animal, Candidate, ProblemInfo } from './types';
 
 	const { data } = $props<{ data: { problems: ProblemInfo[] } }>();
@@ -67,6 +78,35 @@
 
 	let imageCredits: Record<string, BreedImageCredit> = $state({});
 	let imageFailed = $state(false);
+
+	// SegmentedControl binds a plain string, so the choice is held as one and
+	// narrowed to a Language for the lookups.
+	let languageChoice = $state<string>(storedLanguage());
+	let language: Language = $derived(languageChoice === 'fi' ? 'fi' : 'en');
+	let t = $derived(TRANSLATIONS[language]);
+
+	const languageOptions = LANGUAGES.map((code) => ({ value: code, label: LANGUAGE_NAMES[code] }));
+
+	$effect(() => {
+		storeLanguage(language);
+	});
+
+	/**
+	 * The problem with its objectives renamed into the chosen language. The
+	 * shared sidebar, the visualizations and the tables all read the names off
+	 * the problem, so translating them here is what translates all three.
+	 */
+	let localizedProblem = $derived.by(() => {
+		if (!problem) return null;
+		const names = OBJECTIVE_NAMES[language];
+		return {
+			...problem,
+			objectives: problem.objectives.map((objective) => ({
+				...objective,
+				name: names[objective.symbol] ?? objective.name
+			}))
+		};
+	});
 
 	let problemList = $derived(data.problems ?? []);
 	let selectedCandidate = $derived(candidates[selectedIndex] ?? null);
@@ -98,9 +138,7 @@
 		const found = problemList.find((candidate: ProblemInfo) => candidate.name === PROBLEM_NAMES[chosen]);
 
 		if (!found) {
-			errorMessage.set(
-				`The ${chosen} breed problem was not found. Seed it with desdeo/api/db_init_catsanddogs.py.`
-			);
+			errorMessage.set(t.problemMissing(chosen));
 			return;
 		}
 
@@ -128,7 +166,7 @@
 		if (found === null) return;
 
 		if (found.length === 0) {
-			errorMessage.set('No breeds were found for this wish. Try changing it a little.');
+			errorMessage.set(t.noBreedsFound);
 			return;
 		}
 
@@ -167,40 +205,38 @@
 </svelte:head>
 
 {#if $isLoading}
-	<LoadingSpinner text={animal === 'cat' ? 'Looking for cats...' : 'Looking for dogs...'} />
+	<LoadingSpinner text={t.searching[animal]} />
 {/if}
 {#if $errorMessage}
-	<Alert title="Something went wrong" variant="destructive" />
+	<Alert title={t.errorTitle} variant="destructive" />
 {/if}
 
 {#if stage === 'choose'}
 	<div class="flex min-h-[calc(100vh-3rem)] items-center justify-center p-6">
 		<Card.Root class="w-full max-w-3xl">
 			<Card.Header>
-				<Card.Title class="text-2xl">Find your ideal cat or dog breed</Card.Title>
-				<Card.Description>
-					Multiobjective optimization problems turn up in the unlikeliest places. The data behind
-					this demo comes from two real survey studies on the behaviour of cat and dog breeds in
-					Finland, but the problem formulation should not be taken too seriously. Whatever the
-					method suggests, you are the decision maker and you make the final call.
-				</Card.Description>
+				<div class="flex items-start justify-between gap-4">
+					<Card.Title class="text-2xl">{t.introTitle}</Card.Title>
+					<SegmentedControl size="sm" options={languageOptions} bind:value={languageChoice} />
+				</div>
+				<Card.Description>{t.introBody}</Card.Description>
 			</Card.Header>
 			<Card.Content>
-				<p class="mb-4 text-sm text-gray-600">I like...</p>
+				<p class="mb-4 text-sm text-gray-600">{t.introPrompt}</p>
 				<div class="grid gap-4 sm:grid-cols-2">
-					<Button class="h-24 text-lg" onclick={() => chooseAnimal('cat')}>Cats 😻</Button>
+					<Button class="h-24 text-lg" onclick={() => chooseAnimal('cat')}>{t.chooseCats}</Button>
 					<Button class="h-24 text-lg" variant="secondary" onclick={() => chooseAnimal('dog')}>
-						Dogs 🐕
+						{t.chooseDogs}
 					</Button>
 				</div>
 			</Card.Content>
 		</Card.Root>
 	</div>
 {:else if stage === 'explore' && problem}
-	<BaseLayout showLeftSidebar={true} showRightSidebar={false} bottomPanelTitle="Suggested breeds">
+	<BaseLayout showLeftSidebar={true} showRightSidebar={false} bottomPanelTitle={t.suggestedBreeds}>
 		{#snippet leftSidebar()}
 			<AppSidebar
-				problem={problem!}
+				problem={localizedProblem!}
 				preferenceTypes={[PREFERENCE_TYPES.ReferencePoint]}
 				typePreferences={PREFERENCE_TYPES.ReferencePoint}
 				preferenceValues={referencePoint}
@@ -209,29 +245,31 @@
 				onPreferenceChange={handlePreferenceChange}
 				onIterate={handleIterate}
 				isFinishButton={false}
+				labels={t.sidebar}
 			/>
 		{/snippet}
 
 		{#snippet explorerTitle()}
 			<span>
-				{animal === 'cat' ? 'Your ideal cat 😺' : 'Your ideal dog 🐶'}
+				{t.explorerTitle[animal]}
 				{#if iterationCount > 0}
-					<span class="ml-2 text-sm font-normal text-gray-500">round {iterationCount}</span>
+					<span class="ml-2 text-sm font-normal text-gray-500">{t.round(iterationCount)}</span>
 				{/if}
 			</span>
 		{/snippet}
 
 		{#snippet explorerControls()}
-			<Button variant="ghost" size="sm" onclick={restart}>Start over</Button>
+			<SegmentedControl size="sm" options={languageOptions} bind:value={languageChoice} />
+			<Button variant="ghost" size="sm" onclick={restart}>{t.startOver}</Button>
 			<Button size="sm" disabled={!selectedCandidate} onclick={() => (stage = 'result')}>
-				This is the one
+				{t.chooseThis}
 			</Button>
 		{/snippet}
 
 		{#snippet visualizationArea()}
 			{#if hasIterated}
 				<VisualizationsPanel
-					{problem}
+					problem={localizedProblem}
 					previousPreferenceValues={[lastIteratedPoint]}
 					currentPreferenceValues={referencePoint}
 					previousPreferenceType={PREFERENCE_TYPES.ReferencePoint}
@@ -241,19 +279,15 @@
 					)}
 					externalSelectedIndexes={[selectedIndex]}
 					lineLabels={Object.fromEntries(
-						candidates.map((candidate, index) => [index, breedLabel(candidate.breedName)])
+						candidates.map((_, index) => [index, t.candidate(index + 1)])
 					)}
 					onSelectSolution={handleSelectSolution}
+					labels={t.visualization}
 				/>
 			{:else}
 				<div class="flex h-full flex-col items-center justify-center gap-2 text-center text-gray-600">
-					<p class="text-lg font-medium">
-						Describe the {animal} you would like
-					</p>
-					<p class="max-w-md text-sm">
-						Set each trait on the left to the value you wish for, then press Iterate. You will get
-						a handful of breeds that come as close to your wishes as the survey data allows.
-					</p>
+					<p class="text-lg font-medium">{t.emptyTitle[animal]}</p>
+					<p class="max-w-md text-sm">{t.emptyBody}</p>
 				</div>
 			{/if}
 		{/snippet}
@@ -264,11 +298,11 @@
 					<Table.Root>
 						<Table.Header>
 							<Table.Row>
-								<Table.Head>Breed group</Table.Head>
-								{#each problem!.objectives as objective}
+								<Table.Head>{t.suggestedBreeds}</Table.Head>
+								{#each localizedProblem!.objectives as objective}
 									<Table.Head class="whitespace-nowrap">
 										{objective.name}
-										<span class="text-gray-500">({objective.maximize ? 'max' : 'min'})</span>
+										<span class="text-gray-500">({objective.maximize ? t.max : t.min})</span>
 									</Table.Head>
 								{/each}
 							</Table.Row>
@@ -280,9 +314,9 @@
 									onclick={() => (selectedIndex = index)}
 								>
 									<Table.Cell class="whitespace-nowrap">
-										{breedLabel(candidate.breedName)}
+										{t.candidate(index + 1)}
 									</Table.Cell>
-									{#each problem!.objectives as objective, objectiveIndex}
+									{#each localizedProblem!.objectives as objective, objectiveIndex}
 										<Table.Cell>
 											{formatNumber(
 												candidate.objectiveValues[objective.symbol] ?? 0,
@@ -296,9 +330,7 @@
 					</Table.Root>
 				</div>
 			{:else}
-				<div class="p-4 text-sm text-gray-600">
-					No breeds suggested yet. Set your wishes and press Iterate.
-				</div>
+				<div class="p-4 text-sm text-gray-600">{t.noBreedsYet}</div>
 			{/if}
 		{/snippet}
 	</BaseLayout>
@@ -306,14 +338,14 @@
 	<div class="flex min-h-[calc(100vh-3rem)] items-center justify-center p-6">
 		<Card.Root class="w-full max-w-2xl">
 			<Card.Header>
-				<Card.Title class="text-2xl">
-					{animal === 'cat' ? 'Your ideal cat breed is' : 'Your ideal dog breed is'}
-					{breedLabel(selectedCandidate.breedName)}
-				</Card.Title>
-				<Card.Description>
-					Found after {iterationCount}
-					{iterationCount === 1 ? 'round' : 'rounds'} of the reference point method.
-				</Card.Description>
+				<div class="flex items-start justify-between gap-4">
+					<Card.Title class="text-2xl">
+						{t.resultTitle[animal]}
+						{breedLabel(selectedCandidate.breedName)}
+					</Card.Title>
+					<SegmentedControl size="sm" options={languageOptions} bind:value={languageChoice} />
+				</div>
+				<Card.Description>{t.foundAfter(iterationCount)}</Card.Description>
 			</Card.Header>
 			<Card.Content class="flex flex-col gap-6">
 				{#if !imageFailed}
@@ -327,11 +359,11 @@
 						{#if selectedCredit}
 							<figcaption class="text-center text-xs text-gray-500">
 								{#if selectedCredit.represented_by !== breedLabel(selectedCandidate.breedName)}
-									Pictured: {selectedCredit.represented_by}.
+									{t.pictured(selectedCredit.represented_by)}
 								{/if}
-								Photograph by {selectedCredit.author}, {selectedCredit.license},
+								{t.photographBy(selectedCredit.author, selectedCredit.license)}
 								<a class="underline" href={selectedCredit.source} target="_blank" rel="noreferrer">
-									via Wikimedia Commons
+									{t.viaCommons}
 								</a>.
 							</figcaption>
 						{/if}
@@ -341,16 +373,16 @@
 				<Table.Root>
 					<Table.Header>
 						<Table.Row>
-							<Table.Head>Trait</Table.Head>
-							<Table.Head class="text-right">Value</Table.Head>
+							<Table.Head>{t.trait}</Table.Head>
+							<Table.Head class="text-right">{t.value}</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
-						{#each problem.objectives as objective, objectiveIndex}
+						{#each localizedProblem!.objectives as objective, objectiveIndex}
 							<Table.Row>
 								<Table.Cell>
 									{objective.name}
-									<span class="text-gray-500">({objective.maximize ? 'max' : 'min'})</span>
+									<span class="text-gray-500">({objective.maximize ? t.max : t.min})</span>
 								</Table.Cell>
 								<Table.Cell class="text-right">
 									{formatNumber(
@@ -363,14 +395,11 @@
 					</Table.Body>
 				</Table.Root>
 
-				<p class="text-sm text-gray-600">
-					Remember that this is a playful example. A real breed choice deserves rather more thought
-					than seven numbers from a survey.
-				</p>
+				<p class="text-sm text-gray-600">{t.disclaimer}</p>
 			</Card.Content>
 			<Card.Footer class="flex gap-2">
-				<Button variant="secondary" onclick={() => (stage = 'explore')}>Keep looking</Button>
-				<Button onclick={restart}>Start over</Button>
+				<Button variant="secondary" onclick={() => (stage = 'explore')}>{t.keepLooking}</Button>
+				<Button onclick={restart}>{t.startOver}</Button>
 			</Card.Footer>
 		</Card.Root>
 	</div>

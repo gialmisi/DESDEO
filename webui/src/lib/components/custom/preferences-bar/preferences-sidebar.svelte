@@ -55,6 +55,20 @@
 		lastIteratedPreference?: number[];
 		isFinishButton?: boolean;
 		footerExtra?: Snippet;
+		/**
+		 * Optional overrides for the fixed labels of the sidebar. Anything left
+		 * out keeps its English default. Used by pages that are shown in another
+		 * language, such as the cats and dogs demo.
+		 */
+		labels?: {
+			header?: string;
+			preferenceType?: string;
+			value?: string;
+			max?: string;
+			min?: string;
+			iterate?: string;
+			finish?: string;
+		};
 	}
 
 	let {
@@ -75,8 +89,10 @@
 		maxNumSolutions = 4,
 		lastIteratedPreference = [],
 		isFinishButton = true,
-		footerExtra
+		footerExtra,
+		labels = {}
 	}: Props = $props();
+
 
 
 	// Validate that preference_types only contains valid values
@@ -100,6 +116,23 @@
 	let internal_type_preferences = $state('');
 	let internal_preference_values = $state<number[]>([]);
 	let internal_objective_values = $state<number[]>([]);
+
+	const DEFAULT_LABELS = {
+		header: 'Preference information',
+		value: 'Value',
+		max: 'max',
+		min: 'min',
+		iterate: 'Iterate',
+		finish: 'Finish'
+	};
+
+	// The preference type doubles as a label, so it is the default for its own
+	// override rather than a fixed string.
+	let label = $derived({
+		...DEFAULT_LABELS,
+		preferenceType: internal_type_preferences,
+		...Object.fromEntries(Object.entries(labels).filter(([, value]) => value !== undefined))
+	});
 
 	let displayAccuracy = $derived((idx: number) => {
 		const list = getDisplayAccuracy(problem)
@@ -221,8 +254,8 @@
 				class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 			>
 				<div class="flex flex-col gap-0.5 leading-none">
-					<span class="font-semibold">Preference information</span>
-					<span class="text-primary-500">{internal_type_preferences}</span>
+					<span class="font-semibold">{label.header}</span>
+					<span class="text-primary-500">{label.preferenceType}</span>
 				</div>
 			</Sidebar.MenuButton>
 		{/if}
@@ -259,7 +292,7 @@
 							class="text-sm font-semibold text-gray-700"
 							title={getObjectiveTitle(objective)}
 						>
-							{objective.name} ({objective.maximize ? 'max' : 'min'})
+							{objective.name} ({objective.maximize ? label.max : label.min})
 						</div>
 						<div class="flex flex-row items-start">
 							<div class="flex w-1/4 flex-col">
@@ -310,11 +343,11 @@
 				{#if objective.ideal != null && objective.nadir != null}
 					<div class="mb-4 flex flex-col gap-2">
 						<div class="text-sm font-semibold text-gray-700">
-							{objective.name} ({objective.maximize ? 'max' : 'min'})
+							{objective.name} ({objective.maximize ? label.max : label.min})
 						</div>
 						<div class="flex flex-row">
 							<div class="flex w-1/4 flex-col justify-center">
-								<span class="text-sm text-gray-500">Value</span>
+								<span class="text-sm text-gray-500">{label.value}</span>
 								<ValidatedTextbox
 									placeholder=""
 									min={Math.min(objective.ideal, objective.nadir)}
@@ -357,11 +390,11 @@
 				{#if objective.ideal != null && objective.nadir != null}
 					<div class="mb-4 flex flex-col gap-2">
 						<div class="text-sm font-semibold text-gray-700">
-							{objective.name} ({objective.maximize ? 'max' : 'min'})
+							{objective.name} ({objective.maximize ? label.max : label.min})
 						</div>
 						<div class="flex flex-row">
 							<div class="flex w-1/4 flex-col justify-center">
-								<span class="text-sm text-gray-500">Value</span>
+								<span class="text-sm text-gray-500">{label.value}</span>
 								<ValidatedTextbox
 									placeholder=""
 									min={Math.min(objective.ideal, objective.nadir)}
@@ -414,11 +447,11 @@
 			</div>
 			<div class="flex gap-2">
 				<Button variant="default" disabled={!isIterationAllowed} size="sm" onclick={handle_iterate}>
-					Iterate
+					{label.iterate}
 				</Button>
 				{#if isFinishButton}
 					<Button variant="secondary" size="sm" disabled={!isFinishAllowed} onclick={handle_finish}>
-						Finish
+						{label.finish}
 					</Button>
 				{/if}
 			</div>
