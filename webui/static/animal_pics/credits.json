@@ -1,0 +1,782 @@
+{
+  "Abyssinian": {
+    "animal": "cat",
+    "file": "Abyssinian.jpg",
+    "represented_by": "Abyssinian cat",
+    "commons_file": "Gustav_chocolate.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Karin Langner-Bahmann",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Gustav_chocolate.jpg"
+  },
+  "American_Curl": {
+    "animal": "cat",
+    "file": "American_Curl.jpg",
+    "represented_by": "American Curl",
+    "commons_file": "American_curl_2.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Cljk (uploader)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:American_curl_2.jpg"
+  },
+  "Bengal": {
+    "animal": "cat",
+    "file": "Bengal.jpg",
+    "represented_by": "Bengal cat",
+    "commons_file": "Paintedcats_Red_Star_standing.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "User:Lightburst",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Paintedcats_Red_Star_standing.jpg"
+  },
+  "British": {
+    "animal": "cat",
+    "file": "British.jpg",
+    "represented_by": "British Shorthair",
+    "commons_file": "Mystica_from_British_Empire_Cattery.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "BritishEmpire",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Mystica_from_British_Empire_Cattery.jpg"
+  },
+  "Burmese": {
+    "animal": "cat",
+    "file": "Burmese.jpg",
+    "represented_by": "Burmese cat",
+    "commons_file": "British_burmese_-_Andel_Alois_at_Cat_show.JPG",
+    "license": "CC BY 3.0",
+    "author": "Heikkisiltala",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:British_burmese_-_Andel_Alois_at_Cat_show.JPG"
+  },
+  "Cornish_Rex": {
+    "animal": "cat",
+    "file": "Cornish_Rex.jpg",
+    "represented_by": "Cornish Rex",
+    "commons_file": "Rex_staredown.jpg",
+    "license": "CC BY 2.0",
+    "author": "Tomi Tapio K from Helsinki, Finland",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Rex_staredown.jpg"
+  },
+  "European": {
+    "animal": "cat",
+    "file": "European.jpg",
+    "represented_by": "European Shorthair",
+    "commons_file": "European_Shorthair_EUR_d_22.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Tessa",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:European_Shorthair_EUR_d_22.jpg"
+  },
+  "House_cat": {
+    "animal": "cat",
+    "file": "House_cat.jpg",
+    "represented_by": "Cat",
+    "commons_file": "Siam_lilacpoint.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Karin Langner-Bahmann, upload von Martin Bahmann",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Siam_lilacpoint.jpg"
+  },
+  "Korat": {
+    "animal": "cat",
+    "file": "Korat.jpg",
+    "represented_by": "Korat",
+    "commons_file": "Face_et_profil_du_korat.JPG",
+    "license": "CC BY-SA 3.0",
+    "author": "Yog-Hurt's_Atlach-Nacha_at_Turok_Cat_Show.JPG: Heikkisiltala GIC_Lucky_Uffe_at_cat_show_Hyvinkää.JPG: Heikkisiltala derivative work: Abujoy (talk)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Face_et_profil_du_korat.JPG"
+  },
+  "Landrace_Cat_Longhair": {
+    "animal": "cat",
+    "file": "Landrace_Cat_Longhair.jpg",
+    "represented_by": "Domestic long-haired cat",
+    "commons_file": "Three_stray_cats_in_Japan_street,_August_2014.jpg",
+    "license": "CC BY 2.0",
+    "author": "torne (where's my lens cap?)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Three_stray_cats_in_Japan_street,_August_2014.jpg"
+  },
+  "Landrace_Cat_Shorthair": {
+    "animal": "cat",
+    "file": "Landrace_Cat_Shorthair.jpg",
+    "represented_by": "Domestic short-haired cat",
+    "commons_file": "Three_stray_cats_in_Japan_street,_August_2014.jpg",
+    "license": "CC BY 2.0",
+    "author": "torne (where's my lens cap?)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Three_stray_cats_in_Japan_street,_August_2014.jpg"
+  },
+  "Maine_Coon": {
+    "animal": "cat",
+    "file": "Maine_Coon.jpg",
+    "represented_by": "Maine Coon",
+    "commons_file": "Mâle_Black_Silver_Blotched_Tabby.jpeg",
+    "license": "CC BY-SA 4.0",
+    "author": "Alix devil (uploader)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:M%C3%A2le_Black_Silver_Blotched_Tabby.jpeg"
+  },
+  "Norwegian_Forest_Cat": {
+    "animal": "cat",
+    "file": "Norwegian_Forest_Cat.jpg",
+    "represented_by": "Norwegian Forest cat",
+    "commons_file": "Dalaja-Doll-norvégien-ambre-blotched-tabby_avec-blanc_2008_(cropped).jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Gangburgondes",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Dalaja-Doll-norv%C3%A9gien-ambre-blotched-tabby_avec-blanc_2008_(cropped).jpg"
+  },
+  "Ocicat": {
+    "animal": "cat",
+    "file": "Ocicat.jpg",
+    "represented_by": "Ocicat",
+    "commons_file": "Topspot_La_Colombina_(Liina)_OCI_c_24_female_kitten_EX1.JPG",
+    "license": "CC BY 3.0",
+    "author": "Heikki Siltala - catza.net",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Topspot_La_Colombina_(Liina)_OCI_c_24_female_kitten_EX1.JPG"
+  },
+  "Oriental": {
+    "animal": "cat",
+    "file": "Oriental.jpg",
+    "represented_by": "Oriental Shorthair",
+    "commons_file": "Fatale_de_la_légende_d'ali.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Daly69",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Fatale_de_la_l%C3%A9gende_d%27ali.jpg"
+  },
+  "Other": {
+    "animal": "cat",
+    "file": "Other.jpg",
+    "represented_by": "Cat",
+    "commons_file": "Siam_lilacpoint.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Karin Langner-Bahmann, upload von Martin Bahmann",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Siam_lilacpoint.jpg"
+  },
+  "Persian_and_Exotic": {
+    "animal": "cat",
+    "file": "Persian_and_Exotic.jpg",
+    "represented_by": "Persian cat",
+    "commons_file": "Persialainen.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "The original uploader was Lajoma at Finnish Wikipedia.",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Persialainen.jpg"
+  },
+  "Ragdoll": {
+    "animal": "cat",
+    "file": "Ragdoll.jpg",
+    "represented_by": "Ragdoll",
+    "commons_file": "Ragdoll_from_Gatil_Ragbelas.jpg",
+    "license": "CC BY-SA 2.0",
+    "author": "Simone Johnsson",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Ragdoll_from_Gatil_Ragbelas.jpg"
+  },
+  "Russian_Blue": {
+    "animal": "cat",
+    "file": "Russian_Blue.jpg",
+    "represented_by": "Russian Blue cat",
+    "commons_file": "Russian_blue_kitten_(cropped).jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Anna Utekhina http://kidsphoto.ru/",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Russian_blue_kitten_(cropped).jpg"
+  },
+  "Sacred_Birman": {
+    "animal": "cat",
+    "file": "Sacred_Birman.jpg",
+    "represented_by": "Birman",
+    "commons_file": "Birmanstrofe.jpg",
+    "license": "Copyrighted free use",
+    "author": "Kristin Kokkersvold",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Birmanstrofe.jpg"
+  },
+  "Siamese_and_Balinese": {
+    "animal": "cat",
+    "file": "Siamese_and_Balinese.jpg",
+    "represented_by": "Siamese cat",
+    "commons_file": "Siamese_cat_Vaillante.JPG",
+    "license": "CC BY-SA 3.0",
+    "author": "Meekahoo",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Siamese_cat_Vaillante.JPG"
+  },
+  "Siberian_and_Neva_Masquerade": {
+    "animal": "cat",
+    "file": "Siberian_and_Neva_Masquerade.jpg",
+    "represented_by": "Siberian cat",
+    "commons_file": "Samiha's_Siberian_cat_Moon_Pie.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Floofymarshmallow",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Samiha%27s_Siberian_cat_Moon_Pie.jpg"
+  },
+  "Somali": {
+    "animal": "cat",
+    "file": "Somali.jpg",
+    "represented_by": "Somali cat",
+    "commons_file": "Сомалийская_кошка.jpg",
+    "license": "Public domain",
+    "author": "Матвеева Ирина Владимировна",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:%D0%A1%D0%BE%D0%BC%D0%B0%D0%BB%D0%B8%D0%B9%D1%81%D0%BA%D0%B0%D1%8F_%D0%BA%D0%BE%D1%88%D0%BA%D0%B0.jpg"
+  },
+  "Sphynx_and_Devon_Rex": {
+    "animal": "cat",
+    "file": "Sphynx_and_Devon_Rex.jpg",
+    "represented_by": "Sphynx cat",
+    "commons_file": "Sphynx_-_cat._img_031.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dmitry Makeev",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Sphynx_-_cat._img_031.jpg"
+  },
+  "Turkish_Angora": {
+    "animal": "cat",
+    "file": "Turkish_Angora.jpg",
+    "represented_by": "Turkish Angora",
+    "commons_file": "Turkish_Angora_in_Ankara_Zoo_(AOÇ).JPG",
+    "license": "CC BY 3.0",
+    "author": "Ankarakediler",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Turkish_Angora_in_Ankara_Zoo_(AO%C3%87).JPG"
+  },
+  "Turkish_Van": {
+    "animal": "cat",
+    "file": "Turkish_Van.jpg",
+    "represented_by": "Turkish Van",
+    "commons_file": "Turkish_Van_cat_transparent_(cropped).png",
+    "license": "CC BY-SA 4.0",
+    "author": "Matsu1024",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Turkish_Van_cat_transparent_(cropped).png"
+  },
+  "Australian_Shepherd": {
+    "animal": "dog",
+    "file": "Australian_Shepherd.jpg",
+    "represented_by": "Australian Shepherd",
+    "commons_file": "Australian_Shepherd_red_bi.JPG",
+    "license": "CC BY-SA 3.0",
+    "author": "Trickdog-Fina",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Australian_Shepherd_red_bi.JPG"
+  },
+  "Belgian_shepherd_dogs": {
+    "animal": "dog",
+    "file": "Belgian_shepherd_dogs.jpg",
+    "represented_by": "Belgian Shepherd",
+    "commons_file": "04_-_Belgian_shepherd_dog_varieties_-_Groenendael,Tervuren,_Malinois,_Laekenois.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Various, see description. Compiled by User:Adventurous36",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:04_-_Belgian_shepherd_dog_varieties_-_Groenendael,Tervuren,_Malinois,_Laekenois.jpg"
+  },
+  "Bernese_Mountain_Dogs": {
+    "animal": "dog",
+    "file": "Bernese_Mountain_Dogs.jpg",
+    "represented_by": "Bernese Mountain Dog",
+    "commons_file": "3-BerneseMountainDogInGrass.jpg",
+    "license": "CC BY 4.0",
+    "author": "FriendlyToaster",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:3-BerneseMountainDogInGrass.jpg"
+  },
+  "Bichon_type_dogs": {
+    "animal": "dog",
+    "file": "Bichon_type_dogs.jpg",
+    "represented_by": "Bichon Frise",
+    "commons_file": "Bichon_Frisé_-_studdogbichon.jpg",
+    "license": "CC BY-SA 3.0 de",
+    "author": "Heike Andres",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Bichon_Fris%C3%A9_-_studdogbichon.jpg"
+  },
+  "Border_Collie": {
+    "animal": "dog",
+    "file": "Border_Collie.jpg",
+    "represented_by": "Border Collie",
+    "commons_file": "Border_Collie_600.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Sannse",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Border_Collie_600.jpg"
+  },
+  "Brachycephalic_dogs": {
+    "animal": "dog",
+    "file": "Brachycephalic_dogs.jpg",
+    "represented_by": "Pug",
+    "commons_file": "Mops-duke-mopszucht-vom-maegdebrunnen.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Xidrep",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Mops-duke-mopszucht-vom-maegdebrunnen.jpg"
+  },
+  "Bull_type_terriers": {
+    "animal": "dog",
+    "file": "Bull_type_terriers.jpg",
+    "represented_by": "Staffordshire Bull Terrier",
+    "commons_file": "סאטף_אנגלי.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Or Logassi",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:%D7%A1%D7%90%D7%98%D7%A3_%D7%90%D7%A0%D7%92%D7%9C%D7%99.jpg"
+  },
+  "Chinese_Crested_Dog": {
+    "animal": "dog",
+    "file": "Chinese_Crested_Dog.jpg",
+    "represented_by": "Chinese Crested Dog",
+    "commons_file": "IndyStands.jpg",
+    "license": "CC BY 3.0",
+    "author": "Tommy Gildseth",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:IndyStands.jpg"
+  },
+  "Collie_Rough": {
+    "animal": "dog",
+    "file": "Collie_Rough.jpg",
+    "represented_by": "Rough Collie",
+    "commons_file": "Rough-Collie-japan08_(cropped).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Yasu w",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Rough-Collie-japan08_(cropped).jpg"
+  },
+  "Collie_Smooth": {
+    "animal": "dog",
+    "file": "Collie_Smooth.jpg",
+    "represented_by": "Smooth Collie",
+    "commons_file": "SmoothCollie_TriColour.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Mwensley",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:SmoothCollie_TriColour.jpg"
+  },
+  "Dachshunds": {
+    "animal": "dog",
+    "file": "Dachshunds.jpg",
+    "represented_by": "Dachshund",
+    "commons_file": "닥스훈트(단모종)_(Dachshund_(Short)).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Katemil94",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:%EB%8B%A5%EC%8A%A4%ED%9B%88%ED%8A%B8(%EB%8B%A8%EB%AA%A8%EC%A2%85)_(Dachshund_(Short)).jpg"
+  },
+  "English_herders": {
+    "animal": "dog",
+    "file": "English_herders.jpg",
+    "represented_by": "Old English Sheepdog",
+    "commons_file": "Old_English_Sheepdog_(side).jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "AKS.9955",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Old_English_Sheepdog_(side).jpg"
+  },
+  "European_sighthounds": {
+    "animal": "dog",
+    "file": "European_sighthounds.jpg",
+    "represented_by": "Greyhound",
+    "commons_file": "GraceTheGreyhound.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Neurodoc",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:GraceTheGreyhound.jpg"
+  },
+  "Fighting_dogs": {
+    "animal": "dog",
+    "file": "Fighting_dogs.jpg",
+    "represented_by": "American Staffordshire Terrier",
+    "commons_file": "AMERICAN_STAFFORDSHIRE_TERRIER,_Zican’s_Bz_Ez_Dragon_(24208348891).2.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Svenska Mässan from Sweden",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:AMERICAN_STAFFORDSHIRE_TERRIER,_Zican%E2%80%99s_Bz_Ez_Dragon_(24208348891).2.jpg"
+  },
+  "Finnish_Lapphund": {
+    "animal": "dog",
+    "file": "Finnish_Lapphund.jpg",
+    "represented_by": "Finnish Lapphund",
+    "commons_file": "Finnish_Lapphund_Glenchess_Revontuli.jpg",
+    "license": "CC BY-SA 2.5",
+    "author": "Apdevries [2]",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Finnish_Lapphund_Glenchess_Revontuli.jpg"
+  },
+  "German_Shepherd_Dog": {
+    "animal": "dog",
+    "file": "German_Shepherd_Dog.jpg",
+    "represented_by": "German Shepherd",
+    "commons_file": "German_Shepherd_-_DSC_0346_(10096362833).jpg",
+    "license": "CC BY-SA 2.5",
+    "author": "gomagoti",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:German_Shepherd_-_DSC_0346_(10096362833).jpg"
+  },
+  "German_spitz_related": {
+    "animal": "dog",
+    "file": "German_spitz_related.jpg",
+    "represented_by": "German Spitz",
+    "commons_file": "Goldilocks.gif",
+    "license": "FAL",
+    "author": "Diane Armstrong",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Goldilocks.gif"
+  },
+  "Golden_Retriever": {
+    "animal": "dog",
+    "file": "Golden_Retriever.jpg",
+    "represented_by": "Golden Retriever",
+    "commons_file": "Golden_Retriever_Dukedestiny01_drvd.jpg",
+    "license": "Public domain",
+    "author": "Dukedestiny01.jpg: \"Janneke Vreugdenhil\" derivative work: Anka Friedrich ([[User talk:Ankaaswe Trix Friedrich|talk]])",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Golden_Retriever_Dukedestiny01_drvd.jpg"
+  },
+  "Hunting_terriers": {
+    "animal": "dog",
+    "file": "Hunting_terriers.jpg",
+    "represented_by": "Fox Terrier",
+    "commons_file": "01_Wire_Fox_terrier.jpg",
+    "license": "CC BY 2.0",
+    "author": "State Farm",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:01_Wire_Fox_terrier.jpg"
+  },
+  "Jack_Russell_Terrier": {
+    "animal": "dog",
+    "file": "Jack_Russell_Terrier.jpg",
+    "represented_by": "Jack Russell Terrier",
+    "commons_file": "Jack_Russell_Terrier_1.jpg",
+    "license": "CC BY 3.0",
+    "author": "Plank",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Jack_Russell_Terrier_1.jpg"
+  },
+  "Japanese_Asian_primitive": {
+    "animal": "dog",
+    "file": "Japanese_Asian_primitive.jpg",
+    "represented_by": "Shiba Inu",
+    "commons_file": "Taka_Shiba.jpg",
+    "license": "Public domain",
+    "author": "Takashiba at English Wikipedia",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Taka_Shiba.jpg"
+  },
+  "Labrador_Retriever": {
+    "animal": "dog",
+    "file": "Labrador_Retriever.jpg",
+    "represented_by": "Labrador Retriever",
+    "commons_file": "Labrador_on_Quantock_(2175262184).jpg",
+    "license": "CC BY-SA 2.0",
+    "author": "IDS.photos from Tiverton, UK",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Labrador_on_Quantock_(2175262184).jpg"
+  },
+  "Lagotto_Romagnolo_Romagna_Water_Dog": {
+    "animal": "dog",
+    "file": "Lagotto_Romagnolo_Romagna_Water_Dog.jpg",
+    "represented_by": "Lagotto Romagnolo",
+    "commons_file": "Bellalagotto4.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Entheta",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Bellalagotto4.jpg"
+  },
+  "Lapponian_Herder": {
+    "animal": "dog",
+    "file": "Lapponian_Herder.jpg",
+    "represented_by": "Lapponian Herder",
+    "commons_file": "Lapskvallhund.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Patrik Fors",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Lapskvallhund.jpg"
+  },
+  "Livestock_guardian_dogs": {
+    "animal": "dog",
+    "file": "Livestock_guardian_dogs.jpg",
+    "represented_by": "Pyrenean Mountain Dog",
+    "commons_file": "Great_Pyrenees_Mountain_Dog_2.png",
+    "license": "CC BY-SA 4.0",
+    "author": "HeartSpoon",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Great_Pyrenees_Mountain_Dog_2.png"
+  },
+  "Mastiff_type_dogs": {
+    "animal": "dog",
+    "file": "Mastiff_type_dogs.jpg",
+    "represented_by": "English Mastiff",
+    "commons_file": "Westgort_Anticipation_17_months.JPG",
+    "license": "CC BY-SA 3.0",
+    "author": "Radovan Rohovsky",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Westgort_Anticipation_17_months.JPG"
+  },
+  "Middle_European_herders": {
+    "animal": "dog",
+    "file": "Middle_European_herders.jpg",
+    "represented_by": "Briard",
+    "commons_file": "Briard_fauve.JPG",
+    "license": "CC BY-SA 3.0",
+    "author": "Birgit Balzer, Deutschland (uploaded by Caronna 17:00, 10 Feb 2005 (UTC))",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Briard_fauve.JPG"
+  },
+  "Middle_European_utility_dogs": {
+    "animal": "dog",
+    "file": "Middle_European_utility_dogs.jpg",
+    "represented_by": "Hovawart",
+    "commons_file": "Helos_11.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Ursula Schneider / Nürmbrecht",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Helos_11.jpg"
+  },
+  "Miniature_Pinscher": {
+    "animal": "dog",
+    "file": "Miniature_Pinscher.jpg",
+    "represented_by": "Miniature Pinscher",
+    "commons_file": "Miniature_pinscher.jpg",
+    "license": "CC BY 3.0",
+    "author": "Sebastian Wallin. Sebastian Wallin. Sebwal",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Miniature_pinscher.jpg"
+  },
+  "Miniature_Schnauzer": {
+    "animal": "dog",
+    "file": "Miniature_Schnauzer.jpg",
+    "represented_by": "Miniature Schnauzer",
+    "commons_file": "Miniature_Schnauzer_salt_&_pepper_(cropped).jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Canarian",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Miniature_Schnauzer_salt_%26_pepper_(cropped).jpg"
+  },
+  "Mixed_breed": {
+    "animal": "dog",
+    "file": "Mixed_breed.jpg",
+    "represented_by": "Mongrel",
+    "commons_file": "Mongrel_1.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Mribakov",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Mongrel_1.jpg"
+  },
+  "Northern_companion_spitz": {
+    "animal": "dog",
+    "file": "Northern_companion_spitz.jpg",
+    "represented_by": "Pomeranian dog",
+    "commons_file": "Pomeranian.JPG",
+    "license": "Public domain",
+    "author": "Blackoranges",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Pomeranian.JPG"
+  },
+  "Northern_hunting_spitz": {
+    "animal": "dog",
+    "file": "Northern_hunting_spitz.jpg",
+    "represented_by": "Finnish Spitz",
+    "commons_file": "Finnish_Spitz_600.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Muu-karhu (uploader)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Finnish_Spitz_600.jpg"
+  },
+  "Nova_Scotia_Duck_Tolling_Retriever": {
+    "animal": "dog",
+    "file": "Nova_Scotia_Duck_Tolling_Retriever.jpg",
+    "represented_by": "Nova Scotia Duck Tolling Retriever",
+    "commons_file": "Duck_Toller.jpg",
+    "license": "Public domain",
+    "author": "Cal119 at English Wikipedia",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Duck_Toller.jpg"
+  },
+  "Other_breed": {
+    "animal": "dog",
+    "file": "Other_breed.jpg",
+    "represented_by": "Dog",
+    "commons_file": "Huskiesatrest.jpg",
+    "license": "CC BY 2.0",
+    "author": "M. Rehemtulla",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Huskiesatrest.jpg"
+  },
+  "Other_companion_dogs": {
+    "animal": "dog",
+    "file": "Other_companion_dogs.jpg",
+    "represented_by": "Cavalier King Charles Spaniel",
+    "commons_file": "CarterBIS.Tiki.13.6.09.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Andreweatock",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:CarterBIS.Tiki.13.6.09.jpg"
+  },
+  "Parson_type_terriers": {
+    "animal": "dog",
+    "file": "Parson_type_terriers.jpg",
+    "represented_by": "Parson Russell Terrier",
+    "commons_file": "05052881_PRT_braun_rau.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Alephalpha",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:05052881_PRT_braun_rau.jpg"
+  },
+  "Pinschers_Schnauzers": {
+    "animal": "dog",
+    "file": "Pinschers_Schnauzers.jpg",
+    "represented_by": "Standard Schnauzer",
+    "commons_file": "Standard_Grey_Schnauzer_(cropped).JPG",
+    "license": "CC BY-SA 3.0",
+    "author": "Tamorlan",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Standard_Grey_Schnauzer_(cropped).JPG"
+  },
+  "Pointers": {
+    "animal": "dog",
+    "file": "Pointers.jpg",
+    "represented_by": "Pointer (dog breed)",
+    "commons_file": "English_Pointer_orange-white.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Canarian",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:English_Pointer_orange-white.jpg"
+  },
+  "Poodles": {
+    "animal": "dog",
+    "file": "Poodles.jpg",
+    "represented_by": "Poodle",
+    "commons_file": "Full_attention_(8067543690).jpg",
+    "license": "CC BY 2.0",
+    "author": "Tim Wilson from Blaine, MN, USA",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Full_attention_(8067543690).jpg"
+  },
+  "Primitive_sighthounds": {
+    "animal": "dog",
+    "file": "Primitive_sighthounds.jpg",
+    "represented_by": "Saluki",
+    "commons_file": "Red_Smooth_Saluki.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "r.",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Red_Smooth_Saluki.jpg"
+  },
+  "Retrievers_flushing_dogs": {
+    "animal": "dog",
+    "file": "Retrievers_flushing_dogs.jpg",
+    "represented_by": "English Springer Spaniel",
+    "commons_file": "Springer_Spaniel_Wide_Shot.jpg",
+    "license": "CC0",
+    "author": "Ratsniffer",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Springer_Spaniel_Wide_Shot.jpg"
+  },
+  "Scenthounds": {
+    "animal": "dog",
+    "file": "Scenthounds.jpg",
+    "represented_by": "Beagle",
+    "commons_file": "Beagle_600.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Brodo (uploader)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Beagle_600.jpg"
+  },
+  "Schapendoes": {
+    "animal": "dog",
+    "file": "Schapendoes.jpg",
+    "represented_by": "Schapendoes",
+    "commons_file": "Nederlandse-schapendoes-02.jpg",
+    "license": "Public domain",
+    "author": "Jennifernl123 Angela van Lieshout",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Nederlandse-schapendoes-02.jpg"
+  },
+  "Shetland_Sheepdog": {
+    "animal": "dog",
+    "file": "Shetland_Sheepdog.jpg",
+    "represented_by": "Shetland Sheepdog",
+    "commons_file": "Shetland_Sheepdog_sable.jpg",
+    "license": "CC BY-SA 2.0",
+    "author": "Flickr user nickobec (Nick Cowie)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Shetland_Sheepdog_sable.jpg"
+  },
+  "Sled_dogs": {
+    "animal": "dog",
+    "file": "Sled_dogs.jpg",
+    "represented_by": "Siberian Husky",
+    "commons_file": "Husky_L.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "xJaM (talk · contribs)",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Husky_L.jpg"
+  },
+  "Spanish_Water_Dog": {
+    "animal": "dog",
+    "file": "Spanish_Water_Dog.jpg",
+    "represented_by": "Spanish Water Dog",
+    "commons_file": "Perro_agua_(cropped).jpg",
+    "license": "Public domain",
+    "author": "No machine-readable author provided. Brindis320~commonswiki assumed (based on copyright claims).",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Perro_agua_(cropped).jpg"
+  },
+  "Teacup_dogs": {
+    "animal": "dog",
+    "file": "Teacup_dogs.jpg",
+    "represented_by": "Chihuahua (dog breed)",
+    "commons_file": "Chihuahua1_bvdb.jpg",
+    "license": "CC BY-SA 3.0",
+    "author": "Bonnie van den Born, http://www.bonfoto.nl. The original uploader was Cwazi at Dutch Wikipedia.",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Chihuahua1_bvdb.jpg"
+  },
+  "Welsh_Corgis": {
+    "animal": "dog",
+    "file": "Welsh_Corgis.jpg",
+    "represented_by": "Pembroke Welsh Corgi",
+    "commons_file": "Welsh_Pembroke_Corgi.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Dog breed facts",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Welsh_Pembroke_Corgi.jpg"
+  },
+  "Whippet": {
+    "animal": "dog",
+    "file": "Whippet.jpg",
+    "represented_by": "Whippet",
+    "commons_file": "Whippet_2018_6.jpg",
+    "license": "CC BY-SA 4.0",
+    "author": "Canarian",
+    "attribution_required": true,
+    "source": "https://commons.wikimedia.org/wiki/File:Whippet_2018_6.jpg"
+  },
+  "White_Swiss_Shepherd_Dog": {
+    "animal": "dog",
+    "file": "White_Swiss_Shepherd_Dog.jpg",
+    "represented_by": "White Swiss Shepherd Dog",
+    "commons_file": "White_Swiss_Shepherd_Dog_Djinn_(cropped).JPG",
+    "license": "Public domain",
+    "author": "Durdur31",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:White_Swiss_Shepherd_Dog_Djinn_(cropped).JPG"
+  },
+  "Yard_terriers": {
+    "animal": "dog",
+    "file": "Yard_terriers.jpg",
+    "represented_by": "Airedale Terrier",
+    "commons_file": "Airedale_Terrier.jpg",
+    "license": "Copyrighted free use",
+    "author": "by Jane@rangeairevision.com",
+    "attribution_required": false,
+    "source": "https://commons.wikimedia.org/wiki/File:Airedale_Terrier.jpg"
+  }
+}

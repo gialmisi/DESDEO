@@ -68,3 +68,16 @@ lint:
 # run pre-commit hooks on all files.
 lint-all:
     pre-commit run --all-files
+
+# Runs from desdeo/api, because that is where the API server looks for test.db.
+# Seed the cat and dog breed problems (WARNING: drops every table in test.db).
+demo-catsanddogs-db:
+    cd desdeo/api && python db_init_catsanddogs.py
+
+# Run the cats and dogs demo (seed it first with `just demo-catsanddogs-db`).
+demo-catsanddogs:
+    @echo "Log in as analyst / analyst, then open the demo at:"
+    @echo "  http://localhost:5173/demos/cats-and-dogs"
+    @echo "(Vite picks another port if 5173 is taken, see its output below.)"
+    @echo ""
+    python run_fullstack.py

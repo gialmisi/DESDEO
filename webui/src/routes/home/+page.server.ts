@@ -44,6 +44,9 @@ export const actions: Actions = {
         cookies.set("access_token", response.data.access_token, {httpOnly: true, secure: !dev, sameSite: "lax", path: '/'});
         cookies.set("refresh_token", response.data.refresh_token, {httpOnly: true, secure: !dev, sameSite: "lax", path: '/'});
 
-        throw redirect(303, '/dashboard');
+        // Branch-specific for the cats and dogs demo: logging in drops the user
+        // straight into the demo rather than the dashboard. Change this back to
+        // '/dashboard' before merging anything from this branch upstream.
+        throw redirect(303, '/demos/cats-and-dogs');
     },
 };

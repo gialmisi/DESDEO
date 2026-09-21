@@ -78,12 +78,22 @@ __all__ = [  # noqa: RUF022
     "lame_superspheres",
     "water_management",
     "vehicle_crashworthiness",
+    "cat_breed_problem",
+    "cat_breed_group_names",
+    "dog_breed_problem",
+    "dog_breed_group_names",
 ]
 
 
 from .binh_and_korn_problem import binh_and_korn
 from .cake_problem import best_cake_problem
 from .car_side_impact_problem import car_side_impact
+from .cats_and_dogs_problem import (
+    cat_breed_group_names,
+    cat_breed_problem,
+    dog_breed_group_names,
+    dog_breed_problem,
+)
 from .ctp_problems import ctp1, ctp2, ctp3, ctp4, ctp5, ctp6, ctp7, ctp8
 from .dmitry_forest_problem_discrete import dmitry_forest_problem_disc
 from .dtlz_problems import dtlz1, dtlz2, dtlz4
