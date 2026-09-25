@@ -12,7 +12,8 @@ from desdeo.problem.testproblems.forest_landscape_problem import (
     forest_landscape_data,
     forest_landscape_problem,
 )
-from desdeo.tools import available_solvers
+from desdeo.tools import available_solvers, payoff_table_method
+from desdeo.tools.scalarization import add_asf_diff
 
 
 @pytest.mark.testproblem
@@ -155,3 +156,34 @@ def test_problem_objectives_conflict():
         for stand in stands:
             chosen = int(np.argmax(result.optimal_variables[f"X_{stand.id}"]))
             assert REGIMES[chosen] == regime
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_problem_ideal_and_nadir():
+    """Test that the stored ideal and nadir match the payoff table computed with a solver, and span a range."""
+    problem = forest_landscape_problem(forest_landscape_data(), lot="C")
+
+    ideal, nadir = payoff_table_method(problem, solver=available_solvers["pyomo_cbc"]["constructor"])
+
+    for objective in problem.objectives:
+        assert np.isclose(objective.ideal, ideal[objective.symbol])
+        assert np.isclose(objective.nadir, nadir[objective.symbol])
+        assert objective.nadir < objective.ideal
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_problem_solves_with_reference_point():
+    """Test that an achievement scalarizing function can be built on the problem and solved."""
+    problem = forest_landscape_problem(forest_landscape_data(), lot="A")
+
+    reference_point = {objective.symbol: (objective.ideal + objective.nadir) / 2 for objective in problem.objectives}
+    problem_w_asf, target = add_asf_diff(problem, "asf", reference_point)
+    result = available_solvers["pyomo_cbc"]["constructor"](problem_w_asf).solve(target)
+
+    assert result.success
+    for objective in problem.objectives:
+        assert objective.nadir - 1e-6 <= result.optimal_objectives[objective.symbol] <= objective.ideal + 1e-6
+    for variable in problem.variables:
+        assert sorted(np.round(result.optimal_variables[variable.symbol], 6)) == [0, 0, 0, 1]

@@ -185,6 +185,10 @@ def forest_landscape_problem(landscape: ForestLandscape | None = None, lot: str 
     The properties of the lot (berry and mushroom yield, scenic value, deadwood volume) are defined as
     extra functions: they are evaluated for every solution, but they are not optimized.
 
+    The ideal point is exact. The nadir point is estimated from the payoff table, which is also exact
+    here: the problem is separable over stands, so each objective is optimized by choosing its best
+    regime on every stand, with no solver needed. Both are fixed when the problem is defined.
+
     Args:
         landscape (ForestLandscape | None, optional): the landscape the lot belongs to. If `None`,
             the default landscape of `forest_landscape_data` is used. Defaults to None.
@@ -245,12 +249,27 @@ def forest_landscape_problem(landscape: ForestLandscape | None = None, lot: str 
     def lot_sum(quantity: str) -> str:
         return " + ".join(f"{quantity.upper()}_{stand.id}@X_{stand.id}" for stand in stands)
 
+    # The problem is separable over stands, so each row of the payoff table is attained by choosing,
+    # on every stand, the regime that is best for that row's objective.
+    payoff = {
+        row: {
+            quantity: sum(
+                weights(stand, quantity, aggregation)[int(np.argmax(weights(stand, row, row_aggregation)))]
+                for stand in stands
+            )
+            for quantity, _, aggregation in _OBJECTIVES
+        }
+        for row, _, row_aggregation in _OBJECTIVES
+    }
+
     objectives = [
         Objective(
             name=name,
             symbol=quantity,
             func=lot_sum(quantity),
             maximize=True,
+            ideal=payoff[quantity][quantity],
+            nadir=min(payoff[row][quantity] for row in payoff),
             objective_type=ObjectiveTypeEnum.analytical,
             is_linear=True,
             is_convex=True,
