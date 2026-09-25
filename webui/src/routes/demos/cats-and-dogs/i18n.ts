@@ -39,6 +39,8 @@ export type Strings = {
 	emptyTitle: Record<Animal, string>;
 	emptyBody: string;
 	suggestedBreeds: string;
+	showAllTraits: string;
+	hiddenTraitsNote: (n: number) => string;
 	/** Candidates are numbered while exploring, so the breed stays a surprise. */
 	candidate: (n: number) => string;
 	/** Short direction markers shown next to a trait name. */
@@ -104,6 +106,10 @@ const EN: Strings = {
 		'handful of candidates that come as close to your wishes as the survey data allows. Which ' +
 		'breed each one is stays hidden until you pick your favourite.',
 	suggestedBreeds: 'Candidates',
+	showAllTraits: 'All traits',
+	hiddenTraitsNote: (n) =>
+		`${n} further ${n === 1 ? 'trait is' : 'traits are'} left out of this view and kept at a middle value. ` +
+		'Switch on "All traits" to set them yourself.',
 	candidate: (n) => `Candidate ${n}`,
 	max: 'max',
 	min: 'min',
@@ -167,6 +173,10 @@ const FI: Strings = {
 		'vaihtoehdon, jotka vastaavat toiveitasi niin hyvin kuin kyselyaineisto sallii. Mikä rotu ' +
 		'kukin on, paljastuu vasta kun valitset suosikkisi.',
 	suggestedBreeds: 'Vaihtoehdot',
+	showAllTraits: 'Kaikki ominaisuudet',
+	hiddenTraitsNote: (n) =>
+		`${n} muuta ominaisuutta ei näytetä tässä näkymässä, ja ne pidetään keskiarvossa. ` +
+		'Ota "Kaikki ominaisuudet" käyttöön asettaaksesi ne itse.',
 	candidate: (n) => `Vaihtoehto ${n}`,
 	max: 'maks',
 	min: 'min',

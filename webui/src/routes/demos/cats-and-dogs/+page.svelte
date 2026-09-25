@@ -40,6 +40,8 @@
 	import { errorMessage, isLoading } from '../../../stores/uiState';
 
 	import { SegmentedControl } from '$lib/components/custom/segmented-control';
+	import { Switch } from '$lib/components/ui/switch/index.js';
+	import { Label } from '$lib/components/ui/label/index.js';
 
 	import { breedImagePath, breedLabel } from './breeds';
 	import { loadBreedImageCredits, type BreedImageCredit } from './image-credits';
@@ -62,6 +64,28 @@
 		cat: 'Cat breeds',
 		dog: 'Dog breeds'
 	};
+
+	/**
+	 * The traits shown by default, chosen for being the ones a visitor can judge
+	 * without having read the survey studies. Seven sliders is more than anyone
+	 * wants to set at a science fair stand, so the rest are kept out of the way
+	 * behind the "All traits" switch.
+	 *
+	 * The problem itself is untouched: the hidden traits are still optimized and
+	 * still reported, their aspiration level is simply left at the middle of the
+	 * scale unless the visitor reveals them and sets it.
+	 */
+	const DEFAULT_VISIBLE: Record<Animal, string[]> = {
+		cat: ['fearfulness', 'activity_playfulness', 'human_sociability', 'litterbox_issues'],
+		dog: [
+			'training_focus_score',
+			'activity_playfulness_score',
+			'human_sociability_score',
+			'aggressiveness_dominance_score'
+		]
+	};
+
+	let showAllTraits = $state(false);
 
 	type Stage = 'choose' | 'explore' | 'result';
 
@@ -108,9 +132,44 @@
 		};
 	});
 
+	/**
+	 * Positions in the full objective list that the visitor currently sees. The
+	 * reference point is always kept at full length and indexed by these, so
+	 * revealing a trait never loses what was set for it.
+	 */
+	let visibleIndices = $derived.by(() => {
+		if (!problem) return [] as number[];
+		if (showAllTraits) return problem.objectives.map((_, index) => index);
+		const shown = new Set(DEFAULT_VISIBLE[animal]);
+		return problem.objectives
+			.map((objective, index) => (shown.has(objective.symbol) ? index : -1))
+			.filter((index) => index >= 0);
+	});
+
+	let hiddenCount = $derived((localizedProblem?.objectives.length ?? 0) - visibleIndices.length);
+
+	/**
+	 * The problem as the visitor sees it: translated, and cut down to the traits
+	 * on show. Everything that renders reads its objectives off this, so the
+	 * sidebar, the chart and the tables all agree on what is visible.
+	 */
+	let displayProblem = $derived.by(() => {
+		if (!localizedProblem) return null;
+		return {
+			...localizedProblem,
+			objectives: visibleIndices.map((index) => localizedProblem!.objectives[index])
+		};
+	});
+
+	/** The reference point and comparison values, cut down to the visible traits. */
+	let visiblePreference = $derived(visibleIndices.map((index) => referencePoint[index] ?? 0));
+	let visibleLastIterated = $derived(
+		lastIteratedPoint.length > 0 ? visibleIndices.map((index) => lastIteratedPoint[index] ?? 0) : []
+	);
+
 	let problemList = $derived(data.problems ?? []);
 	let selectedCandidate = $derived(candidates[selectedIndex] ?? null);
-	let displayAccuracy = $derived(getDisplayAccuracy(problem));
+	let displayAccuracy = $derived(getDisplayAccuracy(displayProblem));
 	let selectedCredit = $derived(
 		selectedCandidate ? (imageCredits[selectedCandidate.breedName] ?? null) : null
 	);
@@ -121,13 +180,15 @@
 	 * between the ideal and the nadir is used.
 	 */
 	let comparisonValues = $derived.by(() => {
-		if (!problem) return [];
+		if (!displayProblem) return [];
 		if (selectedCandidate) {
-			return problem.objectives.map(
+			return displayProblem.objectives.map(
 				(objective) => selectedCandidate.objectiveValues[objective.symbol] ?? 0
 			);
 		}
-		return problem.objectives.map((objective) => ((objective.ideal ?? 0) + (objective.nadir ?? 0)) / 2);
+		return displayProblem.objectives.map(
+			(objective) => ((objective.ideal ?? 0) + (objective.nadir ?? 0)) / 2
+		);
 	});
 
 	function midpoint(target: ProblemInfo): number[] {
@@ -144,6 +205,7 @@
 
 		animal = chosen;
 		problem = found;
+		showAllTraits = false;
 		referencePoint = midpoint(found);
 		lastIteratedPoint = [];
 		candidates = [];
@@ -153,14 +215,31 @@
 		stage = 'explore';
 	}
 
+	/**
+	 * Writes the values the sidebar hands back into the full reference point.
+	 * The sidebar only knows about the visible traits, so the values arrive in
+	 * that order and are placed back at the positions they came from. Hidden
+	 * traits keep whatever they already held, which is the middle of the scale
+	 * until someone reveals them and changes it.
+	 */
+	function toFullReferencePoint(visibleValues: number[]): number[] {
+		const full = [...referencePoint];
+		visibleIndices.forEach((objectiveIndex, visiblePosition) => {
+			full[objectiveIndex] = visibleValues[visiblePosition];
+		});
+		return full;
+	}
+
 	function handlePreferenceChange(update: { preferenceValues: number[] }) {
-		referencePoint = [...update.preferenceValues];
+		referencePoint = toFullReferencePoint(update.preferenceValues);
 	}
 
 	async function handleIterate(update: { preferenceValues: number[] }) {
 		if (!problem) return;
 
-		const point = [...update.preferenceValues];
+		// The request always carries every objective: the reference point method
+		// refuses a reference point that is missing any of them.
+		const point = toFullReferencePoint(update.preferenceValues);
 		const found = await iterate(problem, animal, point);
 
 		if (found === null) return;
@@ -236,17 +315,24 @@
 	<BaseLayout showLeftSidebar={true} showRightSidebar={false} bottomPanelTitle={t.suggestedBreeds}>
 		{#snippet leftSidebar()}
 			<AppSidebar
-				problem={localizedProblem!}
+				problem={displayProblem!}
 				preferenceTypes={[PREFERENCE_TYPES.ReferencePoint]}
 				typePreferences={PREFERENCE_TYPES.ReferencePoint}
-				preferenceValues={referencePoint}
+				preferenceValues={visiblePreference}
 				objectiveValues={comparisonValues}
-				lastIteratedPreference={lastIteratedPoint}
+				lastIteratedPreference={visibleLastIterated}
 				onPreferenceChange={handlePreferenceChange}
 				onIterate={handleIterate}
 				isFinishButton={false}
 				labels={t.sidebar}
-			/>
+			>
+				{#snippet footerExtra()}
+					<div class="flex items-center gap-2">
+						<Switch id="all-traits" bind:checked={showAllTraits} />
+						<Label for="all-traits" class="text-xs font-normal">{t.showAllTraits}</Label>
+					</div>
+				{/snippet}
+			</AppSidebar>
 		{/snippet}
 
 		{#snippet explorerTitle()}
@@ -269,13 +355,15 @@
 		{#snippet visualizationArea()}
 			{#if hasIterated}
 				<VisualizationsPanel
-					problem={localizedProblem}
-					previousPreferenceValues={[lastIteratedPoint]}
-					currentPreferenceValues={referencePoint}
+					problem={displayProblem}
+					previousPreferenceValues={[visibleLastIterated]}
+					currentPreferenceValues={visiblePreference}
 					previousPreferenceType={PREFERENCE_TYPES.ReferencePoint}
 					currentPreferenceType={PREFERENCE_TYPES.ReferencePoint}
 					solutionsObjectiveValues={candidates.map((candidate) =>
-						problem!.objectives.map((objective) => candidate.objectiveValues[objective.symbol] ?? 0)
+						displayProblem!.objectives.map(
+							(objective) => candidate.objectiveValues[objective.symbol] ?? 0
+						)
 					)}
 					externalSelectedIndexes={[selectedIndex]}
 					lineLabels={Object.fromEntries(
@@ -288,6 +376,9 @@
 				<div class="flex h-full flex-col items-center justify-center gap-2 text-center text-gray-600">
 					<p class="text-lg font-medium">{t.emptyTitle[animal]}</p>
 					<p class="max-w-md text-sm">{t.emptyBody}</p>
+					{#if hiddenCount > 0}
+						<p class="max-w-md text-xs text-gray-500">{t.hiddenTraitsNote(hiddenCount)}</p>
+					{/if}
 				</div>
 			{/if}
 		{/snippet}
@@ -299,7 +390,7 @@
 						<Table.Header>
 							<Table.Row>
 								<Table.Head>{t.suggestedBreeds}</Table.Head>
-								{#each localizedProblem!.objectives as objective}
+								{#each displayProblem!.objectives as objective}
 									<Table.Head class="whitespace-nowrap">
 										{objective.name}
 										<span class="text-gray-500">({objective.maximize ? t.max : t.min})</span>
@@ -316,7 +407,7 @@
 									<Table.Cell class="whitespace-nowrap">
 										{t.candidate(index + 1)}
 									</Table.Cell>
-									{#each localizedProblem!.objectives as objective, objectiveIndex}
+									{#each displayProblem!.objectives as objective, objectiveIndex}
 										<Table.Cell>
 											{formatNumber(
 												candidate.objectiveValues[objective.symbol] ?? 0,
@@ -378,7 +469,7 @@
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
-						{#each localizedProblem!.objectives as objective, objectiveIndex}
+						{#each displayProblem!.objectives as objective, objectiveIndex}
 							<Table.Row>
 								<Table.Cell>
 									{objective.name}
