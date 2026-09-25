@@ -12,6 +12,7 @@ from desdeo.problem.testproblems.forest_landscape_problem import (
     CouplingParameters,
     forest_landscape_data,
     forest_landscape_problem,
+    forest_training_problem,
     realized_values,
 )
 from desdeo.tools import available_solvers, payoff_table_method
@@ -381,3 +382,30 @@ def test_deadwood_hotspots_gain_from_neighbouring_hotspots():
         boundary_hotspots += sum(hotspot)
 
     assert boundary_hotspots > 0  # the landscape must have a boundary hotspot for the test to mean anything
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_training_lot_is_independent_of_the_study_lot():
+    """Test that the training lot is in the same domain as the study lot, but shares nothing with it."""
+    study = forest_landscape_problem()
+    training = forest_training_problem()
+
+    # same domain: the same objectives and properties
+    assert [objective.symbol for objective in training.objectives] == [
+        objective.symbol for objective in study.objectives
+    ]
+    assert [extra.symbol for extra in training.extra_funcs] == [extra.symbol for extra in study.extra_funcs]
+
+    # but a problem of its own: distinguishable, and with none of the study lot's values
+    assert training.name != study.name
+    study_values = {value for constant in study.constants for value in constant.values if isinstance(value, float)}
+    training_values = {
+        value for constant in training.constants for value in constant.values if isinstance(value, float)
+    }
+    assert not study_values & (training_values - {0.0})
+    assert training.get_ideal_point() != study.get_ideal_point()
+
+    # it is solvable on its own
+    result = available_solvers["pyomo_cbc"]["constructor"](training).solve("npv_min")
+    assert result.success

@@ -529,3 +529,30 @@ def forest_landscape_problem(
         constraints=constraints,
         extra_funcs=extra_funcs,
     )
+
+
+def forest_training_problem(stands_per_lot: int = 4, seed: int = 1, lot: str = "A") -> Problem:
+    """Defines the forest planning problem of a training lot, for learning the interface before the study.
+
+    The training lot belongs to a landscape of its own, generated with a different seed than the
+    study landscape. It is in the same domain and has the same structure, but shares no stands or
+    values with the study landscape, so nothing done on it carries over to the study problem.
+
+    Args:
+        stands_per_lot (int, optional): the number of stands in each lot. Defaults to 4.
+        seed (int, optional): seed of the training landscape. Must differ from the seed of the
+            study landscape. Defaults to 1, while the study landscape defaults to 0.
+        lot (str, optional): the lot of the owner in the training landscape. Defaults to "A".
+
+    Returns:
+        Problem: the forest planning problem of the training lot.
+    """
+    landscape = forest_landscape_data(stands_per_lot=stands_per_lot, seed=seed)
+    problem = forest_landscape_problem(landscape, lot)
+
+    return problem.model_copy(
+        update={
+            "name": f"Forest training problem, lot {lot}",
+            "description": f"A training lot for learning the interface. {problem.description}",
+        }
+    )
