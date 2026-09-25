@@ -55,6 +55,7 @@ _PROPERTIES: tuple[tuple[str, str, str], ...] = (
     ("scenic", "Scenic value", "mean"),
     ("deadwood", "Deadwood volume", "mean"),
     ("wind_damage", "Wind damage probability", "mean"),
+    ("deadwood_hotspot", "Deadwood hotspot share", "mean"),
 )
 
 
@@ -118,6 +119,24 @@ class CouplingParameters(BaseModel):
         ge=0.0,
         le=1.0,
         description="Share of the net present value of damaged timber that is recovered by salvage logging.",
+    )
+    deadwood_hotspot_threshold: float = Field(
+        default=20.0,
+        ge=0.0,
+        description=(
+            "Deadwood volume (m3/ha) at which a stand is a deadwood hotspot. The default is the volume supporting"
+            " near-threatened wood-inhabiting fungi used by Mazziotta et al. (2023), after Penttilä et al. (2004)."
+        ),
+    )
+    deadwood_spillover_weight: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Weight of the neighbourhood in the value of a deadwood hotspot bordering other owners. The hotspot is"
+            " multiplied by `1 - b + b * H`, where `H` is the area share of its neighbours across the ownership"
+            " boundary that are hotspots too."
+        ),
     )
 
 
@@ -256,14 +275,24 @@ def realized_values(
       include the ordinary risk of damage, so only the excess probability caused by an open
       neighbour across an ownership boundary reduces them: carbon by the excess probability, and
       net present value by the unsalvaged share of it.
+    - Deadwood hotspots: following the spillover argument of Mazziotta et al. (2023), a stand with
+      deadwood above `deadwood_hotspot_threshold` is a hotspot, and a hotspot is worth more for
+      deadwood-dependent species when its neighbours are hotspots too. A hotspot bordering other
+      owners is multiplied by `1 - b + b * H`, where `H` is the area share of its neighbours across
+      the ownership boundary that are hotspots under their regimes, and `b` is
+      `deadwood_spillover_weight`.
 
     Stands without neighbours in other lots keep their stand-wise values. In addition, the
     probability of wind damage over the planning horizon is reported for every stand as
-    `wind_damage`.
+    `wind_damage`, and its deadwood hotspot value as `deadwood_hotspot`.
 
     Öhman, K., Edenius, L., & Mikusiński, G. (2011). Optimizing spatial habitat suitability and
     timber revenue in long-term forest planning. Canadian Journal of Forest Research, 41(3),
     543-551. https://doi.org/10.1139/X10-232
+
+    Mazziotta, A., Borges, P., Kangas, A., Halme, P., & Eyvindson, K. (2023). Spatial trade-offs
+    between ecological and economical sustainability in the boreal production forest. Journal of
+    Environmental Management, 330, 117144. https://doi.org/10.1016/j.jenvman.2022.117144
 
     Suvanto, S., Peltoniemi, M., Tuominen, S., Strandström, M., & Lehtonen, A. (2019).
     High-resolution mapping of forest vulnerability to wind for disturbance-aware forestry. Forest
@@ -305,6 +334,10 @@ def realized_values(
             p = odds / (1 + odds)
         return 1 - (1 - p) ** coupling.wind_periods
 
+    def is_hotspot(deadwood: float) -> float:
+        """Whether a stand with `deadwood` volume per hectare is a deadwood hotspot, as 1.0 or 0.0."""
+        return 1.0 if deadwood >= coupling.deadwood_hotspot_threshold else 0.0
+
     values = {}
     for stand in landscape.lot_stands(lot):
         stand_values = {quantity: list(regime_values) for quantity, regime_values in stand.values.items()}
@@ -326,6 +359,14 @@ def realized_values(
             for value, e in zip(stand_values["npv"], excess, strict=True)
         ]
         stand_values["wind_damage"] = realized
+
+        spillover = 1.0
+        if across:
+            hotspot_share = sum(landscape.stands[n].area * is_hotspot(stand_wise(n, "deadwood")) for n in across) / sum(
+                landscape.stands[n].area for n in across
+            )
+            spillover = 1 - coupling.deadwood_spillover_weight + coupling.deadwood_spillover_weight * hotspot_share
+        stand_values["deadwood_hotspot"] = [spillover * is_hotspot(value) for value in stand.values["deadwood"]]
 
         values[stand.id] = stand_values
 
@@ -356,9 +397,9 @@ def forest_landscape_problem(
     The values are realized values: they depend on how the other lots are managed, as computed by
     `realized_values`. The other lots are fixed, so the problem stays linear.
 
-    The properties of the lot (berry and mushroom yield, scenic value, deadwood volume, and wind damage
-    probability) are defined as extra functions: they are evaluated for every solution, but they are
-    not optimized.
+    The properties of the lot (berry and mushroom yield, scenic value, deadwood volume, wind damage
+    probability, and deadwood hotspot share) are defined as extra functions: they are evaluated for
+    every solution, but they are not optimized.
 
     The ideal point is exact. The nadir point is estimated from the payoff table, which is also exact
     here: the problem is separable over stands, so each objective is optimized by choosing its best

@@ -99,7 +99,14 @@ def test_problem_structure():
 
     assert objective_symbols == ["npv", "habitat", "carbon"]
     assert all(objective.maximize for objective in problem.objectives)
-    assert set(property_symbols) == {"bilberry", "mushroom", "scenic", "deadwood", "wind_damage"}
+    assert set(property_symbols) == {
+        "bilberry",
+        "mushroom",
+        "scenic",
+        "deadwood",
+        "wind_damage",
+        "deadwood_hotspot",
+    }
     assert not set(property_symbols) & set(objective_symbols)
 
     # only the stands of the lot are decision variables
@@ -247,13 +254,16 @@ def test_coupling_is_local_to_the_boundary():
 def test_zero_coupling_parameters_disable_coupling():
     """Test that without neighbourhood weight and open-border effect the realized values are the stand-wise ones."""
     landscape = forest_landscape_data(
-        coupling=CouplingParameters(habitat_neighbourhood_weight=0.0, wind_open_border_log_odds=0.0)
+        coupling=CouplingParameters(
+            habitat_neighbourhood_weight=0.0, wind_open_border_log_odds=0.0, deadwood_spillover_weight=0.0
+        )
     )
     others = {stand.id: "clearfell" for stand in landscape.stands if stand.lot != "A"}
 
     realized = realized_values(landscape, "A", others)
     for stand in landscape.lot_stands("A"):
         assert all(realized[stand.id][quantity] == values for quantity, values in stand.values.items())
+        assert realized[stand.id]["deadwood_hotspot"] == [float(dw >= 20.0) for dw in stand.values["deadwood"]]
 
 
 @pytest.mark.testproblem
@@ -330,3 +340,44 @@ def test_other_lots_configuration_is_validated():
         realized_values(landscape, "A", {other_stand: "burn"})
     with pytest.raises(ValueError, match="Unknown baseline regime"):
         forest_landscape_data(baseline_regime="burn")
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_deadwood_hotspots_gain_from_neighbouring_hotspots():
+    """Test that a deadwood hotspot on the boundary is worth more when the stands across it are hotspots too.
+
+    Only regimes leaving at least 20 m3/ha of deadwood make a hotspot (Mazziotta et al., 2023). In the baseline, the
+    neighbours are thinned and are not hotspots, so a boundary hotspot counts at `1 - b`.
+    """
+    landscape = forest_landscape_data()
+    b = landscape.coupling.deadwood_spillover_weight
+    everything_else_set_aside = {stand.id: "set_aside" for stand in landscape.stands if stand.lot != "A"}
+
+    baseline = realized_values(landscape, "A")
+    set_aside = realized_values(landscape, "A", everything_else_set_aside)
+
+    threshold = landscape.coupling.deadwood_hotspot_threshold
+    boundary_hotspots = 0
+    for stand in landscape.lot_stands("A"):
+        across = landscape.cross_owner_neighbours(stand.id)
+        hotspot = [float(dw >= threshold) for dw in stand.values["deadwood"]]
+
+        if not across:
+            assert baseline[stand.id]["deadwood_hotspot"] == hotspot
+            assert set_aside[stand.id]["deadwood_hotspot"] == hotspot
+            continue
+
+        neighbour_hotspot_share = sum(
+            landscape.stands[n].area
+            for n in across
+            if landscape.stands[n].values["deadwood"][REGIMES.index("set_aside")] >= threshold
+        ) / sum(landscape.stands[n].area for n in across)
+
+        assert baseline[stand.id]["deadwood_hotspot"] == [(1 - b) * h for h in hotspot]
+        assert np.allclose(
+            set_aside[stand.id]["deadwood_hotspot"], [(1 - b + b * neighbour_hotspot_share) * h for h in hotspot]
+        )
+        boundary_hotspots += sum(hotspot)
+
+    assert boundary_hotspots > 0  # the landscape must have a boundary hotspot for the test to mean anything
