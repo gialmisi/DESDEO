@@ -70,6 +70,21 @@ class Stand(BaseModel):
     )
 
 
+class CouplingParameters(BaseModel):
+    """Parameters of the effects that the management of a stand has on the stands of other owners."""
+
+    habitat_neighbourhood_weight: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Weight of the neighbourhood in the habitat suitability of a stand bordering other owners. The stand-wise"
+            " suitability is multiplied by `1 - w + w * N`, where `N` is the area-weighted mean stand-wise suitability"
+            " of its neighbours across the ownership boundary."
+        ),
+    )
+
+
 class ForestLandscape(BaseModel):
     """A forest landscape of several lots, each consisting of stands on a grid."""
 
@@ -79,6 +94,10 @@ class ForestLandscape(BaseModel):
     neighbours: dict[int, list[int]] = Field(
         description="Ids of the stands sharing an edge with each stand, regardless of the owner."
     )
+    baseline: dict[int, str] = Field(
+        description="The baseline regime of each stand, which the other lots hold unless stated otherwise."
+    )
+    coupling: CouplingParameters = Field(description="Parameters of the effects between stands of different owners.")
 
     def lot_stands(self, lot: str) -> list[Stand]:
         """Return the stands belonging to `lot`."""
@@ -98,7 +117,12 @@ def _lot_grid_shape(stands_per_lot: int) -> tuple[int, int]:
     return rows, stands_per_lot // rows
 
 
-def forest_landscape_data(stands_per_lot: int = 4, seed: int = 0) -> ForestLandscape:
+def forest_landscape_data(
+    stands_per_lot: int = 4,
+    seed: int = 0,
+    baseline_regime: str = "thinning",
+    coupling: CouplingParameters | None = None,
+) -> ForestLandscape:
     """Generate a synthetic forest landscape of four lots.
 
     Each lot is a grid of `stands_per_lot` stands, and the lots are placed as a 2x2 block, so
@@ -113,12 +137,21 @@ def forest_landscape_data(stands_per_lot: int = 4, seed: int = 0) -> ForestLands
         stands_per_lot (int, optional): the number of stands in each lot. Defaults to 4.
         seed (int, optional): seed for generating the areas and values. The same seed always
             gives the same landscape. Defaults to 0.
+        baseline_regime (str, optional): the regime every stand holds in the baseline
+            configuration. Defaults to "thinning", i.e., business as usual.
+        coupling (CouplingParameters | None, optional): parameters of the effects between stands
+            of different owners. If `None`, the defaults of `CouplingParameters` are used.
+            Defaults to None.
 
     Returns:
         ForestLandscape: the generated landscape.
     """
     if stands_per_lot < 2:  # noqa: PLR2004
         msg = f"A lot must have at least two stands, got {stands_per_lot}."
+        raise ValueError(msg)
+
+    if baseline_regime not in REGIMES:
+        msg = f"Unknown baseline regime '{baseline_regime}'; the regimes are {REGIMES}."
         raise ValueError(msg)
 
     rng = np.random.default_rng(seed)
@@ -160,10 +193,78 @@ def forest_landscape_data(stands_per_lot: int = 4, seed: int = 0) -> ForestLands
         for stand in stands
     }
 
-    return ForestLandscape(regimes=list(REGIMES), lots=list(LOTS), stands=stands, neighbours=neighbours)
+    return ForestLandscape(
+        regimes=list(REGIMES),
+        lots=list(LOTS),
+        stands=stands,
+        neighbours=neighbours,
+        baseline={stand.id: baseline_regime for stand in stands},
+        coupling=coupling if coupling is not None else CouplingParameters(),
+    )
 
 
-def forest_landscape_problem(landscape: ForestLandscape | None = None, lot: str = "A") -> Problem:
+def realized_values(
+    landscape: ForestLandscape, lot: str, others: dict[int, str] | None = None
+) -> dict[int, dict[str, list[float]]]:
+    """Compute the per-hectare values of each regime on the stands of a lot, given the management of the other lots.
+
+    The stand-wise values are adjusted by the effects of the stands of other owners:
+
+    - Habitat neighbourhood: following Öhman et al. (2011), habitat suitability depends on both the
+      stand and its neighbourhood. Here the spatial condition is graded rather than a threshold,
+      and it counts only the neighbours across an ownership boundary: the stand-wise suitability
+      is multiplied by `1 - w + w * N`, where `N` is the area-weighted mean stand-wise suitability
+      of those neighbours under their regimes, and `w` is `habitat_neighbourhood_weight`.
+
+    Stands without neighbours in other lots keep their stand-wise values.
+
+    Öhman, K., Edenius, L., & Mikusiński, G. (2011). Optimizing spatial habitat suitability and
+    timber revenue in long-term forest planning. Canadian Journal of Forest Research, 41(3),
+    543-551. https://doi.org/10.1139/X10-232
+
+    Args:
+        landscape (ForestLandscape): the landscape.
+        lot (str): the lot whose stands' values are computed.
+        others (dict[int, str] | None, optional): the regimes of stands in other lots, by stand id.
+            Stands not listed hold their baseline regime. If `None`, all other lots hold the
+            baseline. Defaults to None.
+
+    Returns:
+        dict[int, dict[str, list[float]]]: for each stand of the lot, the per-hectare value of each
+            quantity, one value per regime in the order of `landscape.regimes`.
+    """
+    configuration = {**landscape.baseline, **(others or {})}
+    for stand_id, regime in (others or {}).items():
+        if stand_id not in landscape.baseline or landscape.stands[stand_id].lot == lot:
+            msg = f"Stand {stand_id} is not a stand of another lot than '{lot}'."
+            raise ValueError(msg)
+        if regime not in landscape.regimes:
+            msg = f"Unknown regime '{regime}' for stand {stand_id}; the regimes are {landscape.regimes}."
+            raise ValueError(msg)
+
+    def stand_wise(stand_id: int, quantity: str) -> float:
+        return landscape.stands[stand_id].values[quantity][landscape.regimes.index(configuration[stand_id])]
+
+    w = landscape.coupling.habitat_neighbourhood_weight
+    values = {}
+    for stand in landscape.lot_stands(lot):
+        stand_values = {quantity: list(regime_values) for quantity, regime_values in stand.values.items()}
+
+        across = landscape.cross_owner_neighbours(stand.id)
+        if across:
+            neighbourhood = sum(landscape.stands[n].area * stand_wise(n, "habitat") for n in across) / sum(
+                landscape.stands[n].area for n in across
+            )
+            stand_values["habitat"] = [(1 - w + w * neighbourhood) * value for value in stand_values["habitat"]]
+
+        values[stand.id] = stand_values
+
+    return values
+
+
+def forest_landscape_problem(
+    landscape: ForestLandscape | None = None, lot: str = "A", others: dict[int, str] | None = None
+) -> Problem:
     r"""Defines the forest planning problem of the owner of one lot in a forest landscape.
 
     The owner chooses one management regime for each stand of their lot, following the
@@ -182,17 +283,24 @@ def forest_landscape_problem(landscape: ForestLandscape | None = None, lot: str 
     hazel grouse habitat suitability index, and carbon stock of each regime on stand $j$. The binary variable
     $x_{ji}$ is one when regime $i$ is chosen for stand $j$.
 
+    The values are realized values: they depend on how the other lots are managed, as computed by
+    `realized_values`. The other lots are fixed, so the problem stays linear.
+
     The properties of the lot (berry and mushroom yield, scenic value, deadwood volume) are defined as
     extra functions: they are evaluated for every solution, but they are not optimized.
 
     The ideal point is exact. The nadir point is estimated from the payoff table, which is also exact
     here: the problem is separable over stands, so each objective is optimized by choosing its best
-    regime on every stand, with no solver needed. Both are fixed when the problem is defined.
+    regime on every stand, with no solver needed. Both are always computed with the other lots in
+    their baseline configuration, whatever `others` is, so that the ideal and nadir of a lot never
+    change.
 
     Args:
         landscape (ForestLandscape | None, optional): the landscape the lot belongs to. If `None`,
             the default landscape of `forest_landscape_data` is used. Defaults to None.
         lot (str, optional): the lot of the owner. Defaults to "A".
+        others (dict[int, str] | None, optional): the regimes of stands in other lots, by stand id.
+            Stands not listed hold their baseline regime. Defaults to None.
 
     Returns:
         Problem: the forest planning problem of the owner of `lot`.
@@ -206,9 +314,14 @@ def forest_landscape_problem(landscape: ForestLandscape | None = None, lot: str 
     lot_area = sum(stand.area for stand in stands)
     n_regimes = len(landscape.regimes)
 
-    def weights(stand: Stand, quantity: str, aggregation: str) -> list[float]:
+    values = realized_values(landscape, lot, others)
+    baseline_values = realized_values(landscape, lot)
+
+    def weights(
+        stand: Stand, quantity: str, aggregation: str, source: dict[int, dict[str, list[float]]] = values
+    ) -> list[float]:
         weight = stand.area if aggregation == "sum" else stand.area / lot_area
-        return [weight * value for value in stand.values[quantity]]
+        return [weight * value for value in source[stand.id][quantity]]
 
     constants = []
     variables = []
@@ -254,7 +367,9 @@ def forest_landscape_problem(landscape: ForestLandscape | None = None, lot: str 
     payoff = {
         row: {
             quantity: sum(
-                weights(stand, quantity, aggregation)[int(np.argmax(weights(stand, row, row_aggregation)))]
+                weights(stand, quantity, aggregation, baseline_values)[
+                    int(np.argmax(weights(stand, row, row_aggregation, baseline_values)))
+                ]
                 for stand in stands
             )
             for quantity, _, aggregation in _OBJECTIVES

@@ -9,8 +9,10 @@ from desdeo.problem import PolarsEvaluator
 from desdeo.problem.testproblems.forest_landscape_problem import (
     LOTS,
     REGIMES,
+    CouplingParameters,
     forest_landscape_data,
     forest_landscape_problem,
+    realized_values,
 )
 from desdeo.tools import available_solvers, payoff_table_method
 from desdeo.tools.scalarization import add_asf_diff
@@ -136,7 +138,10 @@ def test_problem_evaluates_over_regime_space():
 
     assert np.isclose(row["npv"], sum(stand.area * stand.values["npv"][i] for stand, i in chosen))
     assert np.isclose(row["carbon"], sum(stand.area * stand.values["carbon"][i] for stand, i in chosen))
-    assert np.isclose(row["habitat"], sum(stand.area * stand.values["habitat"][i] for stand, i in chosen) / lot_area)
+    realized = realized_values(landscape, "A")
+    assert np.isclose(
+        row["habitat"], sum(stand.area * realized[stand.id]["habitat"][i] for stand, i in chosen) / lot_area
+    )
     assert np.isclose(row["scenic"], sum(stand.area * stand.values["scenic"][i] for stand, i in chosen) / lot_area)
 
 
@@ -187,3 +192,92 @@ def test_problem_solves_with_reference_point():
         assert objective.nadir - 1e-6 <= result.optimal_objectives[objective.symbol] <= objective.ideal + 1e-6
     for variable in problem.variables:
         assert sorted(np.round(result.optimal_variables[variable.symbol], 6)) == [0, 0, 0, 1]
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_neighbouring_lot_changes_realized_objectives():
+    """Test that changing the regimes of a neighbouring lot changes the lot's realized objective values.
+
+    This is the cross-owner coupling. Without it, the problem is not fit for studying cross-owner consequences.
+    """
+    landscape = forest_landscape_data()
+    stands = landscape.lot_stands("A")
+    neighbours_in_b = {n for stand in stands for n in landscape.cross_owner_neighbours(stand.id)} & {
+        stand.id for stand in landscape.lot_stands("B")
+    }
+    assert neighbours_in_b
+
+    xs = {f"X_{stand.id}": [[0.0, 1.0, 0.0, 0.0]] for stand in stands}  # selection cut everywhere
+
+    def evaluate(others: dict[int, str] | None) -> dict[str, float]:
+        return PolarsEvaluator(forest_landscape_problem(landscape, "A", others)).evaluate(xs).row(0, named=True)
+
+    baseline = evaluate(None)
+    clearfelled = evaluate(dict.fromkeys(neighbours_in_b, "clearfell"))
+    selection_cut = evaluate(dict.fromkeys(neighbours_in_b, "selection_cut"))
+
+    # clear-felling next to the boundary degrades the habitat of lot A, while selection cut, the best
+    # regime for hazel grouse, improves it over the baseline of thinning
+    assert clearfelled["habitat"] < baseline["habitat"] < selection_cut["habitat"]
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_coupling_is_local_to_the_boundary():
+    """Test that only stands bordering another lot are affected, and only by the lots they border."""
+    landscape = forest_landscape_data()
+
+    # lot D does not border lot A, so its management does not matter to A
+    all_of_d_clearfelled = {stand.id: "clearfell" for stand in landscape.lot_stands("D")}
+    assert realized_values(landscape, "A", all_of_d_clearfelled) == realized_values(landscape, "A")
+
+    everything_else_clearfelled = {stand.id: "clearfell" for stand in landscape.stands if stand.lot != "A"}
+    realized = realized_values(landscape, "A", everything_else_clearfelled)
+    for stand in landscape.lot_stands("A"):
+        if landscape.cross_owner_neighbours(stand.id):
+            assert realized[stand.id]["habitat"] != stand.values["habitat"]
+        else:
+            assert realized[stand.id] == stand.values
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_coupling_weight_zero_disables_coupling():
+    """Test that with a zero neighbourhood weight the realized values are the stand-wise values."""
+    landscape = forest_landscape_data(coupling=CouplingParameters(habitat_neighbourhood_weight=0.0))
+    others = {stand.id: "clearfell" for stand in landscape.stands if stand.lot != "A"}
+
+    realized = realized_values(landscape, "A", others)
+    for stand in landscape.lot_stands("A"):
+        assert realized[stand.id] == stand.values
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_ideal_and_nadir_do_not_depend_on_other_lots():
+    """Test that the ideal and nadir are those of the baseline, however the other lots are managed."""
+    landscape = forest_landscape_data()
+    others = {stand.id: "clearfell" for stand in landscape.stands if stand.lot != "A"}
+
+    baseline = forest_landscape_problem(landscape, "A")
+    changed = forest_landscape_problem(landscape, "A", others)
+
+    assert baseline.get_ideal_point() == changed.get_ideal_point()
+    assert baseline.get_nadir_point() == changed.get_nadir_point()
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_other_lots_configuration_is_validated():
+    """Test that the configuration of the other lots cannot set the lot's own stands or unknown regimes."""
+    landscape = forest_landscape_data()
+    own_stand = landscape.lot_stands("A")[0].id
+    other_stand = landscape.lot_stands("B")[0].id
+
+    with pytest.raises(ValueError, match="not a stand of another lot"):
+        realized_values(landscape, "A", {own_stand: "clearfell"})
+    with pytest.raises(ValueError, match="Unknown regime"):
+        realized_values(landscape, "A", {other_stand: "burn"})
+    with pytest.raises(ValueError, match="Unknown baseline regime"):
+        forest_landscape_data(baseline_regime="burn")
