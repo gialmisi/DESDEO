@@ -1,8 +1,18 @@
 """Tests for the synthetic forest landscape problem."""
 
+import itertools
+
+import numpy as np
 import pytest
 
-from desdeo.problem.testproblems.forest_landscape_problem import LOTS, REGIMES, forest_landscape_data
+from desdeo.problem import PolarsEvaluator
+from desdeo.problem.testproblems.forest_landscape_problem import (
+    LOTS,
+    REGIMES,
+    forest_landscape_data,
+    forest_landscape_problem,
+)
+from desdeo.tools import available_solvers
 
 
 @pytest.mark.testproblem
@@ -54,7 +64,7 @@ def test_landscape_values():
         assert npv["set_aside"] == 0.0
         assert max(npv, key=npv.get) == "clearfell"
         assert max(carbon, key=carbon.get) == "set_aside"
-        assert max(habitat, key=habitat.get) == "set_aside"
+        assert max(habitat, key=habitat.get) == "selection_cut"
         assert min(habitat, key=habitat.get) == "clearfell"
 
 
@@ -72,3 +82,76 @@ def test_landscape_rejects_single_stand_lots():
     """Test that a lot must have at least two stands."""
     with pytest.raises(ValueError, match="at least two stands"):
         forest_landscape_data(stands_per_lot=1)
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_problem_structure():
+    """Test that the problem has the three objectives, and that the properties are not among them."""
+    landscape = forest_landscape_data()
+    problem = forest_landscape_problem(landscape, lot="B")
+
+    objective_symbols = [objective.symbol for objective in problem.objectives]
+    property_symbols = [extra.symbol for extra in problem.extra_funcs]
+
+    assert objective_symbols == ["npv", "habitat", "carbon"]
+    assert all(objective.maximize for objective in problem.objectives)
+    assert set(property_symbols) == {"bilberry", "mushroom", "scenic", "deadwood"}
+    assert not set(property_symbols) & set(objective_symbols)
+
+    # only the stands of the lot are decision variables
+    assert {variable.symbol for variable in problem.variables} == {
+        f"X_{stand.id}" for stand in landscape.lot_stands("B")
+    }
+    assert problem.is_linear
+
+    with pytest.raises(ValueError, match="not in the landscape"):
+        forest_landscape_problem(landscape, lot="E")
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_problem_evaluates_over_regime_space():
+    """Test that objectives and properties evaluate over every regime assignment of the lot, and match the data."""
+    landscape = forest_landscape_data()
+    stands = landscape.lot_stands("A")
+    problem = forest_landscape_problem(landscape, lot="A")
+
+    assignments = list(itertools.product(range(len(REGIMES)), repeat=len(stands)))
+    one_hot = np.eye(len(REGIMES)).tolist()
+    xs = {f"X_{stand.id}": [one_hot[assignment[j]] for assignment in assignments] for j, stand in enumerate(stands)}
+
+    result = PolarsEvaluator(problem).evaluate(xs)
+
+    assert len(result) == len(assignments)
+    for symbol in ["npv", "habitat", "carbon", "bilberry", "mushroom", "scenic", "deadwood"]:
+        assert result[symbol].is_finite().all()
+
+    # check one assignment by hand: the regime of stand j is the j-th regime, cycling
+    assignment = tuple(j % len(REGIMES) for j in range(len(stands)))
+    row = result.row(assignments.index(assignment), named=True)
+    lot_area = sum(stand.area for stand in stands)
+    chosen = list(zip(stands, assignment, strict=True))
+
+    assert np.isclose(row["npv"], sum(stand.area * stand.values["npv"][i] for stand, i in chosen))
+    assert np.isclose(row["carbon"], sum(stand.area * stand.values["carbon"][i] for stand, i in chosen))
+    assert np.isclose(row["habitat"], sum(stand.area * stand.values["habitat"][i] for stand, i in chosen) / lot_area)
+    assert np.isclose(row["scenic"], sum(stand.area * stand.values["scenic"][i] for stand, i in chosen) / lot_area)
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_problem_objectives_conflict():
+    """Test that each objective, optimized alone, prefers a different regime on every stand."""
+    landscape = forest_landscape_data()
+    stands = landscape.lot_stands("A")
+    problem = forest_landscape_problem(landscape, lot="A")
+    solver = available_solvers["pyomo_cbc"]["constructor"](problem)
+
+    for objective, regime in [("npv", "clearfell"), ("habitat", "selection_cut"), ("carbon", "set_aside")]:
+        result = solver.solve(f"{objective}_min")
+
+        assert result.success
+        for stand in stands:
+            chosen = int(np.argmax(result.optimal_variables[f"X_{stand.id}"]))
+            assert REGIMES[chosen] == regime

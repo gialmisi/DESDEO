@@ -11,6 +11,18 @@ import math
 import numpy as np
 from pydantic import BaseModel, Field
 
+from desdeo.problem.schema import (
+    Constraint,
+    ConstraintTypeEnum,
+    ExtraFunction,
+    Objective,
+    ObjectiveTypeEnum,
+    Problem,
+    TensorConstant,
+    TensorVariable,
+    VariableTypeEnum,
+)
+
 REGIMES: tuple[str, ...] = ("set_aside", "selection_cut", "thinning", "clearfell")
 """The management regimes available on every stand, in the order used by all regime-indexed values."""
 
@@ -21,12 +33,28 @@ LOTS: tuple[str, ...] = ("A", "B", "C", "D")
 _REGIME_MEDIANS: dict[str, tuple[float, ...]] = {
     "npv": (0.0, 4300.0, 4300.0, 7900.0),  # EUR/ha, discounted harvest revenue
     "carbon": (156.0, 119.0, 116.0, 107.0),  # tCO2/ha, stored at the end of the planning horizon
-    "habitat": (0.80, 0.60, 0.45, 0.15),  # habitat suitability index, [0, 1]
+    "habitat": (0.55, 0.75, 0.58, 0.20),  # hazel grouse habitat suitability index, [0, 1]
     "bilberry": (6.4, 8.1, 5.9, 2.0),  # bilberry yield index
     "mushroom": (0.68, 0.46, 0.58, 0.21),  # marketed mushroom yield index
     "scenic": (6.6, 6.5, 5.9, 5.1),  # scenic value index
     "deadwood": (25.0, 12.0, 8.0, 4.0),  # m3/ha, deadwood from natural mortality
 }
+
+# The objectives of an owner: (quantity, name, aggregation over the lot's stands). A "sum" is a total
+# over the lot, a "mean" is an area-weighted mean over the lot.
+_OBJECTIVES: tuple[tuple[str, str, str], ...] = (
+    ("npv", "Net present value", "sum"),
+    ("habitat", "Hazel grouse habitat suitability index", "mean"),
+    ("carbon", "Carbon stock", "sum"),
+)
+
+# The properties of an owner's lot: derived from a solution, but not optimized.
+_PROPERTIES: tuple[tuple[str, str, str], ...] = (
+    ("bilberry", "Bilberry yield", "mean"),
+    ("mushroom", "Mushroom yield", "mean"),
+    ("scenic", "Scenic value", "mean"),
+    ("deadwood", "Deadwood volume", "mean"),
+)
 
 
 class Stand(BaseModel):
@@ -133,3 +161,125 @@ def forest_landscape_data(stands_per_lot: int = 4, seed: int = 0) -> ForestLands
     }
 
     return ForestLandscape(regimes=list(REGIMES), lots=list(LOTS), stands=stands, neighbours=neighbours)
+
+
+def forest_landscape_problem(landscape: ForestLandscape | None = None, lot: str = "A") -> Problem:
+    r"""Defines the forest planning problem of the owner of one lot in a forest landscape.
+
+    The owner chooses one management regime for each stand of their lot, following the
+    plan-selection structure of `forest_problem`. The problem is to
+
+    \begin{align}
+        \max_{\mathbf{x}} & \quad \sum_{j \in J} a_j \mathbf{v}_j^\top \mathbf{x}_j & \\
+        & \quad \sum_{j \in J} \frac{a_j}{A} \mathbf{h}_j^\top \mathbf{x}_j & \\
+        & \quad \sum_{j \in J} a_j \mathbf{c}_j^\top \mathbf{x}_j & \\
+        \text{s.t.} & \quad \sum_{i} x_{ji} = 1, & \forall j \in J \\
+        & \quad x_{ji} \in \{0,1\}, & \forall j \in J, ~\forall i,
+    \end{align}
+
+    where $J$ is the set of stands in the lot, $a_j$ is the area of stand $j$, $A$ is the area of the
+    lot, and $\mathbf{v}_j$, $\mathbf{h}_j$, and $\mathbf{c}_j$ are the per-hectare net present value,
+    hazel grouse habitat suitability index, and carbon stock of each regime on stand $j$. The binary variable
+    $x_{ji}$ is one when regime $i$ is chosen for stand $j$.
+
+    The properties of the lot (berry and mushroom yield, scenic value, deadwood volume) are defined as
+    extra functions: they are evaluated for every solution, but they are not optimized.
+
+    Args:
+        landscape (ForestLandscape | None, optional): the landscape the lot belongs to. If `None`,
+            the default landscape of `forest_landscape_data` is used. Defaults to None.
+        lot (str, optional): the lot of the owner. Defaults to "A".
+
+    Returns:
+        Problem: the forest planning problem of the owner of `lot`.
+    """
+    landscape = forest_landscape_data() if landscape is None else landscape
+    if lot not in landscape.lots:
+        msg = f"Lot '{lot}' is not in the landscape; the lots are {landscape.lots}."
+        raise ValueError(msg)
+
+    stands = landscape.lot_stands(lot)
+    lot_area = sum(stand.area for stand in stands)
+    n_regimes = len(landscape.regimes)
+
+    def weights(stand: Stand, quantity: str, aggregation: str) -> list[float]:
+        weight = stand.area if aggregation == "sum" else stand.area / lot_area
+        return [weight * value for value in stand.values[quantity]]
+
+    constants = []
+    variables = []
+    constraints = []
+    for stand in stands:
+        variables.append(
+            TensorVariable(
+                name=f"Regime of stand {stand.id}",
+                symbol=f"X_{stand.id}",
+                variable_type=VariableTypeEnum.binary,
+                shape=[n_regimes],
+                lowerbounds=n_regimes * [0],
+                upperbounds=n_regimes * [1],
+                initial_values=[1] + (n_regimes - 1) * [0],
+            )
+        )
+        constraints.append(
+            Constraint(
+                name=f"One regime on stand {stand.id}",
+                symbol=f"x_con_{stand.id}",
+                cons_type=ConstraintTypeEnum.EQ,
+                func=f"Sum(X_{stand.id}) - 1",
+                is_linear=True,
+                is_convex=True,
+                is_twice_differentiable=True,
+            )
+        )
+        constants.extend(
+            TensorConstant(
+                name=f"{name} of stand {stand.id}",
+                symbol=f"{quantity.upper()}_{stand.id}",
+                shape=[n_regimes],
+                values=weights(stand, quantity, aggregation),
+            )
+            for quantity, name, aggregation in _OBJECTIVES + _PROPERTIES
+        )
+
+    def lot_sum(quantity: str) -> str:
+        return " + ".join(f"{quantity.upper()}_{stand.id}@X_{stand.id}" for stand in stands)
+
+    objectives = [
+        Objective(
+            name=name,
+            symbol=quantity,
+            func=lot_sum(quantity),
+            maximize=True,
+            objective_type=ObjectiveTypeEnum.analytical,
+            is_linear=True,
+            is_convex=True,
+            is_twice_differentiable=True,
+        )
+        for quantity, name, _ in _OBJECTIVES
+    ]
+
+    extra_funcs = [
+        ExtraFunction(
+            name=name,
+            symbol=quantity,
+            func=lot_sum(quantity),
+            is_linear=True,
+            is_convex=True,
+            is_twice_differentiable=True,
+        )
+        for quantity, name, _ in _PROPERTIES
+    ]
+
+    return Problem(
+        name=f"Forest landscape problem, lot {lot}",
+        description=(
+            f"The forest planning problem of the owner of lot {lot} in a synthetic forest landscape of "
+            f"{len(landscape.lots)} lots with {len(stands)} stands each."
+        ),
+        constants=constants,
+        variables=variables,
+        objectives=objectives,
+        constraints=constraints,
+        extra_funcs=extra_funcs,
+    )
