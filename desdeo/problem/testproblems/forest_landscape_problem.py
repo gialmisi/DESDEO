@@ -54,6 +54,7 @@ _PROPERTIES: tuple[tuple[str, str, str], ...] = (
     ("mushroom", "Mushroom yield", "mean"),
     ("scenic", "Scenic value", "mean"),
     ("deadwood", "Deadwood volume", "mean"),
+    ("wind_damage", "Wind damage probability", "mean"),
 )
 
 
@@ -82,6 +83,41 @@ class CouplingParameters(BaseModel):
             " suitability is multiplied by `1 - w + w * N`, where `N` is the area-weighted mean stand-wise suitability"
             " of its neighbours across the ownership boundary."
         ),
+    )
+    wind_base_damage_probability: float = Field(
+        default=0.026,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Probability that a stand is damaged by wind in a 5-year period. The default is the share of damaged plots"
+            " in the Finnish national forest inventory data of Suvanto et al. (2019)."
+        ),
+    )
+    wind_open_border_log_odds: float = Field(
+        default=0.310,
+        description=(
+            "Increase in the log-odds of wind damage when a neighbouring stand is open (clear-felled). The default is"
+            " the estimate for an open stand border in the GLM of Suvanto et al. (2019)."
+        ),
+    )
+    wind_severity: float = Field(
+        default=1.0,
+        ge=0.0,
+        description="Multiplier of the base damage probability, e.g., for a storm-prone landscape.",
+    )
+    wind_periods: int = Field(default=3, ge=1, description="Number of 5-year periods in the planning horizon.")
+    wind_susceptibility: dict[str, float] = Field(
+        default={"set_aside": 1.0, "selection_cut": 0.8, "thinning": 1.2, "clearfell": 0.2},
+        description=(
+            "Multiplier of the base damage probability for each regime of the stand itself: tall, old stands and"
+            " recently thinned stands are more susceptible, stands regenerated after clear-felling much less."
+        ),
+    )
+    wind_salvage_share: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Share of the net present value of damaged timber that is recovered by salvage logging.",
     )
 
 
@@ -215,12 +251,23 @@ def realized_values(
       and it counts only the neighbours across an ownership boundary: the stand-wise suitability
       is multiplied by `1 - w + w * N`, where `N` is the area-weighted mean stand-wise suitability
       of those neighbours under their regimes, and `w` is `habitat_neighbourhood_weight`.
+    - Wind exposure: following Suvanto et al. (2019), a stand with an open (clear-felled)
+      neighbour has higher log-odds of wind damage. The stand-wise values are taken to already
+      include the ordinary risk of damage, so only the excess probability caused by an open
+      neighbour across an ownership boundary reduces them: carbon by the excess probability, and
+      net present value by the unsalvaged share of it.
 
-    Stands without neighbours in other lots keep their stand-wise values.
+    Stands without neighbours in other lots keep their stand-wise values. In addition, the
+    probability of wind damage over the planning horizon is reported for every stand as
+    `wind_damage`.
 
     Öhman, K., Edenius, L., & Mikusiński, G. (2011). Optimizing spatial habitat suitability and
     timber revenue in long-term forest planning. Canadian Journal of Forest Research, 41(3),
     543-551. https://doi.org/10.1139/X10-232
+
+    Suvanto, S., Peltoniemi, M., Tuominen, S., Strandström, M., & Lehtonen, A. (2019).
+    High-resolution mapping of forest vulnerability to wind for disturbance-aware forestry. Forest
+    Ecology and Management, 453, 117619. https://doi.org/10.1016/j.foreco.2019.117619
 
     Args:
         landscape (ForestLandscape): the landscape.
@@ -245,7 +292,19 @@ def realized_values(
     def stand_wise(stand_id: int, quantity: str) -> float:
         return landscape.stands[stand_id].values[quantity][landscape.regimes.index(configuration[stand_id])]
 
-    w = landscape.coupling.habitat_neighbourhood_weight
+    coupling = landscape.coupling
+    w = coupling.habitat_neighbourhood_weight
+
+    def damage_over_horizon(regime: str, open_border: bool) -> float:
+        """Probability of wind damage over the planning horizon, for a stand under `regime`."""
+        p = min(
+            coupling.wind_severity * coupling.wind_base_damage_probability * coupling.wind_susceptibility[regime], 1.0
+        )
+        if open_border and 0.0 < p < 1.0:
+            odds = p / (1 - p) * math.exp(coupling.wind_open_border_log_odds)
+            p = odds / (1 + odds)
+        return 1 - (1 - p) ** coupling.wind_periods
+
     values = {}
     for stand in landscape.lot_stands(lot):
         stand_values = {quantity: list(regime_values) for quantity, regime_values in stand.values.items()}
@@ -256,6 +315,17 @@ def realized_values(
                 landscape.stands[n].area for n in across
             )
             stand_values["habitat"] = [(1 - w + w * neighbourhood) * value for value in stand_values["habitat"]]
+
+        open_border = any(configuration[n] == "clearfell" for n in across)
+        closed = [damage_over_horizon(regime, open_border=False) for regime in landscape.regimes]
+        realized = [damage_over_horizon(regime, open_border=open_border) for regime in landscape.regimes]
+        excess = [r - c for r, c in zip(realized, closed, strict=True)]
+        stand_values["carbon"] = [value * (1 - e) for value, e in zip(stand_values["carbon"], excess, strict=True)]
+        stand_values["npv"] = [
+            value * (1 - (1 - coupling.wind_salvage_share) * e)
+            for value, e in zip(stand_values["npv"], excess, strict=True)
+        ]
+        stand_values["wind_damage"] = realized
 
         values[stand.id] = stand_values
 
@@ -286,8 +356,9 @@ def forest_landscape_problem(
     The values are realized values: they depend on how the other lots are managed, as computed by
     `realized_values`. The other lots are fixed, so the problem stays linear.
 
-    The properties of the lot (berry and mushroom yield, scenic value, deadwood volume) are defined as
-    extra functions: they are evaluated for every solution, but they are not optimized.
+    The properties of the lot (berry and mushroom yield, scenic value, deadwood volume, and wind damage
+    probability) are defined as extra functions: they are evaluated for every solution, but they are
+    not optimized.
 
     The ideal point is exact. The nadir point is estimated from the payoff table, which is also exact
     here: the problem is separable over stands, so each objective is optimized by choosing its best

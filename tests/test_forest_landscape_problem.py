@@ -99,7 +99,7 @@ def test_problem_structure():
 
     assert objective_symbols == ["npv", "habitat", "carbon"]
     assert all(objective.maximize for objective in problem.objectives)
-    assert set(property_symbols) == {"bilberry", "mushroom", "scenic", "deadwood"}
+    assert set(property_symbols) == {"bilberry", "mushroom", "scenic", "deadwood", "wind_damage"}
     assert not set(property_symbols) & set(objective_symbols)
 
     # only the stands of the lot are decision variables
@@ -236,21 +236,70 @@ def test_coupling_is_local_to_the_boundary():
     realized = realized_values(landscape, "A", everything_else_clearfelled)
     for stand in landscape.lot_stands("A"):
         if landscape.cross_owner_neighbours(stand.id):
-            assert realized[stand.id]["habitat"] != stand.values["habitat"]
+            for quantity in ("habitat", "carbon", "npv"):
+                assert realized[stand.id][quantity] != stand.values[quantity]
         else:
-            assert realized[stand.id] == stand.values
+            assert all(realized[stand.id][quantity] == values for quantity, values in stand.values.items())
 
 
 @pytest.mark.testproblem
 @pytest.mark.forest_problem
-def test_coupling_weight_zero_disables_coupling():
-    """Test that with a zero neighbourhood weight the realized values are the stand-wise values."""
-    landscape = forest_landscape_data(coupling=CouplingParameters(habitat_neighbourhood_weight=0.0))
+def test_zero_coupling_parameters_disable_coupling():
+    """Test that without neighbourhood weight and open-border effect the realized values are the stand-wise ones."""
+    landscape = forest_landscape_data(
+        coupling=CouplingParameters(habitat_neighbourhood_weight=0.0, wind_open_border_log_odds=0.0)
+    )
     others = {stand.id: "clearfell" for stand in landscape.stands if stand.lot != "A"}
 
     realized = realized_values(landscape, "A", others)
     for stand in landscape.lot_stands("A"):
-        assert realized[stand.id] == stand.values
+        assert all(realized[stand.id][quantity] == values for quantity, values in stand.values.items())
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_open_border_increases_wind_damage():
+    """Test that a clear-felled neighbour across the boundary raises wind damage and lowers carbon and NPV.
+
+    With the defaults, the numbers follow Suvanto et al. (2019): a 2.6 % damage probability per 5-year period, an open
+    border raising the log-odds by 0.310, over three periods.
+    """
+    landscape = forest_landscape_data()
+    stand = next(stand for stand in landscape.lot_stands("A") if landscape.cross_owner_neighbours(stand.id))
+    neighbour = landscape.cross_owner_neighbours(stand.id)[0]
+    set_aside = REGIMES.index("set_aside")
+
+    closed = realized_values(landscape, "A")[stand.id]
+    opened = realized_values(landscape, "A", {neighbour: "clearfell"})[stand.id]
+
+    assert np.isclose(closed["wind_damage"][set_aside], 1 - (1 - 0.026) ** 3)
+    assert np.isclose(opened["wind_damage"][set_aside], 0.1017, atol=1e-4)
+
+    excess = opened["wind_damage"][set_aside] - closed["wind_damage"][set_aside]
+    carbon_loss = 1 - opened["carbon"][set_aside] / closed["carbon"][set_aside]
+    assert np.isclose(carbon_loss, excess)
+
+    selection_cut = REGIMES.index("selection_cut")
+    npv_loss = 1 - opened["npv"][selection_cut] / closed["npv"][selection_cut]
+    carbon_loss = 1 - opened["carbon"][selection_cut] / closed["carbon"][selection_cut]
+    assert 0 < npv_loss < carbon_loss  # salvage logging recovers part of the timber value
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+def test_wind_severity_scales_the_effect():
+    """Test that a more storm-prone landscape makes an open border more costly."""
+
+    def carbon_loss(severity: float) -> float:
+        landscape = forest_landscape_data(coupling=CouplingParameters(wind_severity=severity))
+        stand = next(stand for stand in landscape.lot_stands("A") if landscape.cross_owner_neighbours(stand.id))
+        others = {landscape.cross_owner_neighbours(stand.id)[0]: "clearfell"}
+        closed = realized_values(landscape, "A")[stand.id]["carbon"][0]
+        opened = realized_values(landscape, "A", others)[stand.id]["carbon"][0]
+        return 1 - opened / closed
+
+    assert 0 < carbon_loss(1.0) < carbon_loss(4.0)
+    assert carbon_loss(0.0) == 0.0
 
 
 @pytest.mark.testproblem
