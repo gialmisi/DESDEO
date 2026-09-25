@@ -40,6 +40,7 @@
 	import { errorMessage, isLoading } from '../../../stores/uiState';
 
 	import { SegmentedControl } from '$lib/components/custom/segmented-control';
+	import ConfettiBurst from './confetti-burst.svelte';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 
@@ -426,6 +427,7 @@
 		{/snippet}
 	</BaseLayout>
 {:else if stage === 'result' && problem && selectedCandidate}
+	<ConfettiBurst />
 	<div class="flex min-h-[calc(100vh-3rem)] items-center justify-center p-6">
 		<Card.Root class="w-full max-w-2xl">
 			<Card.Header>
@@ -442,13 +444,13 @@
 				{#if !imageFailed}
 					<figure class="flex flex-col items-center gap-2">
 						<img
-							class="max-h-80 rounded-lg object-contain"
+							class="breed-photo max-h-80 rounded-lg object-contain shadow-lg"
 							src={breedImagePath(selectedCandidate.breedName)}
 							alt={breedLabel(selectedCandidate.breedName)}
 							onerror={() => (imageFailed = true)}
 						/>
 						{#if selectedCredit}
-							<figcaption class="text-center text-xs text-gray-500">
+							<figcaption class="breed-credit text-center text-xs text-gray-500">
 								{#if selectedCredit.represented_by !== breedLabel(selectedCandidate.breedName)}
 									{t.pictured(selectedCredit.represented_by)}
 								{/if}
@@ -495,3 +497,56 @@
 		</Card.Root>
 	</div>
 {/if}
+
+<style>
+	/*
+	 * The photograph swings into view when the breed is revealed, as if a card
+	 * were being turned over, with a small overshoot so it settles rather than
+	 * stops dead. The credit line follows once the photograph has landed.
+	 *
+	 * The whole result card is mounted at the moment of the reveal, so the
+	 * animations run once on their own and replay if the visitor goes back and
+	 * picks another breed.
+	 */
+	@keyframes breed-photo-in {
+		0% {
+			opacity: 0;
+			transform: perspective(900px) rotateY(-72deg) scale(0.82);
+		}
+		60% {
+			opacity: 1;
+			transform: perspective(900px) rotateY(9deg) scale(1.04);
+		}
+		100% {
+			opacity: 1;
+			transform: perspective(900px) rotateY(0deg) scale(1);
+		}
+	}
+
+	@keyframes breed-credit-in {
+		from {
+			opacity: 0;
+			transform: translateY(6px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.breed-photo {
+		animation: breed-photo-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+
+	.breed-credit {
+		animation: breed-credit-in 400ms ease-out 700ms both;
+	}
+
+	/* A visitor who has asked for less motion simply gets the finished card. */
+	@media (prefers-reduced-motion: reduce) {
+		.breed-photo,
+		.breed-credit {
+			animation: none;
+		}
+	}
+</style>
