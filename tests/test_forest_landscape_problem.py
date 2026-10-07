@@ -13,11 +13,21 @@ from desdeo.problem.testproblems.forest_landscape_problem import (
     forest_landscape_data,
     forest_landscape_problem,
     forest_training_problem,
+    generalization,
+    generalize,
+    generalized_configuration,
+    lot_outcomes,
     nearest_regimes,
     normalized_position,
     realized_values,
 )
-from desdeo.tools import available_solvers, payoff_table_method
+from desdeo.tools import (
+    CVXPYSolver,
+    CVXPYSolverOptions,
+    add_normalized_squared_distance,
+    available_solvers,
+    payoff_table_method,
+)
 from desdeo.tools.scalarization import add_asf_diff
 
 
@@ -492,3 +502,131 @@ def test_other_lots_hold_the_baseline_by_default():
     assert forest_landscape_problem(landscape, "A") != forest_landscape_problem(
         landscape, "A", others_thinning(landscape, "A")
     )
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+@pytest.mark.cvxpy
+def test_generalizing_the_baseline_position_changes_nothing():
+    """Test that a solution at the baseline position yields zero deltas.
+
+    At the baseline position, every other lot takes its baseline configuration, so the generalized
+    configuration is the baseline and nothing changes.
+    """
+    landscape = forest_landscape_data()
+    others_baseline = {stand.id: landscape.baseline[stand.id] for stand in landscape.stands if stand.lot != "A"}
+
+    assert generalized_configuration(landscape, "A", landscape.baseline_position) == others_baseline
+
+    regimes = {stand.id: landscape.baseline[stand.id] for stand in landscape.lot_stands("A")}
+    result = generalization(landscape, "A", regimes, others_baseline)
+    for changes in (result.objectives, result.properties, result.landscape_objectives, result.landscape_properties):
+        assert all(change.delta == 0.0 for change in changes.values())
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+@pytest.mark.cvxpy
+def test_generalizing_heavy_harvest_degrades_coupled_quantities():
+    """Test that if every owner clear-fells like the participant, the participant's coupled outcomes degrade."""
+    landscape = forest_landscape_data()
+    regimes = {stand.id: "clearfell" for stand in landscape.lot_stands("A")}
+
+    result = generalize(landscape, "A", regimes)
+
+    # every other lot is as timber-oriented as it can be
+    assert set(result.others_generalized.values()) == {"clearfell"}
+
+    # the participant's own lot: habitat through the neighbourhood, carbon and NPV through wind
+    assert result.objectives["habitat"].delta < 0
+    assert result.objectives["carbon"].delta < 0
+    assert result.objectives["npv"].delta < 0
+    assert result.properties["wind_damage"].delta > 0
+
+    # the landscape as a whole
+    assert result.landscape_objectives["habitat"].delta < 0
+    assert result.landscape_objectives["carbon"].delta < 0
+    assert result.landscape_properties["bilberry"].delta < 0
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+@pytest.mark.cvxpy
+def test_generalization_is_deterministic_and_consistent():
+    """Test that the same input gives the same output, and that the parts of the output agree with each other."""
+    landscape = forest_landscape_data()
+    regimes = dict(zip([stand.id for stand in landscape.lot_stands("A")], REGIMES, strict=True))
+
+    result = generalize(landscape, "A", regimes)
+    assert generalize(landscape, "A", regimes) == result
+
+    for changes in (result.objectives, result.properties, result.landscape_objectives, result.landscape_properties):
+        for change in changes.values():
+            assert np.isclose(change.delta, change.generalized - change.baseline)
+
+    # the landscape total of NPV is the sum of the lots' NPV
+    configuration = result.others_generalized | regimes
+    assert np.isclose(
+        result.landscape_objectives["npv"].generalized,
+        sum(lot_outcomes(landscape, lot, configuration)["npv"] for lot in landscape.lots),
+    )
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+@pytest.mark.cvxpy
+def test_each_lot_is_normalized_against_its_own_range():
+    """Test that the same normalized position maps to different absolute objective values on lots with different ranges.
+
+    Lot B is made a copy of lot A with twice the NPV and carbon on every stand, and the coupling is switched off so
+    that only the values differ. In its own normalized space, B is then identical to A, so the same position must give
+    the same regimes on both, and twice the absolute NPV and carbon on B. A normalization with a common range for both
+    lots instead gives B different regimes, which the test also checks, so that it would fail under a common range.
+    """
+    no_coupling = CouplingParameters(
+        habitat_neighbourhood_weight=0.0, wind_open_border_log_odds=0.0, deadwood_spillover_weight=0.0
+    )
+    landscape = forest_landscape_data(coupling=no_coupling)
+    a_stands, b_stands = landscape.lot_stands("A"), landscape.lot_stands("B")
+    stands = list(landscape.stands)
+    for a, b in zip(a_stands, b_stands, strict=True):
+        values = {quantity: list(regime_values) for quantity, regime_values in a.values.items()}
+        values["npv"] = [2 * value for value in values["npv"]]
+        values["carbon"] = [2 * value for value in values["carbon"]]
+        stands[b.id] = b.model_copy(update={"area": a.area, "values": values})
+    landscape = landscape.model_copy(update={"stands": stands})
+
+    problem_a = forest_landscape_problem(landscape, "A", others_thinning(landscape, "A"))
+    problem_b = forest_landscape_problem(landscape, "B", others_thinning(landscape, "B"))
+    assert np.isclose(problem_b.get_ideal_point()["npv"], 2 * problem_a.get_ideal_point()["npv"])
+
+    for position in [{"npv": 0.5, "habitat": 0.5, "carbon": 0.5}, {"npv": 0.8, "habitat": 0.3, "carbon": 0.2}]:
+        on_a = nearest_regimes(landscape, "A", position)
+        on_b = nearest_regimes(landscape, "B", position)
+        assert [on_a[a.id] for a in a_stands] == [on_b[b.id] for b in b_stands]
+
+        outcomes_a = lot_outcomes(landscape, "A", others_thinning(landscape, "A") | on_a)
+        outcomes_b = lot_outcomes(landscape, "B", others_thinning(landscape, "B") | on_b)
+        assert np.isclose(outcomes_b["npv"], 2 * outcomes_a["npv"])
+        assert np.isclose(outcomes_b["carbon"], 2 * outcomes_a["carbon"])
+
+        # with A's range used for B too, the same position gives B different regimes
+        common_range = problem_b.update_ideal_and_nadir(problem_a.get_ideal_point(), problem_a.get_nadir_point())
+        problem_w_distance, symbol = add_normalized_squared_distance(common_range, "distance", position)
+        result = CVXPYSolver(problem_w_distance, CVXPYSolverOptions(solver="SCIP")).solve(symbol)
+        on_b_common = [REGIMES[int(np.argmax(result.optimal_variables[f"X_{b.id}"]))] for b in b_stands]
+        assert on_b_common != [on_b[b.id] for b in b_stands]
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+@pytest.mark.cvxpy
+def test_generalization_rejects_incomplete_solutions():
+    """Test that the solution must give a known regime for exactly the stands of the lot."""
+    landscape = forest_landscape_data()
+    stands = [stand.id for stand in landscape.lot_stands("A")]
+
+    with pytest.raises(ValueError, match="for each stand"):
+        generalize(landscape, "A", dict.fromkeys(stands[:-1], "thinning"))
+    with pytest.raises(ValueError, match="for each stand"):
+        generalize(landscape, "A", dict.fromkeys(stands, "burn"))

@@ -286,14 +286,13 @@ def forest_landscape_data(
         coupling=coupling if coupling is not None else CouplingParameters(),
     )
 
-    positions = []
-    for lot in landscape.lots:
-        problem = forest_landscape_problem(landscape, lot, _other_lots(landscape, lot, reference))
-        xs = {
-            f"X_{stand.id}": [[float(regime == reference[stand.id]) for regime in landscape.regimes]]
-            for stand in landscape.lot_stands(lot)
-        }
-        positions.append(normalized_position(problem, PolarsEvaluator(problem).evaluate(xs).row(0, named=True)))
+    positions = [
+        normalized_position(
+            forest_landscape_problem(landscape, lot, _other_lots(landscape, lot, reference)),
+            lot_outcomes(landscape, lot, reference),
+        )
+        for lot in landscape.lots
+    ]
     baseline_position = {
         symbol: float(np.mean([position[symbol] for position in positions])) for symbol in positions[0]
     }
@@ -308,6 +307,27 @@ def forest_landscape_data(
 def _other_lots(landscape: ForestLandscape, lot: str, configuration: dict[int, str]) -> dict[int, str]:
     """Return the part of a configuration of the whole landscape that concerns the lots other than `lot`."""
     return {stand_id: regime for stand_id, regime in configuration.items() if landscape.stands[stand_id].lot != lot}
+
+
+def lot_outcomes(landscape: ForestLandscape, lot: str, configuration: dict[int, str]) -> dict[str, float]:
+    """Evaluate the objectives and properties of a lot, given the regimes of every stand of the landscape.
+
+    Args:
+        landscape (ForestLandscape): the landscape.
+        lot (str): the lot to evaluate.
+        configuration (dict[int, str]): the regime of every stand of the landscape, by stand id.
+
+    Returns:
+        dict[str, float]: the value of each objective and property of the lot, by symbol.
+    """
+    problem = forest_landscape_problem(landscape, lot, _other_lots(landscape, lot, configuration))
+    xs = {
+        f"X_{stand.id}": [[float(regime == configuration[stand.id]) for regime in landscape.regimes]]
+        for stand in landscape.lot_stands(lot)
+    }
+    row = PolarsEvaluator(problem).evaluate(xs).row(0, named=True)
+
+    return {quantity: row[quantity] for quantity, _, _ in _OBJECTIVES + _PROPERTIES}
 
 
 def normalized_position(problem: Problem, objective_values: dict[str, float]) -> dict[str, float]:
@@ -658,3 +678,154 @@ def forest_training_problem(stands_per_lot: int = 4, seed: int = 1, lot: str = "
             "description": f"A training lot for learning the interface. {problem.description}",
         }
     )
+
+
+class Change(BaseModel):
+    """The value of a quantity in the baseline and when generalized, and the difference between them."""
+
+    baseline: float = Field(description="The value with the other lots in their baseline configuration.")
+    generalized: float = Field(description="The value with the other lots generalized.")
+    delta: float = Field(description="The generalized value minus the baseline value.")
+
+
+class Generalization(BaseModel):
+    """What happens to a lot, and to the landscape, if every other owner manages their lot likewise."""
+
+    lot: str = Field(description="The lot of the owner.")
+    regimes: dict[int, str] = Field(description="The regime of each stand of the owner's solution, by stand id.")
+    position: dict[str, float] = Field(
+        description="The position of the owner's solution in normalized objective space."
+    )
+    others_baseline: dict[int, str] = Field(description="The baseline regimes of the stands of the other lots.")
+    others_generalized: dict[int, str] = Field(
+        description="The regimes of the stands of the other lots when each takes the owner's normalized position."
+    )
+    objectives: dict[str, Change] = Field(description="The objective values of the owner's lot.")
+    properties: dict[str, Change] = Field(description="The property values of the owner's lot.")
+    landscape_objectives: dict[str, Change] = Field(
+        description="The objective values over the whole landscape: totals of sums, area-weighted means of means."
+    )
+    landscape_properties: dict[str, Change] = Field(
+        description="The property values over the whole landscape: area-weighted means."
+    )
+
+
+def _check_solution(landscape: ForestLandscape, lot: str, regimes: dict[int, str]) -> None:
+    """Raise a ValueError unless `regimes` gives a known regime for exactly the stands of `lot`."""
+    own_stands = {stand.id for stand in landscape.lot_stands(lot)}
+    if set(regimes) != own_stands or any(regime not in landscape.regimes for regime in regimes.values()):
+        msg = f"The solution must give one of {landscape.regimes} for each stand {sorted(own_stands)} of lot '{lot}'."
+        raise ValueError(msg)
+
+
+def generalized_configuration(landscape: ForestLandscape, lot: str, position: dict[str, float]) -> dict[int, str]:
+    """Return the regimes the other lots hold when each takes the given position in normalized objective space.
+
+    Each other lot takes its solution nearest to `position`, in its own normalized objective space
+    (see `nearest_regimes`).
+
+    Args:
+        landscape (ForestLandscape): the landscape.
+        lot (str): the lot of the owner, which is left out.
+        position (dict[str, float]): the position in normalized objective space, by objective symbol.
+
+    Returns:
+        dict[int, str]: the regime of each stand of the other lots, by stand id.
+    """
+    configuration = {}
+    for other in landscape.lots:
+        if other != lot:
+            configuration |= nearest_regimes(landscape, other, position)
+    return configuration
+
+
+def generalization(
+    landscape: ForestLandscape, lot: str, regimes: dict[int, str], others_generalized: dict[int, str]
+) -> Generalization:
+    """Compare an owner's solution with the other lots in their baseline and in a generalized configuration.
+
+    Args:
+        landscape (ForestLandscape): the landscape.
+        lot (str): the lot of the owner.
+        regimes (dict[int, str]): the regime of each stand of the owner's lot, by stand id.
+        others_generalized (dict[int, str]): the regime of each stand of the other lots when generalized.
+
+    Returns:
+        Generalization: the outcomes of the owner's lot and of the landscape, in the baseline and generalized.
+    """
+    _check_solution(landscape, lot, regimes)
+
+    others_baseline = _other_lots(landscape, lot, landscape.baseline)
+    problem = forest_landscape_problem(landscape, lot, others_baseline)
+    configuration_baseline = others_baseline | regimes
+    configuration_generalized = others_generalized | regimes
+
+    def changes(baseline: dict[str, float], generalized: dict[str, float], quantities) -> dict[str, Change]:
+        return {
+            quantity: Change(
+                baseline=baseline[quantity],
+                generalized=generalized[quantity],
+                delta=generalized[quantity] - baseline[quantity],
+            )
+            for quantity, _, _ in quantities
+        }
+
+    def landscape_outcomes(configuration: dict[int, str]) -> dict[str, float]:
+        outcomes = {other: lot_outcomes(landscape, other, configuration) for other in landscape.lots}
+        areas = {other: sum(stand.area for stand in landscape.lot_stands(other)) for other in landscape.lots}
+        return {
+            quantity: (
+                sum(outcomes[other][quantity] for other in landscape.lots)
+                if aggregation == "sum"
+                else sum(areas[other] * outcomes[other][quantity] for other in landscape.lots) / sum(areas.values())
+            )
+            for quantity, _, aggregation in _OBJECTIVES + _PROPERTIES
+        }
+
+    own_baseline = lot_outcomes(landscape, lot, configuration_baseline)
+    own_generalized = lot_outcomes(landscape, lot, configuration_generalized)
+    all_baseline = landscape_outcomes(configuration_baseline)
+    all_generalized = landscape_outcomes(configuration_generalized)
+
+    return Generalization(
+        lot=lot,
+        regimes=regimes,
+        position=normalized_position(problem, own_baseline),
+        others_baseline=others_baseline,
+        others_generalized=others_generalized,
+        objectives=changes(own_baseline, own_generalized, _OBJECTIVES),
+        properties=changes(own_baseline, own_generalized, _PROPERTIES),
+        landscape_objectives=changes(all_baseline, all_generalized, _OBJECTIVES),
+        landscape_properties=changes(all_baseline, all_generalized, _PROPERTIES),
+    )
+
+
+def generalize(landscape: ForestLandscape, lot: str, regimes: dict[int, str]) -> Generalization:
+    """Compute what happens to an owner's lot if every other owner manages their lot likewise.
+
+    "Likewise" means that every other lot takes the same position in normalized objective space as
+    the owner's solution, not the same regimes:
+
+    1. The owner's solution is normalized against the fixed ideal and nadir of their lot, with the
+       other lots in their baseline configuration, as the owner sees it.
+    2. Each other lot takes its solution nearest to that position, in its own normalized objective
+       space (`generalized_configuration`).
+    3. The objectives and properties of the owner's lot, and of the whole landscape, are evaluated
+       with the other lots in their baseline and in the generalized configuration
+       (`generalization`).
+
+    Args:
+        landscape (ForestLandscape): the landscape.
+        lot (str): the lot of the owner.
+        regimes (dict[int, str]): the regime of each stand of the owner's lot, by stand id.
+
+    Returns:
+        Generalization: the outcomes of the owner's lot and of the landscape, in the baseline and generalized.
+    """
+    _check_solution(landscape, lot, regimes)
+
+    others_baseline = _other_lots(landscape, lot, landscape.baseline)
+    problem = forest_landscape_problem(landscape, lot, others_baseline)
+    position = normalized_position(problem, lot_outcomes(landscape, lot, others_baseline | regimes))
+
+    return generalization(landscape, lot, regimes, generalized_configuration(landscape, lot, position))
