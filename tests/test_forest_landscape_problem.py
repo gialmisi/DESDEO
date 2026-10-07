@@ -13,10 +13,17 @@ from desdeo.problem.testproblems.forest_landscape_problem import (
     forest_landscape_data,
     forest_landscape_problem,
     forest_training_problem,
+    nearest_regimes,
+    normalized_position,
     realized_values,
 )
 from desdeo.tools import available_solvers, payoff_table_method
 from desdeo.tools.scalarization import add_asf_diff
+
+
+def others_thinning(landscape, lot: str) -> dict[int, str]:
+    """Return the configuration of the lots other than `lot` in which every stand is thinned."""
+    return {stand.id: "thinning" for stand in landscape.stands if stand.lot != lot}
 
 
 @pytest.mark.testproblem
@@ -174,8 +181,12 @@ def test_problem_objectives_conflict():
 @pytest.mark.testproblem
 @pytest.mark.forest_problem
 def test_problem_ideal_and_nadir():
-    """Test that the stored ideal and nadir match the payoff table computed with a solver, and span a range."""
-    problem = forest_landscape_problem(forest_landscape_data(), lot="C")
+    """Test that the stored ideal and nadir match the payoff table computed with a solver, and span a range.
+
+    The ideal and nadir are computed with the other lots in their reference configuration, every stand thinned.
+    """
+    landscape = forest_landscape_data()
+    problem = forest_landscape_problem(landscape, lot="C", others=others_thinning(landscape, "C"))
 
     ideal, nadir = payoff_table_method(problem, solver=available_solvers["pyomo_cbc"]["constructor"])
 
@@ -221,13 +232,14 @@ def test_neighbouring_lot_changes_realized_objectives():
     def evaluate(others: dict[int, str] | None) -> dict[str, float]:
         return PolarsEvaluator(forest_landscape_problem(landscape, "A", others)).evaluate(xs).row(0, named=True)
 
-    baseline = evaluate(None)
-    clearfelled = evaluate(dict.fromkeys(neighbours_in_b, "clearfell"))
-    selection_cut = evaluate(dict.fromkeys(neighbours_in_b, "selection_cut"))
+    thinned = others_thinning(landscape, "A")
+    thinning = evaluate(thinned)
+    clearfelled = evaluate(thinned | dict.fromkeys(neighbours_in_b, "clearfell"))
+    selection_cut = evaluate(thinned | dict.fromkeys(neighbours_in_b, "selection_cut"))
 
     # clear-felling next to the boundary degrades the habitat of lot A, while selection cut, the best
-    # regime for hazel grouse, improves it over the baseline of thinning
-    assert clearfelled["habitat"] < baseline["habitat"] < selection_cut["habitat"]
+    # regime for hazel grouse, improves it over thinning
+    assert clearfelled["habitat"] < thinning["habitat"] < selection_cut["habitat"]
 
 
 @pytest.mark.testproblem
@@ -280,8 +292,9 @@ def test_open_border_increases_wind_damage():
     neighbour = landscape.cross_owner_neighbours(stand.id)[0]
     set_aside = REGIMES.index("set_aside")
 
-    closed = realized_values(landscape, "A")[stand.id]
-    opened = realized_values(landscape, "A", {neighbour: "clearfell"})[stand.id]
+    thinned = others_thinning(landscape, "A")
+    closed = realized_values(landscape, "A", thinned)[stand.id]
+    opened = realized_values(landscape, "A", thinned | {neighbour: "clearfell"})[stand.id]
 
     assert np.isclose(closed["wind_damage"][set_aside], 1 - (1 - 0.026) ** 3)
     assert np.isclose(opened["wind_damage"][set_aside], 0.1017, atol=1e-4)
@@ -304,9 +317,10 @@ def test_wind_severity_scales_the_effect():
     def carbon_loss(severity: float) -> float:
         landscape = forest_landscape_data(coupling=CouplingParameters(wind_severity=severity))
         stand = next(stand for stand in landscape.lot_stands("A") if landscape.cross_owner_neighbours(stand.id))
-        others = {landscape.cross_owner_neighbours(stand.id)[0]: "clearfell"}
-        closed = realized_values(landscape, "A")[stand.id]["carbon"][0]
-        opened = realized_values(landscape, "A", others)[stand.id]["carbon"][0]
+        thinned = others_thinning(landscape, "A")
+        opened_border = thinned | {landscape.cross_owner_neighbours(stand.id)[0]: "clearfell"}
+        closed = realized_values(landscape, "A", thinned)[stand.id]["carbon"][0]
+        opened = realized_values(landscape, "A", opened_border)[stand.id]["carbon"][0]
         return 1 - opened / closed
 
     assert 0 < carbon_loss(1.0) < carbon_loss(4.0)
@@ -339,8 +353,8 @@ def test_other_lots_configuration_is_validated():
         realized_values(landscape, "A", {own_stand: "clearfell"})
     with pytest.raises(ValueError, match="Unknown regime"):
         realized_values(landscape, "A", {other_stand: "burn"})
-    with pytest.raises(ValueError, match="Unknown baseline regime"):
-        forest_landscape_data(baseline_regime="burn")
+    with pytest.raises(ValueError, match="Unknown reference regime"):
+        forest_landscape_data(reference_regime="burn")
 
 
 @pytest.mark.testproblem
@@ -348,14 +362,14 @@ def test_other_lots_configuration_is_validated():
 def test_deadwood_hotspots_gain_from_neighbouring_hotspots():
     """Test that a deadwood hotspot on the boundary is worth more when the stands across it are hotspots too.
 
-    Only regimes leaving at least 20 m3/ha of deadwood make a hotspot (Mazziotta et al., 2023). In the baseline, the
-    neighbours are thinned and are not hotspots, so a boundary hotspot counts at `1 - b`.
+    Only regimes leaving at least 20 m3/ha of deadwood make a hotspot (Mazziotta et al., 2023). When the neighbours are
+    thinned, they are not hotspots, so a boundary hotspot counts at `1 - b`.
     """
     landscape = forest_landscape_data()
     b = landscape.coupling.deadwood_spillover_weight
     everything_else_set_aside = {stand.id: "set_aside" for stand in landscape.stands if stand.lot != "A"}
 
-    baseline = realized_values(landscape, "A")
+    baseline = realized_values(landscape, "A", others_thinning(landscape, "A"))
     set_aside = realized_values(landscape, "A", everything_else_set_aside)
 
     threshold = landscape.coupling.deadwood_hotspot_threshold
@@ -409,3 +423,72 @@ def test_training_lot_is_independent_of_the_study_lot():
     # it is solvable on its own
     result = available_solvers["pyomo_cbc"]["constructor"](training).solve("npv_min")
     assert result.success
+
+
+def enumerate_normalized_positions(landscape, lot: str) -> tuple[list[tuple[int, ...]], np.ndarray]:
+    """Enumerate every regime assignment of a lot and its normalized position, with the other lots thinned."""
+    stands = landscape.lot_stands(lot)
+    problem = forest_landscape_problem(landscape, lot, others_thinning(landscape, lot))
+    assignments = list(itertools.product(range(len(REGIMES)), repeat=len(stands)))
+    one_hot = np.eye(len(REGIMES)).tolist()
+    xs = {f"X_{stand.id}": [one_hot[assignment[j]] for assignment in assignments] for j, stand in enumerate(stands)}
+    rows = PolarsEvaluator(problem).evaluate(xs).iter_rows(named=True)
+    symbols = [objective.symbol for objective in problem.objectives]
+    positions = np.array([[normalized_position(problem, row)[symbol] for symbol in symbols] for row in rows])
+    return assignments, positions
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+@pytest.mark.cvxpy
+def test_baseline_position_is_the_mean_thinning_position():
+    """Test that the baseline position is the mean normalized position of the lots when every stand is thinned."""
+    landscape = forest_landscape_data()
+    thinning = REGIMES.index("thinning")
+
+    positions = []
+    for lot in landscape.lots:
+        assignments, normalized = enumerate_normalized_positions(landscape, lot)
+        positions.append(normalized[assignments.index((thinning,) * len(landscape.lot_stands(lot)))])
+
+    expected = np.mean(positions, axis=0)
+    assert np.allclose([landscape.baseline_position[symbol] for symbol in ("npv", "habitat", "carbon")], expected)
+    assert all(0.0 <= value <= 1.0 for value in landscape.baseline_position.values())
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+@pytest.mark.cvxpy
+def test_baseline_is_the_nearest_solution_on_every_lot():
+    """Test that each lot's baseline configuration is its solution nearest to the baseline position, by enumeration."""
+    landscape = forest_landscape_data()
+    target = np.array([landscape.baseline_position[symbol] for symbol in ("npv", "habitat", "carbon")])
+
+    for lot in landscape.lots:
+        stands = landscape.lot_stands(lot)
+        assignments, normalized = enumerate_normalized_positions(landscape, lot)
+        distances = np.sum((normalized - target) ** 2, axis=1)
+
+        baseline = tuple(REGIMES.index(landscape.baseline[stand.id]) for stand in stands)
+        assert np.isclose(distances[assignments.index(baseline)], np.min(distances))
+
+        assert nearest_regimes(landscape, lot, landscape.baseline_position) == {
+            stand.id: landscape.baseline[stand.id] for stand in stands
+        }
+
+
+@pytest.mark.testproblem
+@pytest.mark.forest_problem
+@pytest.mark.cvxpy
+def test_other_lots_hold_the_baseline_by_default():
+    """Test that, unless stated otherwise, the other lots of a problem hold their baseline configuration."""
+    landscape = forest_landscape_data()
+    baseline_of_others = {stand.id: landscape.baseline[stand.id] for stand in landscape.stands if stand.lot != "A"}
+
+    # in the default landscape, the baseline is not simply every stand thinned
+    assert baseline_of_others != others_thinning(landscape, "A")
+
+    assert forest_landscape_problem(landscape, "A") == forest_landscape_problem(landscape, "A", baseline_of_others)
+    assert forest_landscape_problem(landscape, "A") != forest_landscape_problem(
+        landscape, "A", others_thinning(landscape, "A")
+    )

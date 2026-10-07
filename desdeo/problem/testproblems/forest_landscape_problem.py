@@ -11,6 +11,7 @@ import math
 import numpy as np
 from pydantic import BaseModel, Field
 
+from desdeo.problem.evaluator import PolarsEvaluator
 from desdeo.problem.schema import (
     Constraint,
     ConstraintTypeEnum,
@@ -22,6 +23,8 @@ from desdeo.problem.schema import (
     TensorVariable,
     VariableTypeEnum,
 )
+from desdeo.tools.cvxpy_solver_interfaces import CVXPYSolver, CVXPYSolverOptions
+from desdeo.tools.scalarization import add_normalized_squared_distance
 
 REGIMES: tuple[str, ...] = ("set_aside", "selection_cut", "thinning", "clearfell")
 """The management regimes available on every stand, in the order used by all regime-indexed values."""
@@ -149,8 +152,23 @@ class ForestLandscape(BaseModel):
     neighbours: dict[int, list[int]] = Field(
         description="Ids of the stands sharing an edge with each stand, regardless of the owner."
     )
+    reference: dict[int, str] = Field(
+        description=(
+            "The reference regime of each stand. The ideal and nadir of a lot are computed with the other lots in this"
+            " configuration, so that they are fixed once."
+        )
+    )
+    baseline_position: dict[str, float] = Field(
+        description=(
+            "The baseline position in normalized objective space: the mean position of all lots when every stand"
+            " holds its reference regime."
+        )
+    )
     baseline: dict[int, str] = Field(
-        description="The baseline regime of each stand, which the other lots hold unless stated otherwise."
+        description=(
+            "The baseline regime of each stand, which the other lots hold unless stated otherwise: on each lot, the"
+            " solution nearest to the baseline position."
+        )
     )
     coupling: CouplingParameters = Field(description="Parameters of the effects between stands of different owners.")
 
@@ -175,7 +193,7 @@ def _lot_grid_shape(stands_per_lot: int) -> tuple[int, int]:
 def forest_landscape_data(
     stands_per_lot: int = 4,
     seed: int = 0,
-    baseline_regime: str = "thinning",
+    reference_regime: str = "thinning",
     coupling: CouplingParameters | None = None,
 ) -> ForestLandscape:
     """Generate a synthetic forest landscape of four lots.
@@ -188,11 +206,18 @@ def forest_landscape_data(
     stand-specific factor and by a small regime-specific perturbation. The stand factor models
     site productivity for NPV and carbon, and site quality for the remaining quantities.
 
+    The baseline configuration of the landscape is defined in normalized objective space, so that it
+    is comparable across lots. The baseline position is the mean normalized position of the lots
+    when every stand holds the reference regime, and on each lot, the baseline configuration is the
+    solution nearest to that position (see `nearest_regimes`). With the default reference regime,
+    the other owners are as oriented towards timber, habitat, and carbon as business as usual,
+    relative to what their own lots can attain.
+
     Args:
         stands_per_lot (int, optional): the number of stands in each lot. Defaults to 4.
         seed (int, optional): seed for generating the areas and values. The same seed always
             gives the same landscape. Defaults to 0.
-        baseline_regime (str, optional): the regime every stand holds in the baseline
+        reference_regime (str, optional): the regime every stand holds in the reference
             configuration. Defaults to "thinning", i.e., business as usual.
         coupling (CouplingParameters | None, optional): parameters of the effects between stands
             of different owners. If `None`, the defaults of `CouplingParameters` are used.
@@ -205,8 +230,8 @@ def forest_landscape_data(
         msg = f"A lot must have at least two stands, got {stands_per_lot}."
         raise ValueError(msg)
 
-    if baseline_regime not in REGIMES:
-        msg = f"Unknown baseline regime '{baseline_regime}'; the regimes are {REGIMES}."
+    if reference_regime not in REGIMES:
+        msg = f"Unknown reference regime '{reference_regime}'; the regimes are {REGIMES}."
         raise ValueError(msg)
 
     rng = np.random.default_rng(seed)
@@ -248,14 +273,91 @@ def forest_landscape_data(
         for stand in stands
     }
 
-    return ForestLandscape(
+    reference = {stand.id: reference_regime for stand in stands}
+    # the baseline is not known yet: it is computed from the landscape in its reference configuration
+    landscape = ForestLandscape(
         regimes=list(REGIMES),
         lots=list(LOTS),
         stands=stands,
         neighbours=neighbours,
-        baseline={stand.id: baseline_regime for stand in stands},
+        reference=reference,
+        baseline_position={},
+        baseline=reference,
         coupling=coupling if coupling is not None else CouplingParameters(),
     )
+
+    positions = []
+    for lot in landscape.lots:
+        problem = forest_landscape_problem(landscape, lot, _other_lots(landscape, lot, reference))
+        xs = {
+            f"X_{stand.id}": [[float(regime == reference[stand.id]) for regime in landscape.regimes]]
+            for stand in landscape.lot_stands(lot)
+        }
+        positions.append(normalized_position(problem, PolarsEvaluator(problem).evaluate(xs).row(0, named=True)))
+    baseline_position = {
+        symbol: float(np.mean([position[symbol] for position in positions])) for symbol in positions[0]
+    }
+
+    baseline = {}
+    for lot in landscape.lots:
+        baseline |= nearest_regimes(landscape, lot, baseline_position)
+
+    return landscape.model_copy(update={"baseline_position": baseline_position, "baseline": baseline})
+
+
+def _other_lots(landscape: ForestLandscape, lot: str, configuration: dict[int, str]) -> dict[int, str]:
+    """Return the part of a configuration of the whole landscape that concerns the lots other than `lot`."""
+    return {stand_id: regime for stand_id, regime in configuration.items() if landscape.stands[stand_id].lot != lot}
+
+
+def normalized_position(problem: Problem, objective_values: dict[str, float]) -> dict[str, float]:
+    """Return the position of objective values in normalized objective space.
+
+    Each objective is 0 at its nadir and 1 at its ideal value.
+
+    Args:
+        problem (Problem): the problem, with an ideal and a nadir for every objective.
+        objective_values (dict[str, float]): the objective values, by objective symbol.
+
+    Returns:
+        dict[str, float]: the normalized objective values, by objective symbol.
+    """
+    return {
+        objective.symbol: (objective_values[objective.symbol] - objective.nadir) / (objective.ideal - objective.nadir)
+        for objective in problem.objectives
+    }
+
+
+def nearest_regimes(landscape: ForestLandscape, lot: str, position: dict[str, float]) -> dict[int, str]:
+    """Find the solution of a lot whose normalized objective vector is nearest to a position.
+
+    The distance is Euclidean, in the normalized objective space of the lot itself, i.e., against
+    its own fixed ideal and nadir. The objective values of the lot are computed with the other lots
+    in their reference configuration, the same in which the ideal and nadir are computed.
+
+    Args:
+        landscape (ForestLandscape): the landscape.
+        lot (str): the lot.
+        position (dict[str, float]): the position in normalized objective space, by objective symbol.
+
+    Raises:
+        RuntimeError: if the nearest solution could not be found.
+
+    Returns:
+        dict[int, str]: the regime of each stand of the lot in the nearest solution, by stand id.
+    """
+    problem = forest_landscape_problem(landscape, lot, _other_lots(landscape, lot, landscape.reference))
+    problem_w_distance, symbol = add_normalized_squared_distance(problem, "distance", position)
+    result = CVXPYSolver(problem_w_distance, CVXPYSolverOptions(solver="SCIP")).solve(symbol)
+
+    if not result.success:
+        msg = f"Could not find the solution of lot '{lot}' nearest to {position}: {result.message}"
+        raise RuntimeError(msg)
+
+    return {
+        stand.id: landscape.regimes[int(np.argmax(result.optimal_variables[f"X_{stand.id}"]))]
+        for stand in landscape.lot_stands(lot)
+    }
 
 
 def realized_values(
@@ -404,7 +506,7 @@ def forest_landscape_problem(
     The ideal point is exact. The nadir point is estimated from the payoff table, which is also exact
     here: the problem is separable over stands, so each objective is optimized by choosing its best
     regime on every stand, with no solver needed. Both are always computed with the other lots in
-    their baseline configuration, whatever `others` is, so that the ideal and nadir of a lot never
+    their reference configuration, whatever `others` is, so that the ideal and nadir of a lot never
     change.
 
     Args:
@@ -427,7 +529,7 @@ def forest_landscape_problem(
     n_regimes = len(landscape.regimes)
 
     values = realized_values(landscape, lot, others)
-    baseline_values = realized_values(landscape, lot)
+    reference_values = realized_values(landscape, lot, _other_lots(landscape, lot, landscape.reference))
 
     def weights(
         stand: Stand, quantity: str, aggregation: str, source: dict[int, dict[str, list[float]]] = values
@@ -479,8 +581,8 @@ def forest_landscape_problem(
     payoff = {
         row: {
             quantity: sum(
-                weights(stand, quantity, aggregation, baseline_values)[
-                    int(np.argmax(weights(stand, row, row_aggregation, baseline_values)))
+                weights(stand, quantity, aggregation, reference_values)[
+                    int(np.argmax(weights(stand, row, row_aggregation, reference_values)))
                 ]
                 for stand in stands
             )
