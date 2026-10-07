@@ -1739,6 +1739,60 @@ def add_objective_as_scalarization(problem: Problem, symbol: str, objective_symb
     return problem.add_scalarization(scalarization_function), symbol
 
 
+def add_normalized_squared_distance(problem: Problem, symbol: str, target: dict[str, float]) -> tuple[Problem, str]:
+    r"""Add the squared Euclidean distance to a target point in normalized objective space to a problem.
+
+    Minimizing the scalarization finds the solution whose normalized objective vector is nearest to the
+    target. The scalarization is defined as follows:
+
+    \begin{equation}
+        \mathcal{S}_\text{D}(F(\mathbf{x}); \mathbf{t}) = \sum_{i=1}^{k}
+        \left( \frac{f_i(\mathbf{x}) - z^\text{nad}_i}{z^\star_i - z^\text{nad}_i} - t_i \right)^2,
+    \end{equation}
+
+    where $\mathbf{t} = [t_1,\dots,t_k]$ is the target in normalized objective space, and
+    $\mathbf{z}^\star$ and $\mathbf{z}^\text{nad}$ are the ideal and nadir points of the problem. In
+    normalized objective space, each objective is 0 at its nadir and 1 at its ideal value, whether it is
+    to be minimized or maximized.
+
+    Args:
+        problem (Problem): the problem to which the scalarization should be added.
+        symbol (str): the symbol to reference the added scalarization function.
+        target (dict[str, float]): the target point in normalized objective space, with a component for
+            each objective.
+
+    Raises:
+        ScalarizationError: if the target is missing any of the objective components, or if the problem
+            lacks an ideal or nadir value for an objective.
+
+    Returns:
+        tuple[Problem, str]: A tuple containing a copy of the problem with the scalarization function added,
+            and the symbol of the added scalarization function.
+    """
+    if not all(obj.symbol in target for obj in problem.objectives):
+        msg = f"The given target {target} does not have a component defined for all the objectives."
+        raise ScalarizationError(msg)
+
+    if any(obj.ideal is None or obj.nadir is None for obj in problem.objectives):
+        msg = "The problem must have both an ideal and a nadir value defined for each objective."
+        raise ScalarizationError(msg)
+
+    terms = [
+        f"(({obj.symbol} - {obj.nadir}) / {obj.ideal - obj.nadir} - {target[obj.symbol]}) ** 2"
+        for obj in problem.objectives
+    ]
+
+    scalarization_function = ScalarizationFunction(
+        name="Normalized squared distance to a target point",
+        symbol=symbol,
+        func=" + ".join(terms),
+        is_linear=False,
+        is_convex=problem.is_linear,
+        is_twice_differentiable=problem.is_twice_differentiable,
+    )
+    return problem.add_scalarization(scalarization_function), symbol
+
+
 def add_epsilon_constraints(
     problem: Problem, symbol: str, constraint_symbols: dict[str, str], objective_symbol: str, epsilons: dict[str, float]
 ) -> tuple[Problem, str, list[str]]:

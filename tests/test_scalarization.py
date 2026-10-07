@@ -1,18 +1,23 @@
 """Test for adding and utilizing scalarization functions."""
 
+import itertools
+
 import numpy as np
 import numpy.testing as npt
 import pytest
 
-from desdeo.problem import ConstraintTypeEnum, SimulatorEvaluator
+from desdeo.problem import ConstraintTypeEnum, PolarsEvaluator, SimulatorEvaluator
 from desdeo.problem.testproblems import (
     dtlz2,
+    forest_landscape_problem,
     momip_ti7,
     river_pollution_problem,
     simple_test_problem,
 )
 from desdeo.tools import (
     BonminOptions,
+    CVXPYSolver,
+    CVXPYSolverOptions,
     NevergradGenericOptions,
     NevergradGenericSolver,
     PyomoBonminSolver,
@@ -49,6 +54,7 @@ from desdeo.tools.scalarization import (
     add_guess_sf_nondiff,
     add_nimbus_sf_diff,
     add_nimbus_sf_nondiff,
+    add_normalized_squared_distance,
     add_stom_sf_diff,
     add_stom_sf_nondiff,
     add_weighted_sums,
@@ -1445,3 +1451,57 @@ def test_add_desirability_funcs() -> None:
     evaluator = SimulatorEvaluator(problem_)
     outs = evaluator.evaluate(inputs)[added_funcs].to_numpy()
     assert np.all(outs <= 0) and np.all(outs >= -1), "Desirability values should be in [-1, 0]"
+
+
+@pytest.mark.scalarization
+@pytest.mark.cvxpy
+def test_add_normalized_squared_distance():
+    """Test that minimizing the normalized squared distance finds the solution nearest to the target.
+
+    The forest landscape problem has few enough solutions per lot to check the result against enumeration.
+    """
+    problem = forest_landscape_problem()
+
+    def normalize(values: dict[str, float]) -> np.ndarray:
+        return np.array([(values[o.symbol] - o.nadir) / (o.ideal - o.nadir) for o in problem.objectives])
+
+    # every solution of the lot, by enumeration
+    n_regimes = problem.variables[0].shape[0]
+    one_hot = np.eye(n_regimes).tolist()
+    assignments = list(itertools.product(range(n_regimes), repeat=len(problem.variables)))
+    xs = {
+        variable.symbol: [one_hot[assignment[j]] for assignment in assignments]
+        for j, variable in enumerate(problem.variables)
+    }
+    outcomes = PolarsEvaluator(problem).evaluate(xs)
+    normalized = np.array([normalize(row) for row in outcomes.iter_rows(named=True)])
+
+    for target in [{"npv": 0.5, "habitat": 0.5, "carbon": 0.5}, {"npv": 0.9, "habitat": 0.1, "carbon": 0.3}]:
+        problem_w_distance, symbol = add_normalized_squared_distance(problem, "distance", target)
+        result = CVXPYSolver(problem_w_distance, CVXPYSolverOptions(solver="SCIP")).solve(symbol)
+
+        assert result.success
+        target_vector = np.array([target[o.symbol] for o in problem.objectives])
+        found = np.sum((normalize(result.optimal_objectives) - target_vector) ** 2)
+        assert np.isclose(found, np.min(np.sum((normalized - target_vector) ** 2, axis=1)))
+
+    # a target at an attainable solution is found exactly
+    attainable = dict(zip([o.symbol for o in problem.objectives], normalized[17], strict=True))
+    problem_w_distance, symbol = add_normalized_squared_distance(problem, "distance", attainable)
+    result = CVXPYSolver(problem_w_distance, CVXPYSolverOptions(solver="SCIP")).solve(symbol)
+    npt.assert_allclose(normalize(result.optimal_objectives), normalized[17], atol=1e-6)
+
+
+@pytest.mark.scalarization
+def test_add_normalized_squared_distance_errors(river_w_fake_ideal_and_nadir):
+    """Test that the target must be complete and the problem must have an ideal and nadir."""
+    problem = river_w_fake_ideal_and_nadir
+
+    with pytest.raises(ScalarizationError, match="does not have a component"):
+        add_normalized_squared_distance(problem, "distance", {"f_1": 0.5})
+
+    problem_wo_nadir = problem.update_ideal_and_nadir(new_nadir=dict.fromkeys(problem.get_nadir_point()))
+    with pytest.raises(ScalarizationError, match="ideal and a nadir"):
+        add_normalized_squared_distance(
+            problem_wo_nadir, "distance", {o.symbol: 0.5 for o in problem_wo_nadir.objectives}
+        )
