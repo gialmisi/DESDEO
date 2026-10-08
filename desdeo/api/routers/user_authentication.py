@@ -31,6 +31,9 @@ class Tokens(BaseModel):
     token_type: str
 
 
+# A password hash no password matches, for users who never log in with a password, e.g., experiment subjects.
+UNUSABLE_PASSWORD_HASH = "!"  # noqa: S105
+
 # OAuth2PasswordBearer is a class that creates a dependency that will be used to get the token from the request.
 # The token will be used to authenticate the user.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
@@ -48,6 +51,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         bool: whether the plain password matches the hashed one.
     """
+    if hashed_password == UNUSABLE_PASSWORD_HASH:
+        return False
+
     password_byte_enc = plain_password.encode("utf-8")
 
     return bcrypt.checkpw(password=password_byte_enc, hashed_password=hashed_password.encode("utf-8"))

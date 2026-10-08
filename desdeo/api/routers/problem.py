@@ -181,10 +181,10 @@ def add_problem(
     user = context.user
     db_session = context.db_session
 
-    if user.role == UserRole.guest:
+    if user.role in (UserRole.guest, UserRole.subject):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Guest users are not allowed to add new problems.",
+            detail="Guest users and experiment subjects are not allowed to add new problems.",
         )
 
     effective_user = user

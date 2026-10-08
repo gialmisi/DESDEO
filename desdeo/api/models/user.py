@@ -20,6 +20,7 @@ class UserRole(str, Enum):
     dm = "dm"
     analyst = "analyst"
     admin = "admin"
+    subject = "subject"
 
 
 class UserBase(SQLModel):
