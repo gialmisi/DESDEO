@@ -114,6 +114,9 @@ __all__ = [  # noqa: RUF022
     "TensorConstantDB",
     "TensorVariableDB",
     "User",
+    "UserGroup",
+    "UserGroupMember",
+    "UserGroupProblem",
     "UserBase",
     "UserPublic",
     "UserRole",
@@ -364,4 +367,5 @@ from .state import (
     RPMState,
 )
 from .user import User, UserBase, UserPublic, UserRole
+from .user_group import UserGroup, UserGroupMember, UserGroupProblem
 from .utopia import UtopiaRequest, UtopiaResponse

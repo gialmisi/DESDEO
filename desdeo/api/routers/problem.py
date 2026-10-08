@@ -1,5 +1,6 @@
 """Defines end-points to access and manage problems."""
 
+import itertools
 import json
 from typing import Annotated
 
@@ -12,10 +13,10 @@ from desdeo.api.models import (
     ConstrainedVariantRequest,
     ConstrainedVariantResponse,
     ForestProblemMetaData,
+    Group,
     ProblemDB,
     ProblemInfo,
     ProblemInfoSmall,
-    Group,
     ProblemMetaDataDB,
     ProblemMetaDataGetRequest,
     ProblemSelectSolverRequest,
@@ -35,7 +36,7 @@ from desdeo.problem import Problem
 from desdeo.problem.schema import Constraint, ConstraintTypeEnum, TensorVariable
 from desdeo.tools.utils import available_solvers
 
-from .utils import ContextField, SessionContext, SessionContextGuard
+from .utils import ContextField, SessionContext, SessionContextGuard, user_group_problem_ids
 
 router = APIRouter(prefix="/problem")
 
@@ -90,10 +91,8 @@ def get_problems(
 
     groups = db_session.exec(select(Group)).all()
     visible_group_problem_ids = {
-        group.problem_id
-        for group in groups
-        if user.id == group.owner_id or user.id in (group.user_ids or [])
-    }
+        group.problem_id for group in groups if user.id == group.owner_id or user.id in (group.user_ids or [])
+    } | user_group_problem_ids(user, db_session)
     if visible_group_problem_ids:
         group_problems = db_session.exec(select(ProblemDB).where(ProblemDB.id.in_(visible_group_problem_ids))).all()
         for problem in group_problems:
@@ -123,10 +122,8 @@ def get_problems_info(
 
     groups = db_session.exec(select(Group)).all()
     visible_group_problem_ids = {
-        group.problem_id
-        for group in groups
-        if user.id == group.owner_id or user.id in (group.user_ids or [])
-    }
+        group.problem_id for group in groups if user.id == group.owner_id or user.id in (group.user_ids or [])
+    } | user_group_problem_ids(user, db_session)
     if visible_group_problem_ids:
         group_problems = db_session.exec(select(ProblemDB).where(ProblemDB.id.in_(visible_group_problem_ids))).all()
         for problem in group_problems:
@@ -611,7 +608,6 @@ def create_constrained_variant(
     # Pyomo creates tensor variables with index sets for each dimension of the shape,
     # so shape [60, 1] needs a 2D index (i, 1). Shape [3, 4] would enumerate all 12
     # elements as sv_1..sv_12 in row-major order with 1-based Pyomo indices.
-    import itertools
 
     var_symbol_to_expr: dict[str, str | list] = {}
     for v in problem.variables:
