@@ -26,6 +26,8 @@ from desdeo.api.models import (
     SolutionReference,
     StateDB,
     User,
+    UserGroupMember,
+    UserGroupProblem,
     UserRole,
     UserSavedSolutionDB,
 )
@@ -462,7 +464,29 @@ def fetch_problem_with_role_check(user: User, problem_id: int, session: Session)
         if user.id == group.owner_id or user.id in user_ids:
             return session.exec(select(ProblemDB).where(ProblemDB.id == problem_id)).first()
 
+    # Tertiary access path: problems granted to user groups the user is a member of.
+    if problem_id in user_group_problem_ids(user, session):
+        return session.exec(select(ProblemDB).where(ProblemDB.id == problem_id)).first()
+
     return None
+
+
+def user_group_problem_ids(user: User, session: Session) -> set[int]:
+    """Return the ids of the problems granted to the user groups that the user is a member of.
+
+    Args:
+        user (User): the user.
+        session (Session): the database session.
+
+    Returns:
+        set[int]: the ids of the problems.
+    """
+    statement = (
+        select(UserGroupProblem.problem_id)
+        .join(UserGroupMember, UserGroupMember.group_id == UserGroupProblem.group_id)
+        .where(UserGroupMember.user_id == user.id)
+    )
+    return set(session.exec(statement).all())
 
 
 def fetch_interactive_session_with_role_check(user: User, session_id: int, session: Session) -> InteractiveSessionDB:
