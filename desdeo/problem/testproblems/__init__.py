@@ -22,6 +22,7 @@ __all__ = [  # noqa: RUF022
     "forest_landscape_problem",
     "forest_problem",
     "forest_problem_discrete",
+    "forest_problem_income_carbon_habitat",
     "forest_training_problem",
     "gaa",
     "mcwb_equilateral_tbeam_problem",
@@ -91,7 +92,11 @@ from .ctp_problems import ctp1, ctp2, ctp3, ctp4, ctp5, ctp6, ctp7, ctp8
 from .dmitry_forest_problem_discrete import dmitry_forest_problem_disc
 from .dtlz_problems import dtlz1, dtlz2, dtlz4
 from .forest_landscape_problem import forest_landscape_data, forest_landscape_problem, forest_training_problem
-from .forest_problem import forest_problem, forest_problem_discrete
+from .forest_problem import (
+    forest_problem,
+    forest_problem_discrete,
+    forest_problem_income_carbon_habitat,
+)
 from .gaa_problem import gaa
 from .knapsack_problem import simple_knapsack, simple_knapsack_vectors
 from .lame_superspheres_problem import lame_superspheres
