@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 from sqlmodel import JSON, Column, Relationship, SQLModel, UniqueConstraint
 from sqlmodel import Field as SQLField
 
@@ -20,6 +20,23 @@ if TYPE_CHECKING:
     from .session import InteractiveSessionDB
     from .user import User
     from .user_group import UserGroup
+
+
+def _check_client_timestamp(value: str) -> str:
+    """Check that a client timestamp is an ISO 8601 date and time with a time zone, and return it unchanged."""
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as e:
+        msg = f"'{value}' is not an ISO 8601 date and time."
+        raise ValueError(msg) from e
+    if parsed.tzinfo is None:
+        msg = f"'{value}' has no time zone."
+        raise ValueError(msg)
+    return value
+
+
+ClientTimestamp = Annotated[str, AfterValidator(_check_client_timestamp)]
+"""A timestamp from a subject's browser, in ISO 8601 with a time zone; checked, but kept as the string received."""
 
 
 class TextPayload(BaseModel):
@@ -149,6 +166,16 @@ class ExperimentDefinition(BaseModel):
             msg = f"At most one commit stage can be the anchor, got {anchors}."
             raise ValueError(msg)
 
+        consent = self.stages[0]
+        if not (isinstance(consent, TextStage) and consent.required and not consent.payload.arm_bodies):
+            msg = "The first stage must be the consent: a required text stage, the same in every arm."
+            raise ValueError(msg)
+
+        required = [stage.required for stage in self.stages]
+        if required != sorted(required, reverse=True):
+            msg = "Optional stages must follow all the required stages."
+            raise ValueError(msg)
+
         return self
 
 
@@ -263,6 +290,9 @@ class ExperimentStageProgress(SQLModel, table=True):
         default=None, description="The client timestamp of exiting the stage, as received."
     )
     data: dict | None = SQLField(sa_column=Column(JSON), default=None, description="The data the stage produced.")
+    data_submitted_at: str | None = SQLField(
+        default=None, description="The client timestamp of submitting the data, as received."
+    )
 
     enrolment: ExperimentEnrolment = Relationship()
 
@@ -296,3 +326,82 @@ class ExperimentEvent(SQLModel, table=True):
     )
 
     enrolment: ExperimentEnrolment = Relationship()
+
+
+class TextStageData(BaseModel):
+    """The data a text stage produces: the subject's acknowledgement, which for the consent stage is the consent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    acknowledged: Literal[True]
+
+
+class MethodStageData(BaseModel):
+    """The data a method stage produces."""
+
+    model_config = ConfigDict(extra="allow")
+
+
+class CommitStageData(BaseModel):
+    """The data a commit stage produces: the state of the solution committed to."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    state_id: int = Field(description="The state, in the subject's interactive session, of the committed solution.")
+
+
+STAGE_DATA_MODELS: dict[str, type[BaseModel]] = {
+    "text": TextStageData,
+    "method": MethodStageData,
+    "commit": CommitStageData,
+}
+"""The model of the data of each stage type."""
+
+
+class ExperimentStageResponse(BaseModel):
+    """A stage as shown to a subject, with texts resolved for the subject's arm."""
+
+    ordinal: int = Field(description="The position of the stage, counted from zero.")
+    id: str = Field(description="The identifier of the stage.")
+    type: Literal["text", "method", "commit"]
+    required: bool
+    payload: TextPayload | MethodPayload | CommitPayload
+    data: dict | None = Field(description="The data stored for the stage so far, if any.")
+    is_last: bool = Field(description="Whether this is the last stage.")
+
+
+class ExperimentEnterRequest(BaseModel):
+    """The request to enter the current stage."""
+
+    client_timestamp: ClientTimestamp
+
+
+class ExperimentStageDataRequest(BaseModel):
+    """The request to store the data of the current stage."""
+
+    stage_ordinal: int = Field(description="The position of the current stage, guarding against stale requests.")
+    data: dict
+    client_timestamp: ClientTimestamp
+
+
+class ExperimentAdvanceRequest(BaseModel):
+    """The request to leave the current stage and enter the next one."""
+
+    stage_ordinal: int = Field(description="The position of the current stage, guarding against stale requests.")
+    client_timestamp: ClientTimestamp
+
+
+class ExperimentFlowResponse(BaseModel):
+    """The subject's current stage, or none if the subject has finished the experiment."""
+
+    stage: ExperimentStageResponse | None
+    finished: bool
+
+
+class ExperimentEventIn(BaseModel):
+    """An event sent by a subject's browser."""
+
+    stage_ordinal: int
+    event_type: ExperimentEventType
+    payload: dict = Field(default_factory=dict)
+    client_timestamp: ClientTimestamp

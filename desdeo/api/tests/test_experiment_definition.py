@@ -132,6 +132,9 @@ def test_hash_changes_with_a_text_file(experiment_folder: Path):
         ("{ treatment = ", "{ placebo = "),  # text for an unknown arm
         ("cut_points = [0.1, 0.3]", "cut_points = [0.3, 0.1]"),  # cut points not increasing
         ('body = "Neutral."', 'body = "Neutral."\nbody_file = "treatment.md"'),  # both a text and a file
+        ('id = "consent"\ntype = "text"', 'id = "consent"\ntype = "text"\nrequired = false'),  # optional consent
+        ('id = "anchoring"\ntype = "method"', 'id = "anchoring"\ntype = "method"\nrequired = false'),  # optional first
+        ('id = "consent"\ntype = "text"', 'id = "consent"\ntype = "commit"'),  # consent is not text
     ],
 )
 def test_invalid_definitions_are_rejected(experiment_folder: Path, old: str, new: str):
