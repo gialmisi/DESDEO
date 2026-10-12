@@ -17,6 +17,8 @@ from desdeo.api.models import (
     UserRole,
 )
 from desdeo.api.routers.user_authentication import UNUSABLE_PASSWORD_HASH
+from desdeo.api.utils.experiment_assignment import check_policy
+from desdeo.problem import Problem
 
 
 def problem_names(snapshot: ExperimentDefinitionDB) -> set[str]:
@@ -45,7 +47,8 @@ def create_experiment_run(
             Defaults to None.
 
     Raises:
-        ValueError: the problems do not match the problem names in the definition.
+        ValueError: the problems do not match the problem names in the definition, or the policy of the definition
+            bounds objectives a problem does not have or that have no ideal or nadir.
 
     Returns:
         ExperimentRun: the created run.
@@ -54,6 +57,11 @@ def create_experiment_run(
     if set(problems) != expected:
         msg = f"The problems must be given for exactly the names {sorted(expected)}, got {sorted(problems)}."
         raise ValueError(msg)
+
+    policy = snapshot.to_definition().policy
+    if policy is not None:
+        for problem in problems.values():
+            check_policy(policy, Problem.from_problemdb(problem))
 
     group = UserGroup(
         name=f"experiment-run:{slug}",

@@ -1,8 +1,8 @@
 """The flow of subjects through the stages of an experiment.
 
 The server owns the flow: a subject is always in exactly one stage, enters the stages in order, and leaves a stage
-only when its required data is stored. Texts that differ per arm are resolved for the subject's arm here, so the arm
-itself is never sent to the subject.
+only when its required data is stored. Leaving the anchor commit assigns the subject's arm. Texts that differ per arm
+are resolved for the subject's arm here, so the arm itself is never sent to the subject.
 """
 
 from fastapi import HTTPException, status
@@ -11,14 +11,17 @@ from sqlmodel import Session, select
 
 from desdeo.api.models import (
     STAGE_DATA_MODELS,
+    CommitStage,
+    CommitStageData,
     ExperimentDefinition,
     ExperimentDefinitionDB,
     ExperimentEnrolment,
     ExperimentStageProgress,
     ExperimentStageResponse,
-    StateDB,
     TextStage,
 )
+from desdeo.api.utils.experiment_assignment import assign_arm, committed_solution
+from desdeo.problem import Problem
 
 
 def enrolment_definition(session: Session, enrolment: ExperimentEnrolment) -> ExperimentDefinition:
@@ -135,12 +138,7 @@ def store_stage_data(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.errors()) from e
 
     if stage.type == "commit":
-        state = session.get(StateDB, validated.state_id)
-        if state is None or state.session_id != enrolment.session_id:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"State {validated.state_id} is not in the subject's interactive session.",
-            )
+        committed_solution(session, enrolment, validated)
 
     progress.data = validated.model_dump()
     progress.data_submitted_at = client_timestamp
@@ -175,6 +173,11 @@ def advance(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=f"Stage {stage_ordinal} is required and has no data."
         )
+
+    stage = definition.stages[stage_ordinal]
+    if isinstance(stage, CommitStage) and stage.payload.anchor and enrolment.arm is None:
+        problem_db, objectives = committed_solution(session, enrolment, CommitStageData.model_validate(progress.data))
+        assign_arm(session, enrolment, definition, Problem.from_problemdb(problem_db), objectives)
 
     progress.exited_at = client_timestamp
     session.add(progress)

@@ -28,6 +28,10 @@ arms = ["control", "treatment"]
 variable = "anchor_distance"
 cut_points = [0.1, 0.3]
 
+[policy.thresholds]
+f_1 = 0.5
+f_2 = 0.5
+
 [[stages]]
 id = "consent"
 type = "text"
@@ -135,6 +139,12 @@ def test_hash_changes_with_a_text_file(experiment_folder: Path):
         ('id = "consent"\ntype = "text"', 'id = "consent"\ntype = "text"\nrequired = false'),  # optional consent
         ('id = "anchoring"\ntype = "method"', 'id = "anchoring"\ntype = "method"\nrequired = false'),  # optional first
         ('id = "consent"\ntype = "text"', 'id = "consent"\ntype = "commit"'),  # consent is not text
+        ('variable = "anchor_distance"', 'variable = "age"'),  # unknown stratification variable
+        ("[policy.thresholds]\nf_1 = 0.5\nf_2 = 0.5\n", ""),  # anchor without a policy
+        (
+            'id = "anchor-commit"\ntype = "commit"',
+            'id = "anchor-commit"\ntype = "commit"\nrequired = false',
+        ),  # optional anchor
     ],
 )
 def test_invalid_definitions_are_rejected(experiment_folder: Path, old: str, new: str):

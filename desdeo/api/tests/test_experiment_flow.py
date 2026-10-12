@@ -119,13 +119,17 @@ def test_commit_needs_a_state_of_the_subjects_session(
     client: TestClient, session_and_user: dict, run: ExperimentRun, subject: dict
 ):
     """Test that a commit stage accepts only a state in the subject's own interactive session."""
+    # offset the ids of the state rows from the ids of the method states the method end-points return
+    session_and_user["session"].add(StateDB())
+    session_and_user["session"].commit()
+
     _consent(client, subject)
     state_id = _solve(client, run, subject["access_token"])
     _post(client, "stage/data", {"stage_ordinal": 1, "data": {"state_id": state_id}, "client_timestamp": T3}, subject)
     _post(client, "stage/advance", {"stage_ordinal": 1, "client_timestamp": T3}, subject)
 
     other_state_id = _solve(client, run, login(client))  # the analyst's state, in no subject's session
-    for data in ({"state_id": other_state_id}, {"state_id": 10_000}, {}):
+    for data in ({"state_id": other_state_id}, {"state_id": 10_000}, {"state_id": state_id, "solution_index": 1}, {}):
         response = _post(client, "stage/data", {"stage_ordinal": 2, "data": data, "client_timestamp": T3}, subject)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -133,8 +137,7 @@ def test_commit_needs_a_state_of_the_subjects_session(
         client, "stage/data", {"stage_ordinal": 2, "data": {"state_id": state_id}, "client_timestamp": T3}, subject
     )
     assert response.status_code == status.HTTP_200_OK
-    assert response.json()["data"] == {"state_id": state_id}
-    assert session_and_user["session"].get(StateDB, state_id).session_id is not None
+    assert response.json()["data"] == {"state_id": state_id, "solution_index": 0}
 
 
 def _walk_to_transition(client: TestClient, run: ExperimentRun, subject: dict) -> dict:
@@ -147,9 +150,7 @@ def _walk_to_transition(client: TestClient, run: ExperimentRun, subject: dict) -
     return response
 
 
-@pytest.mark.parametrize(
-    "arm_and_body", [(None, "Neutral."), ("control", "Neutral."), ("treatment", "You will see more.\n")]
-)
+@pytest.mark.parametrize("arm_and_body", [("control", "Neutral."), ("treatment", "You will see more.\n")])
 def test_texts_are_resolved_for_the_arm_without_revealing_it(
     client: TestClient, session_and_user: dict, run: ExperimentRun, subject: dict, arm_and_body: tuple
 ):

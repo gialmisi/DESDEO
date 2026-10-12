@@ -118,7 +118,12 @@ class Stratification(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    variable: str = Field(description="The name of the quantity the strata are cut from.")
+    variable: Literal["anchor_distance"] = Field(
+        description=(
+            "The quantity the strata are cut from. `anchor_distance` is the Euclidean distance of the anchor to the "
+            "compliant region of the policy, in objective space normalized by the problem's ideal and nadir."
+        )
+    )
     cut_points: list[float] = Field(
         description="Strictly increasing cut points; `n` cut points give `n + 1` strata.", min_length=1
     )
@@ -132,6 +137,20 @@ class Stratification(BaseModel):
         return self
 
 
+class Policy(BaseModel):
+    """A policy: a compliant region in objective space, fixed in advance and the same for every subject."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    thresholds: dict[str, float] = Field(
+        description=(
+            "The threshold of each bounded objective, by symbol and in the objective's own units. A compliant "
+            "solution is at least as good as each threshold. Objectives without a threshold are not bounded."
+        ),
+        min_length=1,
+    )
+
+
 class ExperimentDefinition(BaseModel):
     """A validated experiment definition."""
 
@@ -142,6 +161,7 @@ class ExperimentDefinition(BaseModel):
     version: str = Field(description="The version of the definition. Content changes require a new version.")
     arms: list[str] = Field(description="The labels of the arms.", min_length=1)
     stratification: Stratification
+    policy: Policy | None = Field(default=None, description="The policy, needed when arms are assigned at an anchor.")
     stages: list[Stage] = Field(description="The stages in the order subjects pass through them.", min_length=1)
 
     @model_validator(mode="after")
@@ -164,6 +184,12 @@ class ExperimentDefinition(BaseModel):
         anchors = [stage.id for stage in self.stages if isinstance(stage, CommitStage) and stage.payload.anchor]
         if len(anchors) > 1:
             msg = f"At most one commit stage can be the anchor, got {anchors}."
+            raise ValueError(msg)
+        if any(isinstance(s, CommitStage) and s.payload.anchor and not s.required for s in self.stages):
+            msg = "The anchor commit stage must be required."
+            raise ValueError(msg)
+        if anchors and self.policy is None:
+            msg = "A policy is needed to stratify subjects at the anchor."
             raise ValueError(msg)
 
         consent = self.stages[0]
@@ -347,7 +373,13 @@ class CommitStageData(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    state_id: int = Field(description="The state, in the subject's interactive session, of the committed solution.")
+    state_id: int = Field(
+        description=(
+            "The id of the method state with the committed solution, as returned by the method's end-point. The state "
+            "must be in the subject's interactive session."
+        )
+    )
+    solution_index: int = Field(default=0, ge=0, description="The index of the committed solution in the state.")
 
 
 STAGE_DATA_MODELS: dict[str, type[BaseModel]] = {
