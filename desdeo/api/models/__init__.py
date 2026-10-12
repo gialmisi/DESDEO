@@ -121,6 +121,8 @@ __all__ = [  # noqa: RUF022
     "CommitStage",
     "ExperimentDefinition",
     "ExperimentDefinitionDB",
+    "ExperimentEnrolment",
+    "ExperimentRun",
     "MethodPayload",
     "MethodStage",
     "Stage",
@@ -236,6 +238,20 @@ from .enautilus import (
     ENautilusStepResponse,
     ENautilusTreeNodeResponse,
 )
+from .experiment import (
+    CommitPayload,
+    CommitStage,
+    ExperimentDefinition,
+    ExperimentDefinitionDB,
+    ExperimentEnrolment,
+    ExperimentRun,
+    MethodPayload,
+    MethodStage,
+    Stage,
+    Stratification,
+    TextPayload,
+    TextStage,
+)
 from .gdm.gdm_aggregate import (
     Group,
     GroupCreateRequest,
@@ -269,18 +285,6 @@ from .gdm.gnimbus import (
     GNIMBUSSwitchPhaseResponse,
     OptimizationPreference,
     VotingPreference,
-)
-from .experiment import (
-    CommitPayload,
-    CommitStage,
-    ExperimentDefinition,
-    ExperimentDefinitionDB,
-    MethodPayload,
-    MethodStage,
-    Stage,
-    Stratification,
-    TextPayload,
-    TextStage,
 )
 from .generic import (
     GenericIntermediateSolutionResponse,

@@ -6,11 +6,16 @@ definition it was collected with.
 """
 
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlmodel import JSON, Column, SQLModel, UniqueConstraint
+from sqlmodel import JSON, Column, Relationship, SQLModel, UniqueConstraint
 from sqlmodel import Field as SQLField
+
+if TYPE_CHECKING:
+    from .session import InteractiveSessionDB
+    from .user import User
+    from .user_group import UserGroup
 
 
 class TextPayload(BaseModel):
@@ -158,3 +163,63 @@ class ExperimentDefinitionDB(SQLModel, table=True):
     def to_definition(self) -> ExperimentDefinition:
         """Return the stored definition as a validated model."""
         return ExperimentDefinition.model_validate(self.definition)
+
+
+class ExperimentRun(SQLModel, table=True):
+    """The table model of a run of an experiment, e.g., its pilot or its live data collection.
+
+    Subjects enrolled in a run are members of its group, which grants them access to the run's problems. Runs are
+    kept apart, so that the data of one run is exactly the data of the subjects in its group.
+    """
+
+    id: int | None = SQLField(primary_key=True, default=None)
+    slug: str = SQLField(index=True, unique=True, description="The identifier of the run in its campaign link.")
+    label: str = SQLField(description="A human-readable label of the run, e.g., 'pilot' or 'live'.")
+    definition_id: int = SQLField(foreign_key="experimentdefinitiondb.id")
+    group_id: int = SQLField(foreign_key="usergroup.id")
+    problems: dict[str, int] = SQLField(
+        sa_column=Column(JSON), default_factory=dict, description="The stored problem of each problem name."
+    )
+    is_open: bool = SQLField(default=True, description="Whether the campaign link still enrols new subjects.")
+    created_at: datetime = SQLField(default_factory=lambda: datetime.now(UTC))
+
+    definition: ExperimentDefinitionDB = Relationship()
+    group: "UserGroup" = Relationship()
+
+
+class ExperimentEnrolment(SQLModel, table=True):
+    """The table model of the enrolment of a subject in an experiment run.
+
+    The assignment fields are null until the subject commits to the anchor. The interactive session holds the
+    subject's method states; it is created at enrolment, not at the first solve.
+    """
+
+    id: int | None = SQLField(primary_key=True, default=None)
+    user_id: int = SQLField(foreign_key="user.id", unique=True)
+    run_id: int = SQLField(foreign_key="experimentrun.id", index=True)
+    experiment_id: str = SQLField(description="The identifier of the experiment, at enrolment.")
+    content_hash: str = SQLField(description="The content hash of the experiment definition, at enrolment.")
+    session_id: int = SQLField(foreign_key="interactivesessiondb.id")
+    resume_token_hash: str = SQLField(
+        index=True, unique=True, description="The SHA-256 hash of the resume token stored in the browser."
+    )
+    created_at: datetime = SQLField(default_factory=lambda: datetime.now(UTC))
+
+    arm: str | None = SQLField(default=None, description="The assigned arm.")
+    stratum: int | None = SQLField(default=None, description="The stratum, counted from zero.")
+    stratification_value: float | None = SQLField(
+        default=None, description="The value of the stratification variable the stratum was cut from."
+    )
+    is_binding: bool | None = SQLField(
+        default=None, description="Whether the compliant region binds the anchor. Computed in every arm."
+    )
+    assignment_details: dict | None = SQLField(
+        sa_column=Column(JSON), default=None, description="How the arm was assigned, e.g., the counts balanced on."
+    )
+    assigned_at: datetime | None = SQLField(default=None)
+
+    token_revoked: bool = SQLField(default=False, description="Whether the subject's tokens have been revoked.")
+
+    user: "User" = Relationship()
+    run: ExperimentRun = Relationship()
+    session: "InteractiveSessionDB" = Relationship()
