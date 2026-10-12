@@ -6,6 +6,8 @@ import secrets
 from sqlmodel import Session, select
 
 from desdeo.api.models import (
+    CommitStage,
+    ExperimentDefinition,
     ExperimentDefinitionDB,
     ExperimentEnrolment,
     ExperimentRun,
@@ -18,7 +20,22 @@ from desdeo.api.models import (
 )
 from desdeo.api.routers.user_authentication import UNUSABLE_PASSWORD_HASH
 from desdeo.api.utils.experiment_assignment import check_policy
+from desdeo.api.utils.explanation_providers import explanation_provider
 from desdeo.problem import Problem
+
+
+def anchor_ordinal(definition: ExperimentDefinition) -> int | None:
+    """Return the position of the anchor commit stage, or None if there is no anchor."""
+    return next(
+        (i for i, stage in enumerate(definition.stages) if isinstance(stage, CommitStage) and stage.payload.anchor),
+        None,
+    )
+
+
+def explained_problem_names(definition: ExperimentDefinition) -> set[str]:
+    """Return the names of the problems of the method stages after the anchor, where explanations are shown."""
+    after = definition.stages[anchor_ordinal(definition) + 1 :]
+    return {stage.payload.problem for stage in after if isinstance(stage, MethodStage)}
 
 
 def problem_names(snapshot: ExperimentDefinitionDB) -> set[str]:
@@ -47,8 +64,9 @@ def create_experiment_run(
             Defaults to None.
 
     Raises:
-        ValueError: the problems do not match the problem names in the definition, or the policy of the definition
-            bounds objectives a problem does not have or that have no ideal or nadir.
+        ValueError: the problems do not match the problem names in the definition, the policy of the definition
+            bounds objectives a problem does not have or that have no ideal or nadir, or the explanation provider
+            cannot explain solutions of a problem of a stage after the anchor.
 
     Returns:
         ExperimentRun: the created run.
@@ -58,10 +76,14 @@ def create_experiment_run(
         msg = f"The problems must be given for exactly the names {sorted(expected)}, got {sorted(problems)}."
         raise ValueError(msg)
 
-    policy = snapshot.to_definition().policy
-    if policy is not None:
+    definition = snapshot.to_definition()
+    if definition.policy is not None:
         for problem in problems.values():
-            check_policy(policy, Problem.from_problemdb(problem))
+            check_policy(definition.policy, Problem.from_problemdb(problem))
+    if definition.explanation is not None:
+        provider = explanation_provider(definition.explanation.provider, definition.explanation.options)
+        for name in explained_problem_names(definition):
+            provider.check(Problem.from_problemdb(problems[name]))
 
     group = UserGroup(
         name=f"experiment-run:{slug}",

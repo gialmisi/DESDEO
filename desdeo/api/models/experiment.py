@@ -151,6 +151,18 @@ class Policy(BaseModel):
     )
 
 
+class ExplanationConfig(BaseModel):
+    """An explanation shown to the subjects of some arms at every method iteration after the anchor."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(
+        description="The name of the provider computing the explanation, from `desdeo.api.utils.explanation_providers`."
+    )
+    arms: list[str] = Field(description="The arms whose subjects are shown the explanation.", min_length=1)
+    options: dict = Field(default_factory=dict, description="The options of the provider.")
+
+
 class ExperimentDefinition(BaseModel):
     """A validated experiment definition."""
 
@@ -162,6 +174,9 @@ class ExperimentDefinition(BaseModel):
     arms: list[str] = Field(description="The labels of the arms.", min_length=1)
     stratification: Stratification
     policy: Policy | None = Field(default=None, description="The policy, needed when arms are assigned at an anchor.")
+    explanation: ExplanationConfig | None = Field(
+        default=None, description="The explanation shown after the anchor, if any arm is shown one."
+    )
     stages: list[Stage] = Field(description="The stages in the order subjects pass through them.", min_length=1)
 
     @model_validator(mode="after")
@@ -191,6 +206,13 @@ class ExperimentDefinition(BaseModel):
         if anchors and self.policy is None:
             msg = "A policy is needed to stratify subjects at the anchor."
             raise ValueError(msg)
+        if self.explanation is not None:
+            if not anchors:
+                msg = "An explanation is shown after the anchor, so it needs an anchor commit stage."
+                raise ValueError(msg)
+            if unknown := set(self.explanation.arms) - set(self.arms):
+                msg = f"The explanation is shown to unknown arms {sorted(unknown)}."
+                raise ValueError(msg)
 
         consent = self.stages[0]
         if not (isinstance(consent, TextStage) and consent.required and not consent.payload.arm_bodies):
@@ -354,6 +376,23 @@ class ExperimentEvent(SQLModel, table=True):
     enrolment: ExperimentEnrolment = Relationship()
 
 
+class ExperimentExplanation(SQLModel, table=True):
+    """The table model of an explanation shown to a subject, for a solution of a method stage."""
+
+    __table_args__ = (UniqueConstraint("enrolment_id", "state_id", "solution_index"),)
+
+    id: int | None = SQLField(primary_key=True, default=None)
+    enrolment_id: int = SQLField(foreign_key="experimentenrolment.id", index=True)
+    stage_ordinal: int = SQLField(description="The position of the method stage the solution was found in.")
+    state_id: int = SQLField(description="The id of the method state with the solution explained.")
+    solution_index: int = SQLField(description="The index of the solution explained in the state.")
+    provider: str = SQLField(description="The name of the provider that computed the explanation.")
+    content_hash: str = SQLField(description="The SHA-256 hash of the canonical JSON of the payload.")
+    payload: dict = SQLField(sa_column=Column(JSON), description="The explanation, as computed by the provider.")
+    client_timestamp: str = SQLField(description="The client timestamp of the request, as received.")
+    created_at: datetime = SQLField(default_factory=lambda: datetime.now(UTC))
+
+
 class TextStageData(BaseModel):
     """The data a text stage produces: the subject's acknowledgement, which for the consent stage is the consent."""
 
@@ -437,3 +476,19 @@ class ExperimentEventIn(BaseModel):
     event_type: ExperimentEventType
     payload: dict = Field(default_factory=dict)
     client_timestamp: ClientTimestamp
+
+
+class ExperimentExplanationRequest(BaseModel):
+    """The request for the explanation of a solution the subject has found in the current method stage."""
+
+    stage_ordinal: int = Field(description="The position of the current stage, guarding against stale requests.")
+    state_id: int = Field(description="The id of the method state with the solution, as returned by the method.")
+    solution_index: int = Field(default=0, ge=0, description="The index of the solution in the state.")
+    client_timestamp: ClientTimestamp
+
+
+class ExperimentExplanationResponse(BaseModel):
+    """The explanation of a solution, as computed by the experiment's explanation provider."""
+
+    content_hash: str = Field(description="The SHA-256 hash of the canonical JSON of the payload.")
+    payload: dict = Field(description="The explanation; its content depends on the provider.")

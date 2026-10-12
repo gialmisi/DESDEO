@@ -78,7 +78,7 @@ def _enter(
     return progress
 
 
-def _current(session: Session, enrolment: ExperimentEnrolment, stage_ordinal: int) -> ExperimentStageProgress:
+def current_progress(session: Session, enrolment: ExperimentEnrolment, stage_ordinal: int) -> ExperimentStageProgress:
     """Return the progress of the current stage, checking that it is the stage the request is about."""
     progress = latest_progress(session, enrolment)
     if progress is None or progress.exited_at is not None or progress.stage_ordinal != stage_ordinal:
@@ -129,7 +129,7 @@ def store_stage_data(
         ExperimentStageResponse: the stage with the stored data.
     """
     definition = enrolment_definition(session, enrolment)
-    progress = _current(session, enrolment, stage_ordinal)
+    progress = current_progress(session, enrolment, stage_ordinal)
     stage = definition.stages[stage_ordinal]
 
     try:
@@ -167,7 +167,7 @@ def advance(
         ExperimentStageResponse | None: the next stage, or None if the left stage was the last one.
     """
     definition = enrolment_definition(session, enrolment)
-    progress = _current(session, enrolment, stage_ordinal)
+    progress = current_progress(session, enrolment, stage_ordinal)
 
     if definition.stages[stage_ordinal].required and progress.data is None:
         raise HTTPException(

@@ -14,6 +14,7 @@ from pathlib import Path
 from sqlmodel import Session, select
 
 from desdeo.api.models.experiment import ExperimentDefinition, ExperimentDefinitionDB
+from desdeo.api.utils.explanation_providers import explanation_provider
 
 FILE_SUFFIX = "_file"
 
@@ -51,6 +52,10 @@ def load_experiment_definition(path: str | Path) -> ExperimentDefinition:
     Args:
         path (str | Path): the path of the TOML file. Files referred to with `_file` keys are relative to its folder.
 
+    Raises:
+        ValueError: the definition is invalid, or names an explanation provider that does not exist or gives it
+            invalid options.
+
     Returns:
         ExperimentDefinition: the validated definition, with the referred files inlined.
     """
@@ -58,7 +63,24 @@ def load_experiment_definition(path: str | Path) -> ExperimentDefinition:
     with path.open("rb") as file:
         data = tomllib.load(file)
 
-    return ExperimentDefinition.model_validate(_inline_files(data, path.parent))
+    definition = ExperimentDefinition.model_validate(_inline_files(data, path.parent))
+    if definition.explanation is not None:
+        explanation_provider(definition.explanation.provider, definition.explanation.options)
+
+    return definition
+
+
+def content_hash(data: dict | list) -> str:
+    """Compute the SHA-256 hash of the canonical JSON of data: sorted keys, no whitespace, unescaped Unicode.
+
+    Args:
+        data (dict | list): the data, serializable to JSON.
+
+    Returns:
+        str: the SHA-256 hash, as a hexadecimal string.
+    """
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def definition_hash(definition: ExperimentDefinition) -> str:
@@ -73,10 +95,7 @@ def definition_hash(definition: ExperimentDefinition) -> str:
     Returns:
         str: the SHA-256 hash, as a hexadecimal string.
     """
-    canonical = json.dumps(
-        definition.model_dump(mode="json"), sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return content_hash(definition.model_dump(mode="json"))
 
 
 def store_experiment_definition(session: Session, definition: ExperimentDefinition) -> ExperimentDefinitionDB:

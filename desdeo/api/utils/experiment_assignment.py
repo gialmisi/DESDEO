@@ -25,6 +25,50 @@ from desdeo.api.models import (
     StateDB,
 )
 from desdeo.problem import Problem
+from desdeo.tools import SolverResults
+
+
+def subject_solution(
+    session: Session, enrolment: ExperimentEnrolment, state_id: int, solution_index: int, problem_id: int | None = None
+) -> tuple[ProblemDB, SolverResults]:
+    """Return a solution a subject has found, and its problem.
+
+    Args:
+        session (Session): the database session.
+        enrolment (ExperimentEnrolment): the subject's enrolment.
+        state_id (int): the id of the method state with the solution, as returned by the method's end-point.
+        solution_index (int): the index of the solution in the state.
+        problem_id (int | None, optional): the id of the problem the solution must be of. Defaults to None, any
+            problem of the subject's run.
+
+    Raises:
+        HTTPException: 422 if the state is not in the subject's interactive session, is not of the problem (or of a
+            problem of the subject's run), or has no solution at the index.
+
+    Returns:
+        tuple[ProblemDB, SolverResults]: the problem and the solution.
+    """
+    state_db = session.exec(select(StateDB).where(StateDB.state_id == state_id)).first()
+    if state_db is None or state_db.session_id != enrolment.session_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"State {state_id} is not in the subject's interactive session.",
+        )
+    problem_ids = enrolment.run.problems.values() if problem_id is None else [problem_id]
+    if state_db.problem_id not in problem_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"State {state_id} is not of a problem of the experiment's stage.",
+        )
+
+    solver_results = getattr(state_db.state, "solver_results", None) or []
+    if solution_index >= len(solver_results):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"State {state_id} has no solution {solution_index}.",
+        )
+
+    return state_db.problem, solver_results[solution_index]
 
 
 def committed_solution(
@@ -32,38 +76,11 @@ def committed_solution(
 ) -> tuple[ProblemDB, dict[str, float]]:
     """Return the problem and the objective values of a solution a subject commits to.
 
-    Args:
-        session (Session): the database session.
-        enrolment (ExperimentEnrolment): the subject's enrolment.
-        data (CommitStageData): the data of the commit stage.
-
     Raises:
-        HTTPException: 422 if the state is not in the subject's interactive session, is not of a problem of the
-            subject's run, or has no solution at the index.
-
-    Returns:
-        tuple[ProblemDB, dict[str, float]]: the problem and the objective values of the solution.
+        HTTPException: 422 if the solution is not one the subject has found (see `subject_solution`).
     """
-    state_db = session.exec(select(StateDB).where(StateDB.state_id == data.state_id)).first()
-    if state_db is None or state_db.session_id != enrolment.session_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"State {data.state_id} is not in the subject's interactive session.",
-        )
-    if state_db.problem_id not in enrolment.run.problems.values():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"State {data.state_id} is not of a problem of the experiment.",
-        )
-
-    solver_results = getattr(state_db.state, "solver_results", None) or []
-    if data.solution_index >= len(solver_results):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"State {data.state_id} has no solution {data.solution_index}.",
-        )
-
-    return state_db.problem, solver_results[data.solution_index].optimal_objectives
+    problem_db, solution = subject_solution(session, enrolment, data.state_id, data.solution_index)
+    return problem_db, solution.optimal_objectives
 
 
 def check_policy(policy: Policy, problem: Problem) -> None:

@@ -16,6 +16,8 @@ from desdeo.api.models import (
     ExperimentEnterRequest,
     ExperimentEvent,
     ExperimentEventIn,
+    ExperimentExplanationRequest,
+    ExperimentExplanationResponse,
     ExperimentFlowResponse,
     ExperimentRun,
     ExperimentStageDataRequest,
@@ -23,6 +25,7 @@ from desdeo.api.models import (
     User,
 )
 from desdeo.api.routers.user_authentication import create_jwt_token, get_current_user
+from desdeo.api.utils.experiment_explanation import explain_solution
 from desdeo.api.utils.experiment_flow import advance, consent_record, enter_current_stage, store_stage_data
 from desdeo.api.utils.experiment_run import enrol_subject, find_enrolment
 
@@ -122,6 +125,21 @@ def advance_stage(
     """Leave the current stage, if its required data is stored, and enter the next one."""
     stage = advance(session, enrolment, request.stage_ordinal, request.client_timestamp)
     return ExperimentFlowResponse(stage=stage, finished=stage is None)
+
+
+@router.post("/explanation")
+def get_explanation(
+    request: ExperimentExplanationRequest,
+    enrolment: Annotated[ExperimentEnrolment, Depends(get_enrolment)],
+    session: Annotated[Session, Depends(get_session)],
+) -> ExperimentExplanationResponse:
+    """Return the explanation of a solution the subject has found in the current method stage.
+
+    Only subjects of the arms shown the explanation get one, and only after the anchor; for others the explanation is
+    not found.
+    """
+    explanation = explain_solution(session, enrolment, request)
+    return ExperimentExplanationResponse(content_hash=explanation.content_hash, payload=explanation.payload)
 
 
 @router.get("/consent", response_class=PlainTextResponse)
