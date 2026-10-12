@@ -3,9 +3,13 @@
 An experiment definition is authored as a TOML file (see `desdeo.api.utils.experiment_definition`), validated with the
 models below, and stored as a snapshot together with a hash of its content. The hash ties collected data to the exact
 definition it was collected with.
+
+Timestamps sent by subjects' browsers are stored as the strings received, without parsing or correction. Client clocks
+are not corrected; response times are differences of two client timestamps, so a constant clock offset cancels.
 """
 
 from datetime import UTC, datetime
+from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -223,3 +227,55 @@ class ExperimentEnrolment(SQLModel, table=True):
     user: "User" = Relationship()
     run: ExperimentRun = Relationship()
     session: "InteractiveSessionDB" = Relationship()
+
+
+class ExperimentStageProgress(SQLModel, table=True):
+    """The table model of a subject's progress through one stage, one row per stage entered.
+
+    A row with an entry but no exit timestamp belongs to a subject who is in the stage or abandoned it.
+    """
+
+    __table_args__ = (UniqueConstraint("enrolment_id", "stage_ordinal"),)
+
+    id: int | None = SQLField(primary_key=True, default=None)
+    enrolment_id: int = SQLField(foreign_key="experimentenrolment.id", index=True)
+    stage_ordinal: int = SQLField(description="The position of the stage in the definition, counted from zero.")
+    stage_id: str = SQLField(description="The identifier of the stage in the definition.")
+    entered_at: str = SQLField(description="The client timestamp of entering the stage, as received.")
+    exited_at: str | None = SQLField(
+        default=None, description="The client timestamp of exiting the stage, as received."
+    )
+    data: dict | None = SQLField(sa_column=Column(JSON), default=None, description="The data the stage produced.")
+
+    enrolment: ExperimentEnrolment = Relationship()
+
+
+class ExperimentEventType(str, Enum):
+    """The types of events recorded during an experiment."""
+
+    stage_entered = "stage_entered"
+    stage_exited = "stage_exited"
+    reference_point_submitted = "reference_point_submitted"
+    solutions_returned = "solutions_returned"
+    solution_selected = "solution_selected"
+    solution_committed = "solution_committed"
+    item_answered = "item_answered"
+    navigation_backward = "navigation_backward"
+    visibility_changed = "visibility_changed"
+    constraint_violation_attempted = "constraint_violation_attempted"
+
+
+class ExperimentEvent(SQLModel, table=True):
+    """The table model of an event recorded during an experiment."""
+
+    id: int | None = SQLField(primary_key=True, default=None)
+    enrolment_id: int = SQLField(foreign_key="experimentenrolment.id", index=True)
+    stage_ordinal: int = SQLField(description="The position of the stage the event happened in, counted from zero.")
+    event_type: str = SQLField(index=True, description="The type of the event, one of `ExperimentEventType`.")
+    payload: dict = SQLField(sa_column=Column(JSON), default_factory=dict, description="Data specific to the type.")
+    client_timestamp: str = SQLField(description="The client timestamp of the event, in UTC, as received.")
+    received_at: datetime = SQLField(
+        default_factory=lambda: datetime.now(UTC), description="When the server received the event."
+    )
+
+    enrolment: ExperimentEnrolment = Relationship()

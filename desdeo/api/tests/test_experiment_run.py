@@ -1,4 +1,4 @@
-"""Tests for experiment runs and enrolments."""
+"""Tests for experiment runs, enrolments, stage progress, and events."""
 
 import hashlib
 from pathlib import Path
@@ -10,7 +10,10 @@ from sqlmodel import Session, select
 from desdeo.api.models import (
     ExperimentDefinitionDB,
     ExperimentEnrolment,
+    ExperimentEvent,
+    ExperimentEventType,
     ExperimentRun,
+    ExperimentStageProgress,
     InteractiveSessionDB,
     ProblemDB,
     User,
@@ -145,3 +148,72 @@ def test_a_subject_is_enrolled_once(session_and_user: dict, snapshot: Experiment
     )
     with pytest.raises(IntegrityError):
         db_session.commit()
+
+
+def test_stage_progress_records_entry_and_exit_independently(session_and_user: dict, snapshot: ExperimentDefinitionDB):
+    """Test that a stage can be entered without being exited, and that exit and data are stored later."""
+    db_session = session_and_user["session"]
+    run = create_experiment_run(db_session, snapshot, "pilot", "pilot", {"study": _problem(db_session)})
+    enrolment = _enrol(db_session, run, "subject")
+
+    progress = ExperimentStageProgress(
+        enrolment=enrolment, stage_ordinal=0, stage_id="consent", entered_at="2026-10-12T09:00:00.000Z"
+    )
+    db_session.add(progress)
+    db_session.commit()
+    db_session.expire_all()
+
+    stored = db_session.get(ExperimentStageProgress, progress.id)
+    assert stored.entered_at == "2026-10-12T09:00:00.000Z"
+    assert stored.exited_at is None
+    assert stored.data is None
+
+    stored.exited_at = "2026-10-12T09:01:30.250Z"
+    stored.data = {"consented": True}
+    db_session.add(stored)
+    db_session.commit()
+    db_session.expire_all()
+
+    stored = db_session.get(ExperimentStageProgress, progress.id)
+    assert (stored.entered_at, stored.exited_at) == ("2026-10-12T09:00:00.000Z", "2026-10-12T09:01:30.250Z")
+    assert stored.data == {"consented": True}
+
+    # a stage is entered once per subject
+    db_session.add(
+        ExperimentStageProgress(
+            enrolment_id=enrolment.id, stage_ordinal=0, stage_id="consent", entered_at="2026-10-12T09:02:00.000Z"
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+
+
+@pytest.mark.parametrize(
+    "client_timestamp",
+    ["2026-10-12T09:00:00.123Z", "2026-10-12T09:00:00.123456+00:00", "2026-10-12T12:00:00+03:00"],
+)
+def test_event_stores_client_timestamp_unmodified(
+    session_and_user: dict, snapshot: ExperimentDefinitionDB, client_timestamp: str
+):
+    """Test that an event's client timestamp is stored exactly as submitted, next to a server timestamp."""
+    db_session = session_and_user["session"]
+    run = create_experiment_run(db_session, snapshot, "pilot", "pilot", {"study": _problem(db_session)})
+    enrolment = _enrol(db_session, run, "subject")
+
+    event = ExperimentEvent(
+        enrolment=enrolment,
+        stage_ordinal=1,
+        event_type=ExperimentEventType.reference_point_submitted,
+        payload={"reference_point": {"f_1": 0.5, "f_2": 0.3}},
+        client_timestamp=client_timestamp,
+    )
+    db_session.add(event)
+    db_session.commit()
+    db_session.expire_all()
+
+    stored = db_session.get(ExperimentEvent, event.id)
+    assert stored.client_timestamp == client_timestamp
+    assert stored.received_at is not None
+    assert stored.event_type == "reference_point_submitted"
+    assert stored.payload == {"reference_point": {"f_1": 0.5, "f_2": 0.3}}
+    assert stored.enrolment.user.username == "subject"
