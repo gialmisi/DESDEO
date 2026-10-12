@@ -7,6 +7,7 @@ from desdeo.api.config import AuthConfig
 from desdeo.api.routers import (
     cumulus,
     enautilus,
+    experiment,
     generic,
     nautilus_navigator,
     nimbus,
@@ -47,6 +48,7 @@ app.include_router(site_selection.router)
 app.include_router(gdm_score_bands_routers.router)
 app.include_router(nautilus_navigator.router)
 app.include_router(solution_description.router)
+app.include_router(experiment.router)
 
 
 @app.get("/health")

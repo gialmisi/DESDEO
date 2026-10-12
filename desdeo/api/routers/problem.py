@@ -240,6 +240,12 @@ def add_problem_json(
     user = context.user
     db_session = context.db_session
 
+    if user.role in (UserRole.guest, UserRole.subject):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Guest users and experiment subjects are not allowed to add new problems.",
+        )
+
     effective_user = user
     if target_user_id is not None:
         if user.role not in (UserRole.analyst, UserRole.admin):

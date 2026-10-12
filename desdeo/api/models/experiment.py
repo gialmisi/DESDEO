@@ -229,6 +229,23 @@ class ExperimentEnrolment(SQLModel, table=True):
     session: "InteractiveSessionDB" = Relationship()
 
 
+class ExperimentEnrolRequest(BaseModel):
+    """The request to enrol in an experiment run, or to resume an enrolment."""
+
+    resume_token: str | None = Field(
+        default=None, description="The resume token stored in the browser at an earlier visit, if any."
+    )
+
+
+class ExperimentEnrolResponse(BaseModel):
+    """The response to an enrolment request."""
+
+    access_token: str = Field(description="The access token of the subject.")
+    token_type: str = Field(default="bearer", description="The type of the access token.")
+    resume_token: str = Field(description="The resume token to store in the browser.")
+    resumed: bool = Field(description="Whether an earlier enrolment was resumed instead of a new subject enrolled.")
+
+
 class ExperimentStageProgress(SQLModel, table=True):
     """The table model of a subject's progress through one stage, one row per stage entered.
 

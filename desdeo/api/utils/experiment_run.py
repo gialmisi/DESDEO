@@ -1,8 +1,22 @@
-"""Creating runs of experiments."""
+"""Creating runs of experiments and enrolling subjects in them."""
 
-from sqlmodel import Session
+import hashlib
+import secrets
 
-from desdeo.api.models import ExperimentDefinitionDB, ExperimentRun, MethodStage, ProblemDB, User, UserGroup
+from sqlmodel import Session, select
+
+from desdeo.api.models import (
+    ExperimentDefinitionDB,
+    ExperimentEnrolment,
+    ExperimentRun,
+    InteractiveSessionDB,
+    MethodStage,
+    ProblemDB,
+    User,
+    UserGroup,
+    UserRole,
+)
+from desdeo.api.routers.user_authentication import UNUSABLE_PASSWORD_HASH
 
 
 def problem_names(snapshot: ExperimentDefinitionDB) -> set[str]:
@@ -59,3 +73,66 @@ def create_experiment_run(
     session.refresh(run)
 
     return run
+
+
+def hash_resume_token(resume_token: str) -> str:
+    """Return the hash of a resume token, which is stored instead of the token."""
+    return hashlib.sha256(resume_token.encode("utf-8")).hexdigest()
+
+
+def enrol_subject(session: Session, run: ExperimentRun) -> tuple[ExperimentEnrolment, str]:
+    """Enrol a new subject in an experiment run.
+
+    Creates the subject, a user who cannot log in with a password, adds them to the run's group, which grants access
+    to the run's problems, and creates their interactive session and enrolment record.
+
+    Args:
+        session (Session): the database session.
+        run (ExperimentRun): the run.
+
+    Returns:
+        tuple[ExperimentEnrolment, str]: the enrolment, and the resume token to be stored in the subject's browser.
+    """
+    resume_token = secrets.token_urlsafe(32)
+
+    subject = User(
+        username=f"subject-{secrets.token_hex(8)}", password_hash=UNUSABLE_PASSWORD_HASH, role=UserRole.subject
+    )
+    interactive_session = InteractiveSessionDB(user=subject, info=f"Experiment run '{run.slug}'")
+    run.group.members.append(subject)
+    enrolment = ExperimentEnrolment(
+        user=subject,
+        run=run,
+        experiment_id=run.definition.experiment_id,
+        content_hash=run.definition.content_hash,
+        session=interactive_session,
+        resume_token_hash=hash_resume_token(resume_token),
+    )
+    session.add(enrolment)
+    session.commit()
+
+    subject.active_session_id = interactive_session.id
+    session.add(subject)
+    session.commit()
+    session.refresh(enrolment)
+
+    return enrolment, resume_token
+
+
+def find_enrolment(session: Session, run: ExperimentRun, resume_token: str) -> ExperimentEnrolment | None:
+    """Find the enrolment in a run that a resume token belongs to.
+
+    Args:
+        session (Session): the database session.
+        run (ExperimentRun): the run.
+        resume_token (str): the resume token stored in the subject's browser.
+
+    Returns:
+        ExperimentEnrolment | None: the enrolment, or None if the token belongs to no enrolment in the run.
+    """
+    return session.exec(
+        select(ExperimentEnrolment).where(
+            ExperimentEnrolment.run_id == run.id,
+            ExperimentEnrolment.resume_token_hash == hash_resume_token(resume_token),
+        )
+    ).first()
