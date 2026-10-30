@@ -1,0 +1,170 @@
+"""Tests for the SingleObjectiveConstrainedRankingSelector."""
+
+import numpy as np
+import polars as pl
+import pytest
+
+from desdeo.emo import algorithms, generator, selection, termination
+from desdeo.emo.operators.selection import SingleObjectiveConstrainedRankingSelector
+from desdeo.emo.options.scalar_selection import TournamentSelectionOptions, scalar_selector_constructor
+from desdeo.problem.testproblems.single_objective import new_branin_function
+from desdeo.tools.patterns import Publisher
+
+
+def _selector(mode: str, constraints: dict[str, float], population_size: int, **kwargs):
+    return SingleObjectiveConstrainedRankingSelector(
+        problem=new_branin_function(),
+        verbosity=0,
+        publisher=Publisher(),
+        population_size=population_size,
+        target_objective_symbol="f_1",
+        mode=mode,
+        constraints=constraints,
+        **kwargs,
+    )
+
+
+# A small pool with one constraint and threshold 1.0: indices 0 and 1 are strictly feasible, 2 and 4 lie
+# in the relaxed band, 3 lies beyond the threshold.
+F = np.array([3.0, 1.0, 2.0, 0.0, 5.0])
+C = np.array([[-1.0], [-0.5], [0.5], [2.0], [0.2]])
+
+
+@pytest.mark.ea
+def test_baseline_order():
+    """Feasible solutions by objective first, then infeasible ones by their normalized violation."""
+    order = _selector("baseline", {"c_1": 1.0}, 5).compute_order(F, C)
+    np.testing.assert_array_equal(order, [1, 0, 4, 2, 3])
+
+
+@pytest.mark.ea
+def test_relaxed_round_robin():
+    """Picks alternate between the strict ranking and the ranking with the constraint relaxed."""
+    order = _selector("relaxed", {"c_1": 1.0}, 5).compute_order(F, C)
+    # Strict ranking: 1, 0, 4, 2, 3. Relaxed ranking: 1, 2, 0, 4, 3. Round robin, skipping chosen ones.
+    np.testing.assert_array_equal(order, [1, 2, 0, 4, 3])
+
+
+@pytest.mark.ea
+@pytest.mark.parametrize("niching", ["crowding", "knearest", "kth"])
+def test_ranking_returns_distinct_indices(niching):
+    """The ranking mode returns population_size distinct indices, deterministically."""
+    rng = np.random.default_rng(1)
+    f = rng.normal(size=40)
+    c = rng.uniform(-1.0, 2.0, size=(40, 3))
+    constraints = {"c_1": 0.5, "c_2": 1.0, "c_3": 0.8}
+    first = _selector("ranking", constraints, 20, niching=niching).compute_order(f, c)
+    second = _selector("ranking", constraints, 20, niching=niching).compute_order(f, c)
+    assert len(first) == 20
+    assert len(set(first.tolist())) == 20
+    np.testing.assert_array_equal(first, second)
+
+
+@pytest.mark.ea
+def test_hypervolume_single_box_member_first():
+    """With a single threshold-feasible solution, it is ranked first and the rest follow by violation."""
+    f = np.array([0.0, 2.0, 1.0])
+    c = np.array([[3.0], [0.5], [4.0]])
+    order = _selector("hypervolume", {"c_1": 1.0}, 3).compute_order(f, c)
+    np.testing.assert_array_equal(order, [1, 0, 2])
+
+
+@pytest.mark.ea
+def test_hypervolume_keeps_box_optimum_first():
+    """The best threshold-feasible solution (a protected end point) is ranked first."""
+    order = _selector("hypervolume", {"c_1": 1.0}, 5).compute_order(F, C)
+    assert order[0] == 1
+    assert sorted(order.tolist()) == [0, 1, 2, 3, 4]
+
+
+@pytest.mark.ea
+def test_unknown_mode_raises():
+    """An unknown mode is rejected."""
+    with pytest.raises(ValueError, match="Unsupported mode"):
+        _selector("unknown", {"c_1": 1.0}, 5).compute_order(F, C)
+
+
+def _pool(x: np.ndarray, f: np.ndarray, c: np.ndarray) -> tuple[pl.DataFrame, pl.DataFrame]:
+    sols = pl.DataFrame({"x_1": x[:, 0], "x_2": x[:, 1]})
+    outs = pl.DataFrame({"f_1_min": f, **{f"c_{j + 1}": c[:, j] for j in range(c.shape[1])}})
+    return sols, outs
+
+
+@pytest.mark.ea
+@pytest.mark.parametrize("mode", ["baseline", "relaxed", "ranking", "hypervolume"])
+def test_do_removes_decision_space_duplicates(mode):
+    """Solutions with identical decision vectors are kept only once."""
+    x = np.array([[0.1, 0.2], [0.3, 0.4], [0.1, 0.2], [0.5, 0.6], [0.3, 0.4], [0.7, 0.8]])
+    f = np.array([1.0, 2.0, 1.0, 3.0, 2.0, 0.5])
+    c = np.array([[-1.0], [0.5], [-1.0], [0.2], [0.5], [3.0]])
+    sols, outs = _pool(x, f, c)
+    new_sols, new_outs = _selector(mode, {"c_1": 1.0}, 6).do((sols[:3], outs[:3]), (sols[3:], outs[3:]))
+    assert new_sols.height == 4
+    assert new_sols.unique().height == 4
+    assert new_outs.height == 4
+
+
+@pytest.mark.ea
+@pytest.mark.parametrize("mode", ["baseline", "relaxed", "ranking", "hypervolume"])
+def test_published_fitness_is_higher_is_better(mode):
+    """The fitness read by the mating tournament decreases from the best-ranked solution, and is positive."""
+    rng = np.random.default_rng(2)
+    x = rng.uniform(size=(30, 2))
+    f = rng.normal(size=30)
+    c = rng.uniform(-1.0, 2.0, size=(30, 2))
+    sols, outs = _pool(x, f, c)
+    sel = _selector(mode, {"c_1": 0.5, "c_2": 1.0}, 15)
+    new_sols, _ = sel.do((sols[:15], outs[:15]), (sols[15:], outs[15:]))
+    np.testing.assert_array_equal(sel.fitness, np.arange(new_sols.height, 0, -1))
+
+
+@pytest.mark.ea
+def test_tournament_prefers_better_ranks():
+    """A binary tournament on the published fitness picks better-ranked parents more often than chance."""
+    rng = np.random.default_rng(3)
+    n = 12
+    x = rng.uniform(size=(2 * n, 2))
+    f = rng.normal(size=2 * n)
+    c = rng.uniform(-1.0, 2.0, size=(2 * n, 1))
+    sols, outs = _pool(x, f, c)
+    sel = _selector("relaxed", {"c_1": 1.0}, n)
+    new_sols, new_outs = sel.do((sols[:n], outs[:n]), (sols[n:], outs[n:]))
+    position = {v: i for i, v in enumerate(new_sols["x_1"].to_list())}
+
+    tournament = scalar_selector_constructor(
+        TournamentSelectionOptions(tournament_size=2, winner_size=n), seed=4, publisher=Publisher(), verbosity=0
+    )
+    ranks = []
+    for _ in range(500):
+        winners, _ = tournament.do((new_sols, new_outs), fitness=sel.fitness)
+        ranks.extend(position[v] for v in winners["x_1"].to_list())
+    # Random choice gives a mean rank of (n - 1) / 2 = 5.5, the better of two members about 3.5.
+    assert np.mean(ranks) < 4.0
+
+
+def _nsga2_run(seed: int):
+    problem = new_branin_function()
+    options = algorithms.nsga2_options()
+    options.template.seed = seed
+    options.template.selection = selection.SingleObjectiveConstrainedRankingSelectorOptions(
+        population_size=12,
+        target_objective_symbol="f_1",
+        constraints={"c_1": 15.0},
+        mode="relaxed",
+        niching="kth",
+    )
+    options.template.mate_selection = TournamentSelectionOptions(tournament_size=2, winner_size=12)
+    options.template.generator = generator.LHSGeneratorOptions(n_points=12)
+    options.template.termination = termination.MaxGenerationsTerminatorOptions(max_generations=15)
+    solver, _ = algorithms.emo_constructor(emo_options=options, problem=problem)
+    return solver()
+
+
+@pytest.mark.ea
+def test_nsga2_with_selector_is_reproducible():
+    """The selector works inside NSGA-II (Template2), and equal seeds give equal runs."""
+    first = _nsga2_run(seed=5)
+    second = _nsga2_run(seed=5)
+    assert first.optimal_variables.height == 12
+    assert first.optimal_variables.equals(second.optimal_variables)
+    assert first.optimal_outputs.equals(second.optimal_outputs)
