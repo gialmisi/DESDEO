@@ -167,3 +167,4 @@ scratch/
 surrogatemodels/
 utopia_forest.json
 deploy/secrets.yaml
+.slip/

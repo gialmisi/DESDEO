@@ -46,6 +46,31 @@ def test_relaxed_round_robin():
 
 
 @pytest.mark.ea
+def test_joint_round_robin():
+    """Picks alternate between the strict ranking and the ranking with all constraints relaxed at once.
+
+    Index 0 is strictly feasible, 2 needs only c_1 relaxed, 1 needs both relaxed, and 3 lies beyond the
+    threshold of c_1. Strict ranking: 0, 2, 3, 1. Joint ranking: 1, 2, 0, 3.
+    """
+    f = np.array([3.0, 0.0, 1.0, -1.0])
+    c = np.array([[-1.0, -1.0], [0.5, 0.5], [0.5, -1.0], [2.0, -1.0]])
+    constraints = {"c_1": 1.0, "c_2": 1.0}
+    order = _selector("joint", constraints, 4).compute_order(f, c)
+    np.testing.assert_array_equal(order, [0, 1, 2, 3])
+    # The relaxed mode relaxes one constraint at a time, so it does not favour index 1.
+    assert _selector("relaxed", constraints, 4).compute_order(f, c)[:2].tolist() == [0, 2]
+
+
+@pytest.mark.ea
+def test_joint_equals_relaxed_with_one_constraint():
+    """With a single constraint, the joint and relaxed modes give the same order."""
+    np.testing.assert_array_equal(
+        _selector("joint", {"c_1": 1.0}, 5).compute_order(F, C),
+        _selector("relaxed", {"c_1": 1.0}, 5).compute_order(F, C),
+    )
+
+
+@pytest.mark.ea
 @pytest.mark.parametrize("niching", ["crowding", "knearest", "kth"])
 def test_ranking_returns_distinct_indices(niching):
     """The ranking mode returns population_size distinct indices, deterministically."""
@@ -91,7 +116,7 @@ def _pool(x: np.ndarray, f: np.ndarray, c: np.ndarray) -> tuple[pl.DataFrame, pl
 
 
 @pytest.mark.ea
-@pytest.mark.parametrize("mode", ["baseline", "relaxed", "ranking", "hypervolume"])
+@pytest.mark.parametrize("mode", ["baseline", "relaxed", "ranking", "hypervolume", "joint"])
 def test_do_removes_decision_space_duplicates(mode):
     """Solutions with identical decision vectors are kept only once."""
     x = np.array([[0.1, 0.2], [0.3, 0.4], [0.1, 0.2], [0.5, 0.6], [0.3, 0.4], [0.7, 0.8]])
@@ -105,7 +130,7 @@ def test_do_removes_decision_space_duplicates(mode):
 
 
 @pytest.mark.ea
-@pytest.mark.parametrize("mode", ["baseline", "relaxed", "ranking", "hypervolume"])
+@pytest.mark.parametrize("mode", ["baseline", "relaxed", "ranking", "hypervolume", "joint"])
 def test_published_fitness_is_higher_is_better(mode):
     """The fitness read by the mating tournament decreases from the best-ranked solution, and is positive."""
     rng = np.random.default_rng(2)

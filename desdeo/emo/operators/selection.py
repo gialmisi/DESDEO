@@ -3405,7 +3405,7 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
     """Single-objective selector for constrained problems.
 
     Implements a selector suitable for single-objective optimization of constrained problems.
-    Supports four modes:
+    Supports five modes:
 
     1.  Baseline: in the baseline mode, selection first happens based on the
         objective function value of feasible solutions (all constraint violations
@@ -3445,6 +3445,12 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
         by ``hv_eps`` on every axis. The best threshold-feasible and the best
         strictly feasible solution are removed last. Solutions beyond a threshold
         follow, ordered as in the baseline mode by how far they lie beyond it.
+    5.  Joint: as the relaxed mode, but with two pools only. The first pool is
+        the baseline ranking with the original constraints, the second the same
+        ranking with every constraint relaxed to its threshold at the same time.
+        The new population is picked from the two pools alternately, as in the
+        relaxed mode. With a single constraint, the joint and relaxed modes
+        coincide.
 
     In every mode, duplicate solutions (identical decision variable vectors) are
     removed before ranking. The fitness published for mating selection is
@@ -3475,8 +3481,8 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
             publisher (Publisher): publisher the operator subscribes to.
             population_size (int): the population size. This will be the size of the newly created population.
             target_objective_symbol (str): the symbol of the objective function that should be optimized.
-            mode (str, optional): the operator mode: 'baseline', 'relaxed', 'ranking', or
-                'hypervolume'. Defaults to "baseline".
+            mode (str, optional): the operator mode: 'baseline', 'relaxed', 'ranking',
+                'hypervolume', or 'joint'. Defaults to "baseline".
             constraints (dict[str, float] | None, optional): A dict that
                 provides threshold values for each constraint present in `Problem`.
                 The keys should match the constraint symbols in `Problem`. Ignored
@@ -3836,6 +3842,15 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
 
             order = self._round_robin_from_pools(pool_orders, self.population_size)
 
+        elif self.mode == "joint":
+            v0 = self._build_violation_all_original(c_mat)
+            pool_orders = [self._order_by_objective_then_violation(target_arr, v0)]
+            if c_mat.shape[1] > 0:
+                # Every constraint relaxed to its threshold at the same time.
+                v_joint = np.maximum(0.0, c_mat - self.constraint_thresholds[None, :])
+                pool_orders.append(self._order_by_objective_then_violation(target_arr, v_joint))
+            order = self._round_robin_from_pools(pool_orders, self.population_size)
+
         elif self.mode == "ranking":
             if c_mat.shape[1] == 0:
                 order = np.argsort(target_arr, kind="mergesort")[: self.population_size]
@@ -3892,7 +3907,7 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
 
         else:
             raise ValueError(
-                f"Unsupported mode '{self.mode}'. Expected one of: baseline, relaxed, ranking, hypervolume."
+                f"Unsupported mode '{self.mode}'. Expected one of: baseline, relaxed, ranking, hypervolume, joint."
             )
 
         return np.atleast_1d(order).astype(int)

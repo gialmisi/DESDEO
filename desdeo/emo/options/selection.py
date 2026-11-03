@@ -258,15 +258,16 @@ class SingleObjectiveConstrainedRankingSelectorOptions(BaseModel):
         description="The relaxation threshold of each constraint, by constraint symbol."
     )
     """The relaxation threshold of each constraint, by constraint symbol. Ignored in the 'baseline' mode."""
-    mode: Literal["baseline", "relaxed", "ranking", "hypervolume"] = Field(
+    mode: Literal["baseline", "relaxed", "ranking", "hypervolume", "joint"] = Field(
         default="baseline",
         description=(
             "The mode of the operator: 'baseline' (feasibility-first lexicographic), 'relaxed' "
             "(per-constraint round-robin pools), 'ranking' (rank vectors with non-dominated sorting "
-            "and niching), or 'hypervolume' (greedy hypervolume-contribution ranking of the shadow front)."
+            "and niching), 'hypervolume' (greedy hypervolume-contribution ranking of the shadow front), or "
+            "'joint' (round robin between the strict pool and one pool with all constraints relaxed at once)."
         ),
     )
-    """The operator mode: 'baseline', 'relaxed', 'ranking', or 'hypervolume'."""
+    """The operator mode: 'baseline', 'relaxed', 'ranking', 'hypervolume', or 'joint'."""
     niching: Literal["crowding", "knearest", "kth"] = Field(
         default="crowding",
         description=(
