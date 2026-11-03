@@ -3439,11 +3439,13 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
         these rankings.
     4.  Hypervolume: threshold-feasible solutions (every constraint within its
         threshold) are mapped to the points (objective, relaxation used on each
-        constraint), normalized and all minimized, and ordered greedily by their
-        hypervolume contribution (repeatedly removing the least-contributing
+        constraint), normalized and all minimized, and sorted into non-dominated
+        fronts. Front by front, they are ordered greedily by their hypervolume
+        contribution within the front (repeatedly removing the least-contributing
         solution, as in SMS-EMOA) with respect to the population nadir expanded
         by ``hv_eps`` on every axis. The best threshold-feasible and the best
-        strictly feasible solution are removed last. Solutions beyond a threshold
+        strictly feasible solution lie on the first front and are removed from it
+        last. Solutions beyond a threshold
         follow, ordered as in the baseline mode by how far they lie beyond it.
     5.  Joint: as the relaxed mode, but with two pools only. The first pool is
         the baseline ranking with the original constraints, the second the same
@@ -3689,12 +3691,17 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
         Solutions inside the relaxation box (threshold-feasible on every
         constraint) are mapped into a normalized shadow-front space: the
         objective on one axis and the relaxation used on each constraint on the
-        others, all to be minimized. These are ranked based on their greedy
-        hypervolume contribution (repeatedly dropping the least-contributing
-        solution, inspired by SMS-EMOA) with respect to an online reference
-        point (the per-population nadir, expanded by ``eps`` on every axis).
-        Solutions outside the box follow, ordered by how far they lie beyond the
-        thresholds. The reference point is recomputed each call.
+        others, all to be minimized. As in SMS-EMOA, these are first sorted into
+        non-dominated fronts, and the fronts are kept in order. Within each
+        front, solutions are ranked by their greedy hypervolume contribution to
+        that front (repeatedly dropping the least-contributing solution) with
+        respect to an online reference point (the per-population nadir,
+        expanded by ``eps`` on every axis). Without the fronts, every dominated
+        solution would contribute zero and be ordered by its objective alone.
+        The two end points of the shadow front lie on the first front and are
+        dropped from it last. Fronts are ranked only until the population is
+        full. Solutions outside the box follow, ordered by how far they lie
+        beyond the thresholds. The reference point is recomputed each call.
 
         Args:
             target_arr (np.ndarray): objective values to minimize, shape ``(n,)``.
@@ -3746,7 +3753,17 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
             strict_local = np.where(strict)[0]
             protect.add(int(strict_local[int(np.argmin(f[strict_local]))]))
 
-        in_order = idx_in[self._greedy_hv_peel(pts, ref, protect, f)]
+        # Both end points are non-dominated, so they lie on the first front.
+        in_local: list[int] = []
+        for front_index, front in enumerate(fast_non_dominated_sort(pts)):
+            if len(in_local) >= self.population_size:
+                # The population is full; later fronts would be truncated anyway.
+                break
+            members = np.where(front)[0]
+            front_protect = {int(np.where(members == p)[0][0]) for p in protect} if front_index == 0 else set()
+            peel = self._greedy_hv_peel(pts[members], ref, front_protect, f[members])
+            in_local.extend(members[peel].tolist())
+        in_order = idx_in[np.asarray(in_local, dtype=int)]
 
         return np.concatenate([in_order, out_order])[: self.population_size].astype(int)
 

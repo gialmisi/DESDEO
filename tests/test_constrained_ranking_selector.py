@@ -103,6 +103,33 @@ def test_hypervolume_keeps_box_optimum_first():
 
 
 @pytest.mark.ea
+def test_hypervolume_orders_dominated_solutions_by_front():
+    """Dominated solutions are ordered by their non-dominated front, not by their objective.
+
+    Shadow-front points (objective, relaxation used): a (0, 1), m (5, 0.5) and s (10, 0) form the
+    first front; z (1, 1) and x (6, 0.6) are dominated once and form the second; y (3, 1) is also
+    dominated by z and forms the third. So x is ranked before y although y has the better objective.
+    """
+    f = np.array([0.0, 5.0, 10.0, 6.0, 1.0, 3.0])
+    c = np.array([[1.0], [0.5], [-1.0], [0.6], [1.0], [1.0]])
+    order = _selector("hypervolume", {"c_1": 1.0}, 6).compute_order(f, c)
+    assert set(order[:3].tolist()) == {0, 1, 2}
+    assert set(order[3:5].tolist()) == {3, 4}
+    assert order[5] == 5
+
+
+@pytest.mark.ea
+def test_hypervolume_stops_at_population_size():
+    """With a smaller population, the first front is kept whole and filled up from the second."""
+    f = np.array([0.0, 5.0, 10.0, 6.0, 1.0, 3.0])
+    c = np.array([[1.0], [0.5], [-1.0], [0.6], [1.0], [1.0]])
+    order = _selector("hypervolume", {"c_1": 1.0}, 4).compute_order(f, c)
+    assert len(order) == 4
+    assert set(order[:3].tolist()) == {0, 1, 2}
+    assert order[3] in {3, 4}
+
+
+@pytest.mark.ea
 def test_unknown_mode_raises():
     """An unknown mode is rejected."""
     with pytest.raises(ValueError, match="Unsupported mode"):
