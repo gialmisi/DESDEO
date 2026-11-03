@@ -119,6 +119,22 @@ def test_hypervolume_orders_dominated_solutions_by_front():
 
 
 @pytest.mark.ea
+def test_hypervolume_protects_end_points_with_tied_objectives():
+    """With ties in the objective, the protected end points are taken from the first front.
+
+    Solutions 0 and 1 share the best objective, but 0 uses more relaxation, so it is dominated by 1
+    and not on the first front. Taking the first minimizer over the whole box (0) as the protected
+    end point used to fail; the end point is 1. The strictly feasible 3 and 4 tie as duplicates.
+    """
+    f = np.array([0.0, 0.0, 5.0, 10.0, 10.0, 11.0])
+    c = np.array([[0.8], [0.2], [0.1], [-1.0], [-0.5], [-1.0]])
+    order = _selector("hypervolume", {"c_1": 1.0}, 6).compute_order(f, c)
+    assert sorted(order.tolist()) == [0, 1, 2, 3, 4, 5]
+    assert order[0] == 1
+    assert order.tolist().index(0) > order.tolist().index(1)
+
+
+@pytest.mark.ea
 def test_hypervolume_stops_at_population_size():
     """With a smaller population, the first front is kept whole and filled up from the second."""
     f = np.array([0.0, 5.0, 10.0, 6.0, 1.0, 3.0])

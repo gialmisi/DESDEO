@@ -3746,21 +3746,22 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
 
         # The shadow-front endpoints define the shadow price, but hypervolume under-weights extreme
         # points; protect them from removal until last: the best objective in the box (threshold-
-        # optimum end) and the best strictly-feasible objective (strict-optimum end).
-        protect = {int(np.argmin(f))}
+        # optimum end) and the best strictly-feasible objective (strict-optimum end). They are taken
+        # from the first front's members: with ties in the objective, the first minimizer over the
+        # whole box can be dominated by a tied solution that uses less relaxation.
         strict = np.all(c_mat[idx_in] <= 0.0, axis=1)
-        if strict.any():
-            strict_local = np.where(strict)[0]
-            protect.add(int(strict_local[int(np.argmin(f[strict_local]))]))
-
-        # Both end points are non-dominated, so they lie on the first front.
         in_local: list[int] = []
         for front_index, front in enumerate(fast_non_dominated_sort(pts)):
             if len(in_local) >= self.population_size:
                 # The population is full; later fronts would be truncated anyway.
                 break
             members = np.where(front)[0]
-            front_protect = {int(np.where(members == p)[0][0]) for p in protect} if front_index == 0 else set()
+            front_protect: set[int] = set()
+            if front_index == 0:
+                front_protect.add(int(np.argmin(f[members])))
+                strict_pos = np.where(strict[members])[0]
+                if strict_pos.size > 0:
+                    front_protect.add(int(strict_pos[int(np.argmin(f[members][strict_pos]))]))
             peel = self._greedy_hv_peel(pts[members], ref, front_protect, f[members])
             in_local.extend(members[peel].tolist())
         in_order = idx_in[np.asarray(in_local, dtype=int)]
