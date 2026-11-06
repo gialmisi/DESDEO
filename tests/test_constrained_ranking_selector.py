@@ -46,6 +46,55 @@ def test_relaxed_round_robin():
 
 
 @pytest.mark.ea
+def test_relaxed_zero_threshold_gets_no_pool():
+    """A constraint with threshold 0 is not relaxed and adds no pool (which would duplicate the strict one).
+
+    Indices 0-2 are strictly feasible (f = 0, 1, 2); 3 and 4 violate c_1 by 0.5 and 0.8 and have the best
+    objectives. Strict ranking: 0, 1, 2, 3, 4. Ranking with c_1 relaxed to 1: 4, 3, 0, 1, 2. With the pools
+    (strict, c_1) the round robin gives 0, 4, 1, 3, 2; a duplicate strict pool for c_2 would give
+    0, 4, 1, 2, 3.
+    """
+    f = np.array([0.0, 1.0, 2.0, -1.0, -2.0])
+    c = np.array([[-1.0, -1.0], [-1.0, -1.0], [-1.0, -1.0], [0.5, -1.0], [0.8, -1.0]])
+    order = _selector("relaxed", {"c_1": 1.0, "c_2": 0.0}, 5).compute_order(f, c)
+    np.testing.assert_array_equal(order, [0, 4, 1, 3, 2])
+
+
+@pytest.mark.ea
+@pytest.mark.parametrize("mode", ["relaxed", "ranking"])
+def test_zero_threshold_constraint_adds_no_ranking(mode):
+    """A constraint with a zero threshold gets no ranking of its own: the mode builds the strict ranking
+    and one ranking per constraint with a positive threshold."""
+    rng = np.random.default_rng(3)
+    f = rng.normal(size=30)
+    c = rng.normal(size=(30, 3)) * 0.5
+    sel = _selector(mode, {"c_1": 0.4, "c_2": 0.0, "c_3": 0.3}, 12)
+    built = []
+    original = sel._order_by_objective_then_violation
+
+    def counting(target, v):
+        built.append(1)
+        return original(target, v)
+
+    sel._order_by_objective_then_violation = counting
+    order = sel.compute_order(f, c)
+    assert len(set(order.tolist())) == 12
+    assert len(built) == 3  # strict, c_1, c_3
+
+
+@pytest.mark.ea
+@pytest.mark.parametrize("mode", ["relaxed", "ranking"])
+def test_all_zero_thresholds_behave_like_baseline(mode):
+    """If no constraint is relaxed, the relaxed and ranking modes keep only the strict ranking."""
+    rng = np.random.default_rng(5)
+    f = rng.normal(size=20)
+    c = rng.normal(size=(20, 2))
+    order = _selector(mode, {"c_1": 0.0, "c_2": 0.0}, 10).compute_order(f, c)
+    baseline = _selector("baseline", {"c_1": 0.0, "c_2": 0.0}, 10).compute_order(f, c)
+    np.testing.assert_array_equal(order, baseline)
+
+
+@pytest.mark.ea
 def test_joint_round_robin():
     """Picks alternate between the strict ranking and the ranking with all constraints relaxed at once.
 

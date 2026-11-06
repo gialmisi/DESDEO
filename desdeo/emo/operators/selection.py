@@ -3428,7 +3428,8 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
         (after picking, that solution is removed from all the pools). Picking
         is follows a round robin scheme, where we first pick from pool 1, then
         pool 2, and so forth until pool c+1. After that, picking starts again from
-        pool 1.
+        pool 1. A constraint with a zero threshold is not relaxed and gets no pool of
+        its own (it would duplicate the strict pool); it is enforced in all pools.
     3.  Ranking: solutions are ranked as done in the relaxed mode, but now these
         ranking are considered as pseudo-objectives. Therefore, each solution will
         be represented by an objective vector, where each element corresponds to the
@@ -3851,9 +3852,12 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
                 pool0 = self._order_by_objective_then_violation(target_arr, v0)
                 pool_orders.append(pool0)
 
-            # rest of pools, per-constraint threshold with all constraints enforced
+            # rest of pools, per-constraint threshold with all constraints enforced. A constraint
+            # with a zero threshold is not relaxed: its pool would duplicate the strict one.
             for j in range(c_mat.shape[1]):
                 thr = float(self.constraint_thresholds[j])
+                if thr <= 0.0:
+                    continue
                 vj = self._build_violation_with_single_relaxation(c_mat, j, thr)
                 poolj = self._order_by_objective_then_violation(target_arr, vj)
                 pool_orders.append(poolj)
@@ -3881,9 +3885,13 @@ class SingleObjectiveConstrainedRankingSelector(_FitnessPublishingSelector):
                 ord0 = self._order_by_objective_then_violation(target_arr, v0)
                 orderings.append(ord0)
 
-                # Remaining ranking, each constraint with its threshold (all constraints enforced, one relaxed)
+                # Remaining ranking, each constraint with its threshold (all constraints enforced, one
+                # relaxed). A constraint with a zero threshold is not relaxed: its ranking would
+                # duplicate the strict one.
                 for j in range(c_mat.shape[1]):
                     thr = float(self.constraint_thresholds[j])
+                    if thr <= 0.0:
+                        continue
                     vj = self._build_violation_with_single_relaxation(c_mat, j, thr)
                     orderings.append(self._order_by_objective_then_violation(target_arr, vj))
 
