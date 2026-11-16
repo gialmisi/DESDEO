@@ -138,6 +138,11 @@
 
 	//const dispatch = createEventDispatcher();
 
+	// Scalar variables plus every element of each tensor variable (e.g. shape [22, 1] counts 22).
+	const variableCount = (p: ProblemInfo): number =>
+		(p.variables?.length ?? 0) +
+		(p.tensor_variables ?? []).reduce((n, v) => n + v.shape.reduce((a, b) => a * b, 1), 0);
+
 	const columns: ColumnDef<ProblemInfo>[] = [
 		{
 			accessorKey: 'name',
@@ -174,7 +179,7 @@
 			},
 			cell: ({ row }) => {
 				return renderSnippet(NumberCell, {
-					value: row.original.variables?.length ?? 0
+					value: variableCount(row.original)
 				});
 			},
 			filterFn: (row, id, value) => {

@@ -3,7 +3,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { customFetch } from '$lib/api/new-client';
 
-const BASE_URL = (process.env.API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+// API_BASE_URL, as in the rest of the web UI; API_URL is the older name, still read.
+const BASE_URL = (process.env.API_BASE_URL || process.env.API_URL || 'http://localhost:8000').replace(
+	/\/+$/,
+	''
+);
 
 type EMOState = Record<string, unknown>;
 

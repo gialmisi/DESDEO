@@ -9,7 +9,8 @@
 #       Must be the *public* HTTPS route of the API.
 #       Default: https://gialmisi-desdeo-api.rahtiapp.fi
 #
-#   API_URL  (runtime ENV in the container / Deployment env)
+#   API_BASE_URL  (runtime ENV in the container / Deployment env;
+#                  API_URL is the older name, still read by EMO/solve)
 #       Used by SvelteKit server-side route handlers (+server.ts) that
 #       proxy requests to the backend.
 #       Should point to the *internal cluster* service so traffic stays
@@ -63,7 +64,7 @@ EXPOSE 3000
 ENV PORT=3000
 
 # Server-side proxy routes use this to reach the backend inside the cluster.
-ENV API_URL=http://desdeo-api:8080
+ENV API_BASE_URL=http://desdeo-api:8080
 
 # Run as a non-root UID (required by Rahti / OpenShift SCC).
 USER 1001
